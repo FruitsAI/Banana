@@ -93,10 +93,10 @@ export function ModelsSetting() {
             <button
               key={provider.id}
               onClick={() => setActiveProviderId(provider.id)}
-              className={`w-full flex items-center justify-between p-2 rounded-lg text-sm transition-colors ${
+              className={`w-full flex items-center justify-between p-2 rounded-lg text-sm transition-all duration-300 ${
                 activeProviderId === provider.id
-                  ? "bg-[#DFD9CE] text-foreground dark:bg-primary/20"
-                  : "hover:bg-muted/50"
+                  ? "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-300 font-semibold shadow-sm border border-pink-500/20"
+                  : "hover:bg-muted/50 font-medium"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -219,8 +219,8 @@ export function ModelsSetting() {
 
             <div className="rounded-lg border bg-muted/20 overflow-hidden divide-y">
               {/* Accordion Group 1 */}
-              <div className="bg-[#DFD9CE]/30 dark:bg-muted/30">
-                <button className="w-full flex items-center gap-2 p-2.5 hover:bg-black/5 dark:hover:bg-white/5 text-sm font-medium">
+              <div className="bg-pink-500/5 dark:bg-pink-500/10 border-b border-border/50">
+                <button className="w-full flex items-center gap-2 p-3 hover:bg-pink-500/10 dark:hover:bg-pink-500/20 text-sm font-medium transition-colors">
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   minimaxai
                 </button>
@@ -243,8 +243,8 @@ export function ModelsSetting() {
               </div>
 
                {/* Accordion Group 2 */}
-              <div className="bg-[#DFD9CE]/30 dark:bg-muted/30">
-                <button className="w-full flex items-center gap-2 p-2.5 hover:bg-black/5 dark:hover:bg-white/5 text-sm font-medium">
+              <div className="bg-pink-500/5 dark:bg-pink-500/10 border-b border-border/50">
+                <button className="w-full flex items-center gap-2 p-3 hover:bg-pink-500/10 dark:hover:bg-pink-500/20 text-sm font-medium transition-colors">
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   moonshotai
                 </button>

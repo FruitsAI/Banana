@@ -26,10 +26,10 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-300 ${
             activeTab === tab.id
-              ? "bg-[#EBE5DE] text-foreground dark:bg-primary/20"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              ? "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-300 font-semibold shadow-sm border border-pink-500/20"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground font-medium border border-transparent"
           }`}
         >
           <tab.icon className="w-[18px] h-[18px]" strokeWidth={1.75} />

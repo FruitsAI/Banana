@@ -90,8 +90,8 @@ export function McpSetting() {
                 <button
                   key={cat.id}
                   onClick={() => { setActiveCategoryId(cat.id); setViewMode("list"); }}
-                  className={`w-full flex items-center p-2.5 rounded-lg text-sm transition-colors ${
-                    activeCategoryId === cat.id ? "bg-[#DFD9CE] text-foreground dark:bg-primary/20" : "hover:bg-muted/50 text-muted-foreground"
+                  className={`w-full flex items-center p-2.5 rounded-lg text-sm transition-all duration-300 ${
+                    activeCategoryId === cat.id ? "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-300 font-semibold shadow-sm border border-pink-500/20" : "hover:bg-muted/50 text-muted-foreground font-medium"
                   }`}
                 >
                   {cat.icon === "box" ? <Box className="w-4 h-4 mr-3" /> : <Store className="w-4 h-4 mr-3" />}
@@ -112,8 +112,8 @@ export function McpSetting() {
                 <button
                   key={cat.id}
                   onClick={() => { setActiveCategoryId(cat.id); setViewMode("list"); }}
-                  className={`w-full flex items-center p-2.5 rounded-lg text-sm transition-colors ${
-                    activeCategoryId === cat.id ? "bg-[#DFD9CE] text-foreground dark:bg-primary/20" : "hover:bg-muted/50"
+                  className={`w-full flex items-center p-2.5 rounded-lg text-sm transition-all duration-300 ${
+                    activeCategoryId === cat.id ? "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-300 font-semibold shadow-sm border border-pink-500/20" : "hover:bg-muted/50 font-medium"
                   }`}
                 >
                   <div className={`w-5 h-5 rounded flex items-center justify-center mr-3 text-[10px] text-white font-bold bg-primary`}>

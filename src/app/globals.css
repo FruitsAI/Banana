@@ -144,11 +144,11 @@
     --text-3: rgba(15, 18, 25, 0.48);
     --text-4: rgba(15, 18, 25, 0.30);
     
-    /* Accent Palette - Aurora inspired */
-    --accent-primary: rgba(88, 156, 255, 1);
-    --accent-secondary: rgba(120, 220, 255, 1);
-    --accent-tertiary: rgba(180, 140, 255, 1);
-    --accent-warm: rgba(255, 180, 120, 1);
+    /* Accent Palette - Liquid Pink/Gold */
+    --accent-primary: rgba(219, 39, 119, 1);
+    --accent-secondary: rgba(244, 114, 182, 1);
+    --accent-tertiary: rgba(202, 138, 4, 1);
+    --accent-warm: rgba(253, 164, 175, 1);
     
     /* Semantic Colors */
     --success: rgba(52, 199, 89, 1);
@@ -185,8 +185,8 @@
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.12);
     --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.16);
-    --shadow-glow: 0 0 40px rgba(88, 156, 255, 0.25);
-    --shadow-glow-strong: 0 0 60px rgba(88, 156, 255, 0.35);
+    --shadow-glow: 0 0 40px rgba(219, 39, 119, 0.25);
+    --shadow-glow-strong: 0 0 60px rgba(219, 39, 119, 0.35);
     
     /* Inset Effects */
     --inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -227,27 +227,27 @@
     /* Aurora Background */
     --aurora-bg: radial-gradient(
       1200px 900px at 15% 10%,
-      rgba(88, 156, 255, 0.18) 0%,
+      rgba(219, 39, 119, 0.18) 0%,
       transparent 55%
     ), radial-gradient(
       1000px 800px at 85% 20%,
-      rgba(120, 220, 255, 0.14) 0%,
+      rgba(244, 114, 182, 0.14) 0%,
       transparent 52%
     ), radial-gradient(
       1100px 900px at 50% 95%,
-      rgba(180, 140, 255, 0.12) 0%,
+      rgba(202, 138, 4, 0.12) 0%,
       transparent 58%
     ), linear-gradient(
       180deg,
       rgba(255, 255, 255, 0.78) 0%,
-      rgba(248, 250, 255, 0.92) 100%
+      rgba(253, 242, 248, 0.92) 100%
     );
     
     /* Borders & Dividers */
     --divider: rgba(15, 18, 25, 0.08);
     --divider-strong: rgba(15, 18, 25, 0.14);
     --border-glass: rgba(255, 255, 255, 0.18);
-    --border-focus: rgba(88, 156, 255, 0.50);
+    --border-focus: rgba(219, 39, 119, 0.50);
     
     /* Spacing Scale */
     --space-1: 4px;
@@ -269,14 +269,14 @@
     --text-3: rgba(248, 250, 255, 0.50);
     --text-4: rgba(248, 250, 255, 0.32);
     
-    --accent-primary: rgba(100, 181, 246, 1);
-    --accent-secondary: rgba(129, 212, 250, 1);
-    --accent-tertiary: rgba(186, 154, 255, 1);
+    --accent-primary: rgba(244, 114, 182, 1);
+    --accent-secondary: rgba(251, 156, 204, 1);
+    --accent-tertiary: rgba(234, 179, 8, 1);
     
     --divider: rgba(248, 250, 255, 0.10);
     --divider-strong: rgba(248, 250, 255, 0.16);
     --border-glass: rgba(255, 255, 255, 0.12);
-    --border-focus: rgba(100, 181, 246, 0.45);
+    --border-focus: rgba(244, 114, 182, 0.45);
     
     --glass-base: rgba(18, 20, 28, 0.52);
     --glass-raised: rgba(22, 25, 35, 0.58);
@@ -303,20 +303,20 @@
     
     --aurora-bg: radial-gradient(
       1200px 900px at 15% 10%,
-      rgba(88, 156, 255, 0.22) 0%,
+      rgba(244, 114, 182, 0.22) 0%,
       transparent 55%
     ), radial-gradient(
       1000px 800px at 85% 20%,
-      rgba(120, 220, 255, 0.16) 0%,
+      rgba(251, 156, 204, 0.16) 0%,
       transparent 52%
     ), radial-gradient(
       1100px 900px at 50% 95%,
-      rgba(180, 140, 255, 0.14) 0%,
+      rgba(234, 179, 8, 0.14) 0%,
       transparent 58%
     ), linear-gradient(
       180deg,
-      rgba(10, 12, 18, 0.85) 0%,
-      rgba(8, 10, 15, 0.95) 100%
+      rgba(18, 10, 16, 0.85) 0%,
+      rgba(24, 16, 22, 0.95) 100%
     );
     
     --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.20);
@@ -324,8 +324,8 @@
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
     --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.42);
     --shadow-xl: 0 32px 80px rgba(0, 0, 0, 0.50);
-    --shadow-glow: 0 0 40px rgba(100, 181, 246, 0.20);
-    --shadow-glow-strong: 0 0 60px rgba(100, 181, 246, 0.30);
+    --shadow-glow: 0 0 40px rgba(244, 114, 182, 0.20);
+    --shadow-glow-strong: 0 0 60px rgba(244, 114, 182, 0.30);
     
     --inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     --inset-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.25);
@@ -396,12 +396,12 @@
   
   /* Selection */
   ::selection {
-    background: rgba(88, 156, 255, 0.25);
+    background: rgba(219, 39, 119, 0.25);
     color: var(--text-1);
   }
   
   .dark ::selection {
-    background: rgba(100, 181, 246, 0.30);
+    background: rgba(244, 114, 182, 0.30);
   }
 }
 
@@ -493,10 +493,10 @@
 
 @keyframes breathe {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(88, 156, 255, 0.15);
+    box-shadow: 0 0 0 0 rgba(219, 39, 119, 0.15);
   }
   50% {
-    box-shadow: 0 0 20px 4px rgba(88, 156, 255, 0.20);
+    box-shadow: 0 0 20px 4px rgba(219, 39, 119, 0.20);
   }
 }
 

@@ -80,9 +80,9 @@
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(1400px 1000px at 20% 5%, rgba(88, 156, 255, 0.12), transparent 50%),
-      radial-gradient(1200px 900px at 85% 15%, rgba(120, 220, 255, 0.10), transparent 48%),
-      radial-gradient(1000px 800px at 50% 100%, rgba(180, 140, 255, 0.08), transparent 55%);
+      radial-gradient(1400px 1000px at 20% 5%, rgba(219, 39, 119, 0.12), transparent 50%),
+      radial-gradient(1200px 900px at 85% 15%, rgba(244, 114, 182, 0.10), transparent 48%),
+      radial-gradient(1000px 800px at 50% 100%, rgba(202, 138, 4, 0.08), transparent 55%);
   }
 
   /* ════════════════════════════════════════════════════════════���══════════
@@ -239,7 +239,7 @@
     pointer-events: none;
     background: radial-gradient(
       200px 300px at 50% 0%,
-      rgba(120, 220, 255, 0.08) 0%,
+      rgba(244, 114, 182, 0.08) 0%,
       transparent 70%
     );
     mix-blend-mode: overlay;
@@ -312,10 +312,10 @@
   .rail-btn.active {
     background: linear-gradient(
       135deg,
-      rgba(88, 156, 255, 0.18) 0%,
-      rgba(88, 156, 255, 0.08) 100%
+      rgba(219, 39, 119, 0.18) 0%,
+      rgba(219, 39, 119, 0.08) 100%
     );
-    border-color: rgba(88, 156, 255, 0.35);
+    border-color: rgba(219, 39, 119, 0.35);
     color: var(--text-1);
     box-shadow: var(--shadow-sm), inset 0 0 0 1px rgba(255, 255, 255, 0.15);
   }
@@ -334,7 +334,7 @@
       var(--accent-secondary) 0%,
       var(--accent-primary) 100%
     );
-    box-shadow: 0 0 12px rgba(120, 220, 255, 0.40);
+    box-shadow: 0 0 12px rgba(244, 114, 182, 0.40);
   }
 
   /* ═════════════════════════════���═════════════════════════════════════════
@@ -363,7 +363,7 @@
     pointer-events: none;
     background: radial-gradient(
       500px 400px at 20% 0%,
-      rgba(120, 220, 255, 0.10) 0%,
+      rgba(244, 114, 182, 0.10) 0%,
       transparent 60%
     );
     mix-blend-mode: overlay;
@@ -484,7 +484,7 @@
   
   .search:focus-within {
     border-color: var(--accent-secondary);
-    box-shadow: var(--shadow-sm), 0 0 0 3px rgba(120, 220, 255, 0.12);
+    box-shadow: var(--shadow-sm), 0 0 0 3px rgba(244, 114, 182, 0.12);
   }
   
   /* Buttons */
@@ -553,12 +553,12 @@
   .btn.primary {
     background: linear-gradient(
       135deg,
-      rgba(88, 156, 255, 0.22) 0%,
-      rgba(88, 156, 255, 0.12) 100%
+      rgba(219, 39, 119, 0.22) 0%,
+      rgba(219, 39, 119, 0.12) 100%
     );
-    border-color: rgba(88, 156, 255, 0.40);
+    border-color: rgba(219, 39, 119, 0.40);
     color: var(--text-1);
-    box-shadow: var(--shadow-sm), 0 0 20px rgba(88, 156, 255, 0.15);
+    box-shadow: var(--shadow-sm), 0 0 20px rgba(219, 39, 119, 0.15);
   }
   
   /* Section Title */
@@ -650,7 +650,7 @@
       var(--accent-secondary) 0%,
       var(--accent-primary) 100%
     );
-    box-shadow: 0 0 12px rgba(120, 220, 255, 0.35);
+    box-shadow: 0 0 12px rgba(244, 114, 182, 0.35);
   }
   
   .chat-item .title {
@@ -719,12 +719,12 @@
     margin-bottom: var(--space-2);
     background: linear-gradient(
       135deg,
-      rgba(88, 156, 255, 0.18) 0%,
-      rgba(120, 220, 255, 0.12) 50%,
-      rgba(180, 140, 255, 0.15) 100%
+      rgba(219, 39, 119, 0.18) 0%,
+      rgba(244, 114, 182, 0.12) 50%,
+      rgba(202, 138, 4, 0.15) 100%
     );
     border: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: var(--shadow-lg), 0 0 40px rgba(88, 156, 255, 0.20);
+    box-shadow: var(--shadow-lg), 0 0 40px rgba(219, 39, 119, 0.20);
     animation: float-gentle 5s var(--ease-smooth) infinite;
     position: relative;
     overflow: hidden;
@@ -931,18 +931,18 @@
     place-items: center;
     background: linear-gradient(
       135deg,
-      rgba(88, 156, 255, 0.28) 0%,
-      rgba(88, 156, 255, 0.15) 100%
+      rgba(219, 39, 119, 0.28) 0%,
+      rgba(219, 39, 119, 0.15) 100%
     );
-    border: 1px solid rgba(88, 156, 255, 0.45);
+    border: 1px solid rgba(219, 39, 119, 0.45);
     color: var(--text-1);
-    box-shadow: var(--shadow-md), 0 0 24px rgba(88, 156, 255, 0.20);
+    box-shadow: var(--shadow-md), 0 0 24px rgba(219, 39, 119, 0.20);
     transition: all var(--dur-fast) var(--ease-spring-gentle);
   }
   
   .send:hover {
     transform: translateY(-2px) scale(1.02);
-    box-shadow: var(--shadow-lg), 0 0 32px rgba(88, 156, 255, 0.30);
+    box-shadow: var(--shadow-lg), 0 0 32px rgba(219, 39, 119, 0.30);
   }
   
   .send:active {
@@ -1000,7 +1000,7 @@
   
   .palette input:focus {
     border-color: var(--accent-secondary);
-    box-shadow: 0 0 0 3px rgba(120, 220, 255, 0.12);
+    box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.12);
   }
   
   .palette .list {

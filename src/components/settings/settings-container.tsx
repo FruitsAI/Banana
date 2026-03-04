@@ -16,7 +16,7 @@ export default function SettingsContainer() {
   return (
     <div className="flex h-full w-full max-w-6xl mx-auto p-4 gap-6 relative">
       <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="flex-1 bg-card rounded-xl border shadow-sm flex flex-col overflow-hidden">
+      <div className="flex-1 bg-background/40 backdrop-blur-xl rounded-xl border border-white/20 dark:border-white/10 shadow-xl flex flex-col overflow-hidden relative">
         <SettingsContent activeTab={activeTab} />
       </div>
     </div>
