@@ -3,9 +3,12 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 /**
- * Tauri 至原生 MCP (Model Context Protocol) 的桥接管道 (TauriMcpTransport)
- * @description 实现了基于 `@modelcontextprotocol/sdk` 的 `Transport` 接口抽象，作为前端 JS 层与底层 Rust 守护进程通讯的连接管。
- * 主要功能是通过 Tauri 的 event listen（监听 mcp-stdout 和 mcp-stderr）和 invoke Command 进行 JSON-RPC 的无缝转发转换。
+ * Tauri 到原生 MCP 协议的通信桥梁 (TauriMcpTransport)
+ * @description 
+ *   实现了基于 `@modelcontextprotocol/sdk` 中的标准 `Transport` (传输层) 接口抽象。
+ *   作为前端 JS 环境与底层 Rust 后端守护进程交互的核心数据管线。
+ *   核心逻辑是利用 Tauri 事件引擎（监听 `mcp-stdout` / `mcp-stderr`）与 `invoke` 指令
+ *   将标准输入 / 输出流无缝转化为前端可读的 JSON-RPC 格式。
  */
 export class TauriMcpTransport implements Transport {
   private unlistenStdout: UnlistenFn | null = null;

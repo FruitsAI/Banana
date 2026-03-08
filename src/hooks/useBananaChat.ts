@@ -14,10 +14,15 @@ export interface ChatMessage {
 }
 
 /**
- * 核心大语言模型与 MCP 调度钩子 (useBananaChat)
- * @description 封装了基于 Vercel AI SDK 的核心流式对话渲染业务。
- * 内置对用户自定义 OpenAI Provider、本地 MCP 衍生扩展协议等调用机制。
- * 集成了对对话过程中的 loading 态、流式消息分片聚合、错误处理以及与下层 SQLite 历史的持久化通信功能。
+ * 核心钩子：大语言模型与 MCP 工具调度 (useBananaChat)
+ * @description 
+ *   封装了基于 Vercel AI SDK 的核心流式对话渲染业务。
+ *   内置对用户自定义 OpenAI 兼容 Provider（如 NVIDIA、Kimi 等）的支持，以及本地 MCP 协议的系统级桥接。
+ *   集成了以下功能：
+ *     1. UI 的 Loading 态与通用错误捕获；
+ *     2. LLM 流式消息的分片聚合展示；
+ *     3. 将对话持久化至 Tauri 底层 SQLite。
+ * @param {string} threadId - 当前激活的会话 (Thread) ID，用于定位数据库消息列
  */
 export function useBananaChat(threadId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);

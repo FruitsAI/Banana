@@ -1,41 +1,22 @@
-use tauri_plugin_sql::{Migration, MigrationKind};
+use tauri::Manager;
 
+pub mod commands;
+pub mod db;
+pub mod error;
 mod mcp;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let migrations = vec![Migration {
-        version: 1,
-        description: "create_initial_tables",
-        sql: "
-                CREATE TABLE IF NOT EXISTS config (
-                    key TEXT PRIMARY KEY,
-                    value TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS threads (
-                    id TEXT PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                );
-                CREATE TABLE IF NOT EXISTS messages (
-                    id TEXT PRIMARY KEY,
-                    thread_id TEXT NOT NULL,
-                    role TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY(thread_id) REFERENCES threads(id) ON DELETE CASCADE
-                );
-            ",
-        kind: MigrationKind::Up,
-    }];
+    // 初始化全局数据库状态 (从 AppHandle 中获取路径以挂载 sqlite 文件)
+    let db_path = "sqlite:banana.db";
+
+    // block_on 同步执行异步的 pool 初始化
+    let db_instance = tauri::async_runtime::block_on(async { db::Database::new(db_path).await })
+        .expect("Failed to initialize database pool");
 
     tauri::Builder::default()
         .manage(mcp::McpState::default())
-        .plugin(
-            tauri_plugin_sql::Builder::default()
-                .add_migrations("sqlite:banana.db", migrations)
-                .build(),
-        )
+        .manage(commands::AppState { db: db_instance })
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -48,7 +29,19 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             mcp::start_mcp_server,
-            mcp::send_mcp_message
+            mcp::send_mcp_message,
+            commands::db_get_config,
+            commands::db_set_config,
+            commands::db_get_providers,
+            commands::db_upsert_provider,
+            commands::db_get_models_by_provider,
+            commands::db_upsert_model,
+            commands::db_get_mcp_servers,
+            commands::db_upsert_mcp_server,
+            commands::db_get_threads,
+            commands::db_create_thread,
+            commands::db_append_message,
+            commands::db_get_messages
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

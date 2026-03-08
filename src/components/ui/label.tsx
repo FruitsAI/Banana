@@ -5,6 +5,15 @@ import { Label as LabelPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Label 组件 (标准文本标签)
+ * @description 
+ *   基于 `@radix-ui/react-label` 的无障碍标签组件。
+ *   支持禁用状态的样式级联传递（peer-disabled）。
+ * @example
+ * <Label htmlFor="email">邮箱</Label>
+ */
+
 function Label({
   className,
   ...props

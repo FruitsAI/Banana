@@ -1,85 +1,115 @@
 "use client";
 
-import { MessageSquare, Settings, Sun, Moon } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { AiChat02Icon, Settings01Icon } from "@hugeicons/core-free-icons";
 import { usePathname, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
+// 定义侧边栏主体导航项数据源，方便后续扩展更多模块（如知识库、插件市场等）
 const navItems = [
-  { id: "chats", icon: MessageSquare, label: "会话", path: "/" },
+  { id: "chats", icon: AiChat02Icon, label: "会话", path: "/" },
 ];
 
 /**
- * 全局主导航侧边栏 (Rail)
- * @description 展示应用主要功能模块 (如会话、工具箱等) 的入口，以及包含切换色彩主题 (深色/浅色) 的支持。
- * 采用了 Next.js 的路由与路径分析高亮当前所在模块。
+ * @function Rail
+ * @description 应用最左侧的极简图标导航轨道 (Rail)。
+ * 采用苹果液态玻璃风格设计，主要用于在全局不同的一级功能模块间切换。
+ * 
+ * @returns {JSX.Element} 左侧图标轨道的 DOM 结构
  */
 export function Rail() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
-
+  // 判断当前路由是否处于设置页面下，以控制底部设置入口的高亮状态
   const isSettingsActive = pathname === "/settings" || pathname.startsWith("/settings/");
 
   return (
-    <>
-      <aside className="rail" aria-label="主导航">
-        <div className="rail-group">
-          {navItems.map((item, index) => {
-            const isActive = pathname === item.path || (item.path === "/" && pathname === "");
-            return (
-              <button
-                key={item.id}
-                className={`rail-btn ${isActive ? "active" : ""}`}
-                title={item.label}
-                aria-label={item.label}
-                style={{ animationDelay: `${index * 40}ms` }}
-                onClick={() => router.push(item.path)}
-              >
-                <item.icon className="icon" strokeWidth={1.75} />
-              </button>
-            );
-          })}
-        </div>
-        
-        <div></div>
-
-        <div className="rail-group">
-          <button
-            className={`rail-btn ${isSettingsActive ? "active" : ""}`}
-            title="设置"
-            aria-label="设置"
-            onClick={() => router.push("/settings")}
-          >
-            <Settings className="icon" strokeWidth={1.75} />
-          </button>
-          
-          {mounted ? (
-            <button
-              className="rail-btn"
-              title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
-              aria-label="切换主题"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+    <aside
+      // 使用 flex-shrink-0 防止在 Flex 空间挤压时被缩小；维持固定的 14/16 宽度比例。
+      className="w-14 sm:w-16 flex-shrink-0 flex flex-col items-center py-4 gap-2"
+      style={{
+        background: 'var(--bg-sidebar)',
+        // 右边框作为主内容区和侧边栏的物理分隔
+        borderRight: '1px solid var(--divider)',
+      }}
+      aria-label="主导航"
+    >
+      {/* 
+        Main Navigation
+        核心导航项循环渲染区域 
+      */}
+      <div className="flex flex-col gap-1 w-full items-center">
+        {navItems.map((item) => {
+          // 精确匹配根路径，避免当切换到深层级路由时错误地高亮 "会话" 项
+          const isActive = pathname === item.path || (item.path === "/" && pathname === "");
+          return (
+            <motion.button
+              key={item.id}
+              className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl relative"
+              style={{
+                background: isActive ? 'var(--brand-primary-light)' : 'transparent',
+                color: isActive ? 'var(--brand-primary)' : 'var(--text-tertiary)',
+              }}
+              whileHover={{
+                background: isActive ? 'var(--brand-primary-light)' : 'var(--glass-subtle)',
+                color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
+              }}
+              whileTap={{ scale: 0.95 }}
+              title={item.label}
+              aria-label={item.label}
+              onClick={() => router.push(item.path)}
             >
-              {theme === "dark" ? (
-                <Sun className="icon" strokeWidth={1.75} />
-              ) : (
-                <Moon className="icon" strokeWidth={1.75} />
+              <HugeiconsIcon icon={item.icon} size={20} />
+              
+              {/* 
+                当前选中项的指示条 (Active Indicator)
+                借助 Framer Motion 的 layoutId="activeIndicator" 特性，当用户在多个 navItems 间
+                切换时，该线形指示器会自动执行极为顺滑的位置瞬移（Magic Move）动画。
+              */}
+              {isActive && (
+                <motion.div
+                  className="absolute left-0 w-0.5 sm:w-1 h-4 sm:h-5 rounded-r-full"
+                  style={{ background: 'var(--brand-primary)' }}
+                  layoutId="activeIndicator"
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
               )}
-            </button>
-          ) : (
-            <button className="rail-btn" aria-disabled="true">
-              <span className="icon" />
-            </button>
-          )}
-        </div>
-      </aside>
-    </>
+            </motion.button>
+          );
+        })}
+      </div>
+      
+      {/* Spacer - 空白占位块：负责将底部的设置按钮推至可用容器的最下方 */}
+      <div className="flex-1" />
+      
+      {/* Settings - 全局设置入口 */}
+      <motion.button
+        className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl relative"
+        style={{
+          background: isSettingsActive ? 'var(--brand-primary-light)' : 'transparent',
+          color: isSettingsActive ? 'var(--brand-primary)' : 'var(--text-tertiary)',
+        }}
+        whileHover={{
+          background: isSettingsActive ? 'var(--brand-primary-light)' : 'var(--glass-subtle)',
+          color: isSettingsActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
+        }}
+        whileTap={{ scale: 0.95 }}
+        title="设置"
+        aria-label="设置"
+        onClick={() => router.push("/settings")}
+      >
+        <HugeiconsIcon icon={Settings01Icon} size={20} />
+        {/* 如果处于设置页面，指示条将滑动停留于此 */}
+        {isSettingsActive && (
+          <motion.div
+            className="absolute left-0 w-0.5 sm:w-1 h-4 sm:h-5 rounded-r-full"
+            style={{ background: 'var(--brand-primary)' }}
+            layoutId="activeIndicator"
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          />
+        )}
+      </motion.button>
+    </aside>
   );
 }

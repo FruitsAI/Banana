@@ -4,15 +4,20 @@ import type { SettingsTab } from "./settings-container";
 import { ModelsSetting } from "./sections/models-setting";
 import { McpSetting } from "./sections/mcp-setting";
 import { AboutSetting } from "./sections/about-setting";
+import { ThemeSetting } from "./sections/theme-setting";
 
 interface SettingsContentProps {
   activeTab: SettingsTab;
 }
 
 /**
- * 设置详情内容区 (SettingsContent)
- * @description 根据注入的 `activeTab` 渲染不同的功能面板（如模型配置，MCP 服务器控制，或是关于界面）。
- * 对于宽屏双列业务（如 `models` 和 `mcp`），自动清空父级保留内边距以使组件无缝贴合容器。
+ * SettingsContent 组件 (设置详情内容区)
+ * @description 
+ *   右侧的主内容展示区。根据外部传入的 `activeTab` 状态，动态挂载不同的功能性配置面板
+ *   （如模型配置 ModelsSetting，MCP 服务器控制 McpSetting，或主题/关于界面）。
+ * @param {SettingsTab} activeTab - 当前激活的选项卡标识符
+ * @example
+ * <SettingsContent activeTab="theme" />
  */
 export function SettingsContent({ activeTab }: SettingsContentProps) {
   return (
@@ -23,9 +28,10 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
           {activeTab === "mcp" && <McpSetting />}
         </>
       ) : (
-        <div className="max-w-3xl mx-auto p-8 pt-10">
+        <>
+          {activeTab === "theme" && <ThemeSetting />}
           {activeTab === "about" && <AboutSetting />}
-        </div>
+        </>
       )}
     </div>
   );

@@ -1,41 +1,95 @@
 "use client";
 
-import { Cloud, Wrench, Info } from "lucide-react";
+import { motion } from "framer-motion";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CloudIcon, McpServerIcon, BadgeInfoIcon, PaintBoardIcon } from "@hugeicons/core-free-icons";
 import type { SettingsTab } from "./settings-container";
 
-interface SettingsSidebarProps {
+interface SettingsSidebarProps {  
   activeTab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
 }
 
 /**
- * 设置主导航侧栏 (SettingsSidebar)
- * @description 列印配置系统的左侧静态选项卡目录，支持选项的激活变色以及点击事件的向上传递 (`onTabChange`)。
+ * SettingsSidebar 组件 (设置导航侧边栏)
+ * @description 
+ *   采用类似 macOS 系统偏好设置风格的左侧边栏，排版维持与首页的一致性。
+ *   包含各种细分设置页面入口。组件内部通过 framer-motion 的 layoutId 实现了平滑的焦点转移指示器动画。
+ * @param {SettingsTab} activeTab - 当前激活的选项卡
+ * @param {(tab: SettingsTab) => void} onTabChange - 切换选项卡的回调函数
+ * @example
+ * <SettingsSidebar activeTab="mcp" onTabChange={setActiveTab} />
  */
 export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps) {
   const tabs = [
-    { id: "models" as SettingsTab, icon: Cloud, label: "模型服务" },
-    { id: "mcp" as SettingsTab, icon: Wrench, label: "MCP 服务器" },
-    { id: "about" as SettingsTab, icon: Info, label: "关于我们" },
+    { id: "models" as SettingsTab, icon: CloudIcon, label: "模型设置" },
+    { id: "mcp" as SettingsTab, icon: McpServerIcon, label: "MCP 设置" },
+    { id: "theme" as SettingsTab, icon: PaintBoardIcon, label: "外观设置" },
+    { id: "about" as SettingsTab, icon: BadgeInfoIcon, label: "关于我们" },
   ];
 
   return (
-    <div className="w-56 shrink-0 flex flex-col gap-1">
-      <h2 className="text-xl font-bold px-3 py-4 mb-2">设置</h2>
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onTabChange(tab.id)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-300 ${
-            activeTab === tab.id
-              ? "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-300 font-semibold shadow-sm border border-pink-500/20"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground font-medium border border-transparent"
-          }`}
+    <div
+      className="w-60 sm:w-64 lg:w-72 flex-shrink-0 flex flex-col h-full border-r"
+      style={{
+        background: 'var(--bg-sidebar)',
+        borderColor: 'var(--divider)',
+      }}
+    >
+      {/* Header */}
+      <div className="px-4 pt-4 pb-3">
+        <h1
+          className="text-base font-semibold"
+          style={{ color: 'var(--text-primary)' }}
         >
-          <tab.icon className="w-[18px] h-[18px]" strokeWidth={1.75} />
-          {tab.label}
-        </button>
-      ))}
+          设置
+        </h1>
+      </div>
+
+      {/* Navigation */}
+      <div className="px-3 py-2 space-y-0.5">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <motion.button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200"
+              style={{
+                background: isActive ? 'var(--brand-primary-lighter)' : 'transparent',
+                color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
+              }}
+              whileHover={{
+                background: isActive ? 'var(--brand-primary-light)' : 'var(--glass-subtle)',
+              }}
+              whileTap={{ scale: 0.99 }}
+            >
+              {isActive && (
+                <motion.div
+                  className="absolute inset-0 rounded-xl border pointer-events-none"
+                  style={{ borderColor: 'var(--brand-primary-border)' }}
+                  layoutId="settingsActiveBorder"
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
+              <HugeiconsIcon
+                icon={tab.icon}
+                size={18}
+                style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-tertiary)' }}
+              />
+              <span className="font-medium">{tab.label}</span>
+              {isActive && (
+                <motion.div
+                  className="absolute left-0 w-1 h-5 rounded-r-full"
+                  style={{ background: 'var(--brand-primary)' }}
+                  layoutId="settingsActiveIndicator"
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
     </div>
   );
 }

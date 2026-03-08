@@ -1,19 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { getConfig, setConfig } from "@/lib/db";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Search, Plus, EyeOff, Settings2, Settings, ChevronDown } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Search01Icon, Add01Icon, ViewIcon, ViewOffIcon, Settings01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons";
+
+/**
+ * ModelsSetting 组件 (大模型配置)
+ * @description 
+ *   AI 模型提供商的设置页面，集成了所有支持的大语言模型 (LLM) 平台。
+ *   允许用户分别管理不同厂商的 API 密钥 (API Key) 和 自定义接口地址 (Base URL)。
+ * @example
+ * <ModelsSetting />
+ */
 
 interface Provider {
   id: string;
   name: string;
   icon: string;
   enabled: boolean;
-  isInitial?: boolean; // mark if it's the one we track persistently matching the old layout 
+  isInitial?: boolean;
 }
 
 const mockProviders: Provider[] = [
@@ -28,8 +39,8 @@ const mockProviders: Provider[] = [
 ];
 
 /**
- * 模型服务配置页 (ModelsSetting)
- * @description 管理全局可用 AI 提供商（如 OpenAI, 阿里云等）的密钥、Base URL 及可用大模型列表映射的配置面板。采用左栏多供给商导航，右栏参数填报的双列布局风格。
+ * ModelsSetting 主组件
+ * @description 采用类似系统偏好设置的界面风格，方便用户在多个 AI 平台之间进行凭证切换、输入与动态过滤。
  */
 export function ModelsSetting() {
   const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
@@ -53,6 +64,8 @@ export function ModelsSetting() {
     }
   };
 
+  // 保存大模型的配置（API Key 和 Base URL）
+  // 为什么：这涉及用户个人的算力或服务凭证，必须能够持久化保存以便用于接下来的聊天交互。
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -73,88 +86,132 @@ export function ModelsSetting() {
   return (
     <div className="flex h-full w-full">
       {/* 侧边模型厂商列表区 */}
-      <div className="w-64 border-r flex flex-col h-full bg-background/50">
+      <div
+        className="w-60 sm:w-64 lg:w-72 flex-shrink-0 flex flex-col h-full border-r"
+        style={{
+          background: 'var(--bg-sidebar)',
+          borderColor: 'var(--divider)',
+        }}
+      >
         {/* 搜索框 */}
-        <div className="p-3 border-b">
+        <div className="p-3 border-b" style={{ borderColor: 'var(--divider)' }}>
           <div className="relative">
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索模型平台..."
-              className="pl-3 pr-8 py-1.5 h-8 bg-background border-muted-foreground/20 rounded-full text-xs shadow-none"
-            />
-            <Search className="w-4 h-4 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2" />
+            <div
+              className="search flex items-center gap-2 px-3 py-2 rounded-xl border"
+              style={{
+                background: 'var(--glass-surface)',
+                borderColor: 'var(--glass-border)',
+              }}
+            >
+              <HugeiconsIcon icon={Search01Icon} size={16} className="flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索模型平台..."
+                className="flex-1 bg-transparent text-xs outline-none"
+                style={{ color: 'var(--text-primary)' }}
+                spellCheck={false}
+                autoComplete="off"
+                autoCorrect="off"
+              />
+            </div>
           </div>
         </div>
-        
+
         {/* 厂商列表 */}
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scroll">
-          {filteredProviders.map((provider) => (
-            <button
-              key={provider.id}
-              onClick={() => setActiveProviderId(provider.id)}
-              className={`w-full flex items-center justify-between p-2 rounded-lg text-sm transition-all duration-300 ${
-                activeProviderId === provider.id
-                  ? "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-300 font-semibold shadow-sm border border-pink-500/20"
-                  : "hover:bg-muted/50 font-medium"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div 
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${
-                    provider.id === 'nvidia' ? 'bg-[#76B900]' :
-                    provider.id === 'octopus' ? 'bg-[#3E5CDB]' :
-                    provider.id === 'antiapi' ? 'bg-[#4B3B6F]' :
-                    provider.id === 'cherryin' ? 'bg-[#FF4F64]' :
-                    provider.id === 'openai' ? 'bg-[#10A37F]' : 'bg-primary'
-                  }`}
-                >
-                  {provider.icon}
+          {filteredProviders.map((provider) => {
+            const isActive = activeProviderId === provider.id;
+            return (
+              <motion.button
+                key={provider.id}
+                onClick={() => setActiveProviderId(provider.id)}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl text-sm transition-all duration-200 border"
+                style={{
+                  background: isActive ? 'var(--brand-primary-lighter)' : 'transparent',
+                  borderColor: isActive ? 'var(--brand-primary-border)' : 'transparent',
+                }}
+                whileHover={{
+                  background: isActive ? 'var(--brand-primary-light)' : 'var(--glass-subtle)',
+                }}
+                whileTap={{ scale: 0.99 }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                    style={{
+                      background: provider.id === 'nvidia' ? '#76B900' :
+                        provider.id === 'octopus' ? '#3E5CDB' :
+                        provider.id === 'antiapi' ? '#4B3B6F' :
+                        provider.id === 'cherryin' ? '#FF4F64' :
+                        provider.id === 'openai' ? '#10A37F' : 'var(--brand-primary)',
+                    }}
+                  >
+                    {provider.icon}
+                  </div>
+                  <span
+                    className="font-medium truncate max-w-[100px] text-left"
+                    style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-primary)' }}
+                  >
+                    {provider.name}
+                  </span>
                 </div>
-                <span className="font-medium truncate max-w-[100px] text-left">{provider.name}</span>
-              </div>
-              
-              <div className="flex items-center">
+
                 {provider.enabled && (
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[#4ADE80] text-[#4ADE80] shrink-0">
+                  <span
+                    className="text-[10px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0"
+                    style={{
+                      borderColor: 'var(--success)',
+                      color: 'var(--success)',
+                    }}
+                  >
                     ON
                   </span>
                 )}
-              </div>
-            </button>
-          ))}
+              </motion.button>
+            );
+          })}
         </div>
-        
+
         {/* 底部添加按钮 */}
-        <div className="p-3 border-t">
-          <Button variant="outline" className="w-full justify-center h-8 rounded-full border-muted-foreground/20 text-xs shadow-none bg-background">
-            <Plus className="w-3.5 h-3.5 mr-1" />
+        <div className="p-3 border-t" style={{ borderColor: 'var(--divider)' }}>
+          <Button
+            variant="outline"
+            className="w-full justify-center h-9 rounded-xl text-xs border"
+            style={{
+              background: 'var(--glass-surface)',
+              borderColor: 'var(--glass-border)',
+            }}
+          >
+            <HugeiconsIcon icon={Add01Icon} size={16} className="mr-1.5" />
             添加
           </Button>
         </div>
       </div>
 
       {/* 右侧详情配置区 */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
+      <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
         {/* 头部标题与开关 */}
-        <div className="flex items-center justify-between px-8 py-6 pb-2">
+        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--divider)' }}>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">{activeProvider.name}</h2>
-            <Settings className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              {activeProvider.name}
+            </h2>
+            <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: 'var(--text-tertiary)' }} />
           </div>
           <Switch checked={activeProvider.enabled} />
         </div>
 
         {/* 滚动内容区 */}
-        <div className="flex-1 overflow-y-auto px-8 py-4 space-y-8 custom-scroll">
-          
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 custom-scroll">
+
           {/* API 密钥 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="font-semibold text-[13px] flex items-center gap-1.5">
+              <Label className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>
                 API 密钥
               </Label>
-              <Settings2 className="w-4 h-4 text-muted-foreground" />
+              <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: 'var(--text-tertiary)' }} />
             </div>
             <div className="flex gap-2 relative">
               <div className="relative flex-1">
@@ -162,44 +219,62 @@ export function ModelsSetting() {
                   type="password"
                   value={activeProvider.isInitial ? apiKey : "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
                   onChange={(e) => { if (activeProvider.isInitial) setApiKey(e.target.value) }}
-                  className="font-mono text-xs pr-10 focus-visible:ring-1"
+                  className="font-mono text-xs pr-10"
                 />
-                <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <EyeOff className="w-4 h-4" />
+                <button className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }}>
+                  <HugeiconsIcon icon={ViewIcon} size={16} />
                 </button>
               </div>
-              <Button variant="outline" className="px-4 shrink-0 shadow-none">检测</Button>
+              <Button
+                variant="outline"
+                className="px-4 shrink-0 h-10 rounded-xl border"
+                style={{
+                  background: 'var(--glass-surface)',
+                  borderColor: 'var(--glass-border)',
+                }}
+              >
+                检测
+              </Button>
             </div>
             <div className="text-right">
-              <span className="text-[11px] text-muted-foreground">多个密钥使用逗号分隔</span>
+              <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                多个密钥使用逗号分隔
+              </span>
             </div>
           </div>
 
           {/* API 地址 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="font-semibold text-[13px] flex items-center gap-1.5">
-                API 地址 <span className="text-[10px] text-muted-foreground border rounded-sm px-1 leading-none inline-block pb-px">↕</span> <span className="text-muted-foreground cursor-help">ⓘ</span>
+              <Label className="font-semibold text-[13px] flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+                API 地址
+                <span className="text-[10px] px-1 py-0.5 rounded border" style={{ borderColor: 'var(--glass-border)', color: 'var(--text-tertiary)' }}>↕</span>
+                <span style={{ color: 'var(--text-tertiary)' }}>ⓘ</span>
               </Label>
-              <Settings2 className="w-4 h-4 text-muted-foreground" />
+              <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: 'var(--text-tertiary)' }} />
             </div>
             <Input
               value={activeProvider.isInitial ? baseUrl : "https://integrate.api.nvidia.com/v1"}
               onChange={(e) => { if (activeProvider.isInitial) setBaseUrl(e.target.value) }}
-              className="font-mono text-xs focus-visible:ring-1"
+              className="font-mono text-xs"
             />
             <div>
-              <span className="text-[11px] text-muted-foreground flex gap-2">
+              <span className="text-[11px] flex gap-2" style={{ color: 'var(--text-tertiary)' }}>
                 <span>预览:</span>
                 <span className="truncate opacity-50">
                   {activeProvider.isInitial ? baseUrl : "https://integrate.api.nvidia.com/v1"}/chat/completions
                 </span>
               </span>
             </div>
-            
+
             {activeProvider.isInitial && (
               <div className="pt-2">
-                 <Button onClick={handleSave} disabled={saving} size="sm" className="h-8">
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                  size="sm"
+                  className="h-9 rounded-xl px-4"
+                >
                   {saving ? "保存中..." : "保存专属配置"}
                 </Button>
               </div>
@@ -207,74 +282,118 @@ export function ModelsSetting() {
           </div>
 
           {/* 模型列表折叠 */}
-          <div className="space-y-3 pt-4 border-t border-border/50">
+          <div className="space-y-3 pt-4 border-t" style={{ borderColor: 'var(--divider)' }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Label className="font-semibold text-[13px]">模型</Label>
-                <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-sm text-muted-foreground">4</span>
-                <Search className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                <Label className="font-semibold text-[13px]" style={{ color: 'var(--text-primary)' }}>模型</Label>
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded"
+                  style={{ background: 'var(--glass-subtle)', color: 'var(--text-tertiary)' }}
+                >
+                  4
+                </span>
+                <HugeiconsIcon icon={Search01Icon} size={14} style={{ color: 'var(--text-tertiary)' }} />
               </div>
-              <Settings2 className="w-4 h-4 text-muted-foreground" />
+              <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: 'var(--text-tertiary)' }} />
             </div>
 
-            <div className="rounded-lg border bg-muted/20 overflow-hidden divide-y">
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{
+                background: 'var(--glass-surface)',
+                border: '1px solid var(--glass-border)',
+              }}
+            >
               {/* Accordion Group 1 */}
-              <div className="bg-pink-500/5 dark:bg-pink-500/10 border-b border-border/50">
-                <button className="w-full flex items-center gap-2 p-3 hover:bg-pink-500/10 dark:hover:bg-pink-500/20 text-sm font-medium transition-colors">
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              <div style={{ borderBottom: '1px solid var(--divider)' }}>
+                <button
+                  className="w-full flex items-center gap-2 p-3 text-sm font-medium transition-colors"
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    color: 'var(--brand-primary)',
+                  }}
+                >
+                  <HugeiconsIcon icon={ArrowDown01Icon} size={16} style={{ color: 'var(--brand-primary)' }} />
                   minimaxai
                 </button>
-                <div className="flex items-center justify-between p-3 pl-8 bg-background">
-                   <div className="flex items-center gap-3">
-                     <div className="w-6 h-6 rounded-full bg-[#FF4F64] flex items-center justify-center shrink-0">
-                       <span className="text-[10px] font-bold text-white">|||</span>
-                     </div>
-                     <span className="text-sm">minimaxai/minimax-m2.1</span>
-                     <div className="flex gap-1 ml-2">
-                       <span className="w-5 h-5 flex items-center justify-center rounded-sm bg-blue-100/50 text-blue-500">☼</span>
-                       <span className="w-5 h-5 flex items-center justify-center rounded-sm bg-orange-100/50 text-orange-500">🔧</span>
-                     </div>
-                   </div>
-                   <div className="flex items-center gap-3 text-muted-foreground">
-                      <Settings className="w-4 h-4 cursor-pointer hover:text-foreground" />
-                      <span>–</span>
-                   </div>
+                <div
+                  className="flex items-center justify-between p-3 pl-8"
+                  style={{ background: 'var(--bg-primary)' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FF4F64' }}>
+                      <span className="text-[10px] font-bold text-white">|||</span>
+                    </div>
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>minimaxai/minimax-m2.1</span>
+                    <div className="flex gap-1">
+                      <span className="w-5 h-5 flex items-center justify-center rounded text-xs" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--brand-primary)' }}>☼</span>
+                      <span className="w-5 h-5 flex items-center justify-center rounded text-xs" style={{ background: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning)' }}>🔧</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3" style={{ color: 'var(--text-tertiary)' }}>
+                    <HugeiconsIcon icon={Settings01Icon} size={16} className="cursor-pointer hover:text-foreground" />
+                    <span>–</span>
+                  </div>
                 </div>
               </div>
 
-               {/* Accordion Group 2 */}
-              <div className="bg-pink-500/5 dark:bg-pink-500/10 border-b border-border/50">
-                <button className="w-full flex items-center gap-2 p-3 hover:bg-pink-500/10 dark:hover:bg-pink-500/20 text-sm font-medium transition-colors">
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              {/* Accordion Group 2 */}
+              <div>
+                <button
+                  className="w-full flex items-center gap-2 p-3 text-sm font-medium transition-colors"
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    color: 'var(--brand-primary)',
+                  }}
+                >
+                  <HugeiconsIcon icon={ArrowDown01Icon} size={16} style={{ color: 'var(--brand-primary)' }} />
                   moonshotai
                 </button>
-                <div className="flex items-center justify-between p-3 pl-8 bg-background">
-                   <div className="flex items-center gap-3">
-                     <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center shrink-0">
-                       <span className="text-xs font-bold text-white">K</span>
-                     </div>
-                     <span className="text-sm">moonshotai/kimi-k2.5</span>
-                     <div className="flex gap-1 ml-2">
-                       <span className="w-5 h-5 flex items-center justify-center rounded-sm bg-green-100/50 text-green-500">👁</span>
-                       <span className="w-5 h-5 flex items-center justify-center rounded-sm bg-blue-100/50 text-blue-500">☼</span>
-                       <span className="w-5 h-5 flex items-center justify-center rounded-sm bg-orange-100/50 text-orange-500">🔧</span>
-                     </div>
-                   </div>
-                   <div className="flex items-center gap-3 text-muted-foreground">
-                      <Settings className="w-4 h-4 cursor-pointer hover:text-foreground" />
-                      <span>–</span>
-                   </div>
+                <div
+                  className="flex items-center justify-between p-3 pl-8"
+                  style={{ background: 'var(--bg-primary)' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: '#000' }}>
+                      <span className="text-xs font-bold text-white">K</span>
+                    </div>
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>moonshotai/kimi-k2.5</span>
+                    <div className="flex gap-1">
+                      <span className="w-5 h-5 flex items-center justify-center rounded text-xs" style={{ background: 'rgba(52, 199, 89, 0.1)', color: 'var(--success)' }}>👁</span>
+                      <span className="w-5 h-5 flex items-center justify-center rounded text-xs" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--brand-primary)' }}>☼</span>
+                      <span className="w-5 h-5 flex items-center justify-center rounded text-xs" style={{ background: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning)' }}>🔧</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3" style={{ color: 'var(--text-tertiary)' }}>
+                    <HugeiconsIcon icon={Settings01Icon} size={16} className="cursor-pointer hover:text-foreground" />
+                    <span>–</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Bottom Actions */}
             <div className="flex gap-3 pt-4">
-              <Button size="sm" className="bg-[#DE7E5D] hover:bg-[#D07050] text-white rounded-md h-8 text-xs font-medium px-4">
-                <span className="mr-1.5 leading-none mt-px">☰</span> 管理
+              <Button
+                size="sm"
+                className="h-9 rounded-xl text-xs font-medium px-4 border-0"
+                style={{
+                  background: 'var(--brand-primary)',
+                  color: '#fff',
+                }}
+              >
+                <span className="mr-1.5">☰</span> 管理
               </Button>
-              <Button variant="outline" size="sm" className="h-8 rounded-md text-xs bg-background shadow-none px-4">
-                <Plus className="w-3 h-3 mr-1" /> 添加
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-xl text-xs px-4 border"
+                style={{
+                  background: 'var(--glass-surface)',
+                  borderColor: 'var(--glass-border)',
+                }}
+              >
+                <HugeiconsIcon icon={Add01Icon} size={14} className="mr-1.5" /> 添加
               </Button>
             </div>
           </div>

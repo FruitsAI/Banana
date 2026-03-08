@@ -1,12 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { getConfig, setConfig } from "@/lib/db";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Search, Plus, Edit2, CheckCircle2, Trash2, Settings2, Box, Store, ArrowLeft } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Search01Icon, Add01Icon, Edit03Icon, CheckmarkCircle02Icon, Delete01Icon, Settings01Icon, Package01Icon, Store01Icon, ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+
+/**
+ * McpSetting 组件 (MCP 服务器设置)
+ * @description 
+ *   管理 Model Context Protocol (MCP) 服务器的配置。
+ *   采用类似 macOS 系统的双栏设置界面（左侧提供商列表/分类，右侧具体配置项）。
+ *   MCP 允许 AI 模型与本地或远程工具/数据源进行交互，此处配置其连接方式。
+ * @example
+ * <McpSetting />
+ */
 
 interface McpProvider {
   id: string;
@@ -20,26 +32,15 @@ const mockMcpCategories: McpProvider[] = [
   { id: "market", name: "市场", icon: "store", type: "discover" },
 ];
 
-const mockMcpProviders: McpProvider[] = [
-  { id: "aliyun", name: "阿里云百炼", icon: "ali", type: "provider" },
-  { id: "modelscope", name: "ModelScope", icon: "ms", type: "provider" },
-  { id: "tokenflux", name: "TokenFlux", icon: "tf", type: "provider" },
-  { id: "lankj", name: "蓝耘科技", icon: "lk", type: "provider" },
-  { id: "302ai", name: "302.AI", icon: "3a", type: "provider" },
-  { id: "mcprouter", name: "MCP Router", icon: "mr", type: "provider" },
-];
 
 /**
- * MCP 服务器控制台 (McpSetting)
- * @description 管理 Model Context Protocol (MCP) 服务器命令或指令的添加和配置体系。
- * 在内部实现了发现/服务商导航菜单，并包含了由 `list` 和 `detail` 组成的双态 UI 切换模式（大纲展示 / 具体表单变更）。
+ * McpSetting 主组件
+ * @description 采用苹果系统偏好设置的风格，统一视觉体验。左侧为导航，右侧为具体的系统级配置表单。
  */
 export function McpSetting() {
   const [mcpCommand, setMcpCommand] = useState("npx");
   const [mcpArgs, setMcpArgs] = useState("-y @modelcontextprotocol/server-everything");
   const [saving, setSaving] = useState(false);
-
-  // New states for UI views
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [activeCategoryId, setActiveCategoryId] = useState("builtin");
 
@@ -58,6 +59,8 @@ export function McpSetting() {
     }
   };
 
+  // 保存 MCP 启动命令和参数至本地数据库
+  // 为什么：MCP 服务器通常需要依靠系统级命令启动（如 npx 或 uvx），需将用户的输入持久化以便主应用随时调用。
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -71,143 +74,203 @@ export function McpSetting() {
   };
 
   const discoverCategories = mockMcpCategories;
-  const providerCategories = mockMcpProviders;
 
   return (
     <div className="flex h-full w-full">
       {/* 侧边分类区 */}
-      <div className="w-64 border-r flex flex-col h-full bg-background/50">
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scroll">
-          
-          {/* 发现 */}
+      <div
+        className="w-60 sm:w-64 lg:w-72 flex-shrink-0 flex flex-col h-full border-r"
+        style={{
+          background: 'var(--bg-sidebar)',
+          borderColor: 'var(--divider)',
+        }}
+      >
+        <div className="flex-1 overflow-y-auto p-3 space-y-6 custom-scroll">
+          {/* MCP 服务器列表 */}
           <div>
-            <div className="text-xs text-muted-foreground font-medium mb-3 px-2 flex items-center">
-               <span>发现</span>
-               <div className="h-px bg-border flex-1 ml-3"></div>
-            </div>
             <div className="space-y-0.5">
-              {discoverCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => { setActiveCategoryId(cat.id); setViewMode("list"); }}
-                  className={`w-full flex items-center p-2.5 rounded-lg text-sm transition-all duration-300 ${
-                    activeCategoryId === cat.id ? "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-300 font-semibold shadow-sm border border-pink-500/20" : "hover:bg-muted/50 text-muted-foreground font-medium"
-                  }`}
-                >
-                  {cat.icon === "box" ? <Box className="w-4 h-4 mr-3" /> : <Store className="w-4 h-4 mr-3" />}
-                  <span className="font-medium">{cat.name}</span>
-                </button>
-              ))}
+              {discoverCategories.map((cat) => {
+                const isActive = activeCategoryId === cat.id;
+                return (
+                  <motion.button
+                    key={cat.id}
+                    onClick={() => { setActiveCategoryId(cat.id); setViewMode("list"); }}
+                    className="w-full flex items-center p-2.5 rounded-xl text-sm transition-all duration-200 border"
+                    style={{
+                      background: isActive ? 'var(--brand-primary-lighter)' : 'transparent',
+                      borderColor: isActive ? 'var(--brand-primary-border)' : 'transparent',
+                      color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                    }}
+                    whileHover={{
+                      background: isActive ? 'var(--brand-primary-light)' : 'var(--glass-subtle)',
+                    }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    {cat.icon === "box" ? (
+                      <HugeiconsIcon icon={Package01Icon} size={16} className="mr-3" style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-tertiary)' }} />
+                    ) : (
+                      <HugeiconsIcon icon={Store01Icon} size={16} className="mr-3" style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-tertiary)' }} />
+                    )}
+                    <span className="font-medium">{cat.name}</span>
+                  </motion.button>
+                );
+              })}
             </div>
           </div>
 
-          {/* 提供商 */}
-          <div>
-            <div className="text-xs text-muted-foreground font-medium mb-3 px-2 flex items-center">
-               <span>提供商</span>
-               <div className="h-px bg-border flex-1 ml-3"></div>
-            </div>
-            <div className="space-y-0.5">
-              {providerCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => { setActiveCategoryId(cat.id); setViewMode("list"); }}
-                  className={`w-full flex items-center p-2.5 rounded-lg text-sm transition-all duration-300 ${
-                    activeCategoryId === cat.id ? "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-300 font-semibold shadow-sm border border-pink-500/20" : "hover:bg-muted/50 font-medium"
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded flex items-center justify-center mr-3 text-[10px] text-white font-bold bg-primary`}>
-                    {cat.icon.toUpperCase()}
-                  </div>
-                  <span className="font-medium">{cat.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
         </div>
       </div>
 
       {/* 右侧工作区 */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
-        
+      <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
         {viewMode === "list" ? (
           /* 列表视图 */
-          <div className="flex-1 flex flex-col h-full p-8 pt-6">
+          <div className="flex-1 flex flex-col h-full p-6">
             <div className="flex flex-col gap-6">
-              
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                     MCP 服务器
-                    <Search className="w-4 h-4 text-muted-foreground cursor-pointer" />
                   </h2>
+                  <HugeiconsIcon icon={Search01Icon} size={16} className="cursor-pointer" style={{ color: 'var(--text-tertiary)' }} />
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  <Button variant="outline" size="sm" className="h-8 rounded-full border-muted-foreground/30 px-4 text-xs font-medium bg-background shadow-none">
-                    <Edit2 className="w-3.5 h-3.5 mr-1.5" /> 编辑
+                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={20} style={{ color: 'var(--success)' }} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-xl px-4 text-xs font-medium border"
+                    style={{
+                      background: 'var(--glass-surface)',
+                      borderColor: 'var(--glass-border)',
+                    }}
+                  >
+                    <HugeiconsIcon icon={Edit03Icon} size={14} className="mr-1.5" /> 编辑
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 rounded-full border-muted-foreground/30 px-4 text-xs font-medium bg-background shadow-none" onClick={() => setViewMode("detail")}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> 添加
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-xl px-4 text-xs font-medium border"
+                    style={{
+                      background: 'var(--glass-surface)',
+                      borderColor: 'var(--glass-border)',
+                    }}
+                    onClick={() => setViewMode("detail")}
+                  >
+                    <HugeiconsIcon icon={Add01Icon} size={14} className="mr-1" /> 添加
                   </Button>
                 </div>
               </div>
 
               {/* Server Card List */}
               <div className="space-y-4">
-                <div className="border bg-card rounded-xl p-5 shadow-sm">
-                   <div className="flex items-center justify-between">
-                     <h3 className="text-base font-semibold cursor-pointer hover:underline" onClick={() => setViewMode("detail")}>
-                       mcp-router
-                     </h3>
-                     <div className="flex items-center gap-4">
-                        <Switch defaultChecked={true} />
-                        <Trash2 className="w-4 h-4 text-red-500/70 hover:text-red-500 cursor-pointer" />
-                        <Settings2 className="w-4 h-4 text-muted-foreground cursor-pointer" />
-                     </div>
-                   </div>
-                   <div className="flex gap-2 mt-6">
-                     <span className="text-[10px] flex items-center justify-center bg-[#2094F3] text-white px-2 py-[2px] rounded-full font-mono font-medium">0.2.0</span>
-                     <span className="text-[10px] flex items-center justify-center border border-[#2094F3]/30 text-[#2094F3] px-2 py-[2px] rounded-full font-mono font-medium bg-[#2094F3]/5">STDIO</span>
-                   </div>
+                <div
+                  className="rounded-xl p-5 border"
+                  style={{
+                    background: 'var(--glass-surface)',
+                    borderColor: 'var(--glass-border)',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <h3
+                      className="text-base font-semibold cursor-pointer hover:underline"
+                      style={{ color: 'var(--text-primary)' }}
+                      onClick={() => setViewMode("detail")}
+                    >
+                      mcp-router
+                    </h3>
+                    <div className="flex items-center gap-4">
+                      <Switch defaultChecked={true} />
+                      <HugeiconsIcon icon={Delete01Icon} size={16} className="cursor-pointer" style={{ color: 'var(--danger)' }} />
+                      <HugeiconsIcon icon={Settings01Icon} size={16} className="cursor-pointer" style={{ color: 'var(--text-tertiary)' }} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <span
+                      className="text-[10px] flex items-center justify-center text-white px-2 py-[2px] rounded-full font-mono font-medium"
+                      style={{ background: 'var(--brand-primary)' }}
+                    >
+                      0.2.0
+                    </span>
+                    <span
+                      className="text-[10px] flex items-center justify-center px-2 py-[2px] rounded-full font-mono font-medium border"
+                      style={{
+                        borderColor: 'var(--brand-primary)',
+                        color: 'var(--brand-primary)',
+                        background: 'var(--brand-primary-lightest)',
+                      }}
+                    >
+                      STDIO
+                    </span>
+                  </div>
                 </div>
               </div>
-
             </div>
           </div>
         ) : (
           /* 详情表单视图 */
           <div className="flex-1 flex flex-col h-full overflow-y-auto custom-scroll relative">
-            <div className="sticky top-0 bg-background/80 backdrop-blur-sm z-10 border-b p-4 px-6 flex items-center justify-between">
-               <div className="flex items-center gap-3">
-                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setViewMode("list")}>
-                   <ArrowLeft className="w-4 h-4" />
-                 </Button>
-               </div>
+            <div
+              className="sticky top-0 z-10 border-b p-4 px-6 flex items-center justify-between"
+              style={{
+                background: 'var(--glass-surface)',
+                backdropFilter: 'blur(20px) saturate(180%)',
+                borderColor: 'var(--divider)',
+              }}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setViewMode("list")}
+              >
+                <HugeiconsIcon icon={ArrowLeft01Icon} size={16} style={{ color: 'var(--text-secondary)' }} />
+              </Button>
             </div>
 
             <div className="p-8 pt-6 max-w-4xl mx-auto w-full space-y-8">
               {/* Form Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-bold">MCP 服务器</h2>
-                  <Button variant="outline" size="sm" className="h-7 text-xs border-muted-foreground/30 shadow-none px-3 bg-background">日志</Button>
-                  <Trash2 className="w-4 h-4 text-red-500 cursor-pointer" />
+                  <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>MCP 服务器</h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs border px-3 rounded-lg"
+                    style={{
+                      background: 'var(--glass-surface)',
+                      borderColor: 'var(--glass-border)',
+                    }}
+                  >
+                    日志
+                  </Button>
+                  <HugeiconsIcon icon={Delete01Icon} size={16} className="cursor-pointer" style={{ color: 'var(--danger)' }} />
                 </div>
                 <div className="flex items-center gap-4">
                   <Switch defaultChecked={true} />
-                  <Button onClick={handleSave} disabled={saving} variant="secondary" size="sm" className="h-8 px-6 rounded-md shadow-none font-medium">
-                    <span className="mr-1.5 opacity-50">💾</span> {saving ? "保存中..." : "保存"}
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    size="sm"
+                    className="h-8 px-6 rounded-xl font-medium border-0"
+                  >
+                    {saving ? "保存中..." : "保存"}
                   </Button>
                 </div>
               </div>
 
-              {/* Navigation Tabs (simulation) */}
-              <div className="border-b">
+              {/* Navigation Tabs */}
+              <div className="border-b" style={{ borderColor: 'var(--divider)' }}>
                 <div className="flex items-center gap-6">
-                  <button className="text-[13px] font-medium text-[#DE7E5D] border-b-2 border-[#DE7E5D] pb-3 px-1">
+                  <button
+                    className="text-[13px] font-medium pb-3 px-1 border-b-2"
+                    style={{
+                      color: 'var(--brand-primary)',
+                      borderColor: 'var(--brand-primary)',
+                    }}
+                  >
                     通用
                   </button>
                 </div>
@@ -215,70 +278,79 @@ export function McpSetting() {
 
               {/* Form Fields */}
               <div className="space-y-6">
-                
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-medium text-muted-foreground"><span className="text-red-500 mr-1">*</span>名称</Label>
-                  <Input defaultValue="MCP 服务器" className="h-9 shadow-none bg-background focus-visible:ring-1" />
+                  <Label className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <span style={{ color: 'var(--danger)' }} className="mr-1">*</span>名称
+                  </Label>
+                  <Input defaultValue="MCP 服务器" className="h-9" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-medium text-foreground">描述</Label>
-                  <Input placeholder="描述" className="h-9 shadow-none bg-background focus-visible:ring-1" />
+                  <Label className="text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>描述</Label>
+                  <Input placeholder="描述" className="h-9" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-medium text-foreground"><span className="text-red-500 mr-1">*</span>类型</Label>
+                  <Label className="text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>
+                    <span style={{ color: 'var(--danger)' }} className="mr-1">*</span>类型
+                  </Label>
                   <div className="relative">
-                    <select className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring appearance-none">
+                    <select className="w-full h-9 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-subtle)] px-3 py-1 text-sm appearance-none">
                       <option>标准输入 / 输出 (stdio)</option>
                       <option>SSE</option>
                     </select>
                     <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground opacity-50"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', opacity: 0.5 }}><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-medium text-foreground"><span className="text-red-500 mr-1">*</span>命令</Label>
-                  <Input value={mcpCommand} onChange={(e) => setMcpCommand(e.target.value)} placeholder="uvx or npx" className="h-9 shadow-none bg-background focus-visible:ring-1" />
+                  <Label className="text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>
+                    <span style={{ color: 'var(--danger)' }} className="mr-1">*</span>命令
+                  </Label>
+                  <Input value={mcpCommand} onChange={(e) => setMcpCommand(e.target.value)} placeholder="uvx or npx" className="h-9" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-medium text-foreground flex items-center gap-1.5">
-                    参数 <span className="text-muted-foreground cursor-help opacity-50">ⓘ</span>
+                  <Label className="text-[13px] font-medium flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+                    参数 <span style={{ color: 'var(--text-tertiary)' }} className="cursor-help opacity-50">ⓘ</span>
                   </Label>
-                  <textarea 
-                    value={mcpArgs} 
+                  <textarea
+                    value={mcpArgs}
                     onChange={(e) => setMcpArgs(e.target.value)}
-                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring custom-scroll font-mono"
+                    className="flex min-h-[80px] w-full rounded-xl border border-[var(--glass-border)] bg-[var(--glass-subtle)] px-3 py-2 text-sm custom-scroll font-mono"
                     placeholder="arg1&#10;arg2"
+                    spellCheck={false}
+                    autoComplete="off"
+                    autoCorrect="off"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-medium text-foreground flex items-center gap-1.5">
-                    环境变量 <span className="text-muted-foreground cursor-help opacity-50">ⓘ</span>
+                  <Label className="text-[13px] font-medium flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+                    环境变量 <span style={{ color: 'var(--text-tertiary)' }} className="cursor-help opacity-50">ⓘ</span>
                   </Label>
-                  <textarea 
-                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring custom-scroll font-mono placeholder:text-muted-foreground/40"
+                  <textarea
+                    className="flex min-h-[80px] w-full rounded-xl border border-[var(--glass-border)] bg-[var(--glass-subtle)] px-3 py-2 text-sm custom-scroll font-mono placeholder:text-muted-foreground/40"
                     placeholder="KEY1=value1&#10;KEY2=value2"
+                    spellCheck={false}
+                    autoComplete="off"
+                    autoCorrect="off"
                   />
                 </div>
 
-                 <div className="flex items-center gap-3 pt-2">
-                  <Label className="text-[13px] font-medium text-foreground flex items-center gap-1.5 cursor-pointer">
-                    长时间运行模式 <span className="text-muted-foreground cursor-help opacity-50">ⓘ</span> :
+                <div className="flex items-center gap-3 pt-2">
+                  <Label className="text-[13px] font-medium flex items-center gap-1.5 cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+                    长时间运行模式 <span style={{ color: 'var(--text-tertiary)' }} className="cursor-help opacity-50">ⓘ</span> :
                   </Label>
                   <Switch />
                 </div>
-
               </div>
               <div className="h-8"></div>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

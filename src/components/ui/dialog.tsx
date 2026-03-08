@@ -1,11 +1,29 @@
 "use client"
 
 import * as React from "react"
-import { XIcon } from "lucide-react"
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+
+/**
+ * Dialog 相关组件 (模态对话框)
+ * @description 
+ *   基于 `@radix-ui/react-dialog` 构建，具有原生级别的无障碍访问能力 (a11y)。
+ *   提供了覆盖层 (Overlay)、内容区 (Content) 和各种布局子模块。
+ *   包含出入场动画，强制焦点锁定。
+ * @example
+ * <Dialog>
+ *   <DialogTrigger>打开</DialogTrigger>
+ *   <DialogContent>
+ *     <DialogHeader>
+ *       <DialogTitle>标题</DialogTitle>
+ *     </DialogHeader>
+ *   </DialogContent>
+ * </Dialog>
+ */
 
 function Dialog({
   ...props
@@ -72,7 +90,7 @@ function DialogContent({
             data-slot="dialog-close"
             className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
-            <XIcon />
+            <HugeiconsIcon icon={Cancel01Icon} size={16} />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
