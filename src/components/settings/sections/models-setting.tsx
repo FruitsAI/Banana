@@ -6,16 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Search01Icon,
   Add01Icon,
   ViewIcon,
   ViewOffIcon,
+  Edit03Icon,
+  Delete01Icon,
   Settings01Icon,
-  ArrowDown01Icon,
+  ListSettingIcon,
 } from "@hugeicons/core-free-icons";
-import { type Model, type Provider, getModelsByProvider, setConfig, upsertModel, upsertProvider } from "@/lib/db";
+import {
+  type Model,
+  type Provider,
+  deleteModel,
+  getModelsByProvider,
+  setConfig,
+  upsertModel,
+  upsertProvider,
+} from "@/lib/db";
 import {
   ensureProviderModelsReady,
   ensureProvidersReady,
@@ -23,6 +34,17 @@ import {
   getActiveModelSelection,
   setActiveModelSelection,
 } from "@/lib/model-settings";
+import {
+  AddModelDialog,
+  type AddModelFormValues,
+} from "@/components/models/add-model-dialog";
+import {
+  AddProviderDialog,
+  type AddProviderFormValues,
+  type ProviderType,
+} from "@/components/providers/add-provider-dialog";
+import { useConfirm } from "@/components/feedback/feedback-provider";
+import { getProviderIcon } from "@/components/icons/provider-icons";
 
 const PROVIDER_BADGE_COLORS: Record<string, string> = {
   openai: "#10A37F",
@@ -31,9 +53,17 @@ const PROVIDER_BADGE_COLORS: Record<string, string> = {
   openrouter: "#5A4FCF",
   ollama: "#222222",
   nvidia: "#76B900",
-  octopus: "#3E5CDB",
-  antiapi: "#4B3B6F",
-  cherryin: "#FF4F64",
+};
+
+const PROVIDER_TYPE_DEFAULT_BASE_URLS: Record<ProviderType, string | undefined> = {
+  openai: "https://api.openai.com/v1",
+  "openai-response": "https://api.openai.com/v1",
+  gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+  anthropic: "https://api.anthropic.com/v1",
+  "azure-openai": undefined,
+  "new-api": undefined,
+  cherryin: undefined,
+  ollama: "http://localhost:11434/v1",
 };
 
 /**
@@ -45,16 +75,23 @@ function getProviderBadgeColor(providerId: string): string {
   return PROVIDER_BADGE_COLORS[providerId] ?? "var(--brand-primary)";
 }
 
-/**
- * 获取 Provider 默认 Base URL（仅用于输入框空值回退展示）。
- * @param providerId - 供应商标识
- * @returns 默认 URL
- */
-function getProviderDefaultBaseUrl(providerId: string): string {
-  if (providerId === "openai") {
-    return "https://api.openai.com/v1";
+function normalizeProviderId(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildUniqueProviderId(name: string, type: ProviderType, existingIds: Set<string>): string {
+  const baseId = normalizeProviderId(name) || normalizeProviderId(type) || "provider";
+  let candidate = baseId;
+  let suffix = 2;
+  while (existingIds.has(candidate)) {
+    candidate = `${baseId}-${suffix}`;
+    suffix += 1;
   }
-  return "https://api.example.com/v1";
+  return candidate;
 }
 
 /**
@@ -71,6 +108,11 @@ export function ModelsSetting() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isAddProviderDialogOpen, setIsAddProviderDialogOpen] = useState(false);
+  const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
+  const [isEditModelDialogOpen, setIsEditModelDialogOpen] = useState(false);
+  const [editingModel, setEditingModel] = useState<Model | null>(null);
+  const confirm = useConfirm();
 
   const activeProvider = useMemo(
     () => providers.find((provider) => provider.id === activeProviderId) ?? null,
@@ -85,7 +127,7 @@ export function ModelsSetting() {
   const modelGroups = useMemo(() => {
     const groups: Record<string, Model[]> = {};
     for (const model of models) {
-      const groupName = model.name.includes("/") ? model.name.split("/")[0] : model.provider_id;
+      const groupName = model.group_name || model.provider_id;
       if (!groups[groupName]) {
         groups[groupName] = [];
       }
@@ -113,7 +155,7 @@ export function ModelsSetting() {
 
       setActiveProviderId(provider.id);
       setApiKey(provider.api_key ?? "");
-      setBaseUrl(provider.base_url ?? getProviderDefaultBaseUrl(provider.id));
+      setBaseUrl(provider.base_url ?? "");
 
       const providerModels = await ensureProviderModelsReady(provider.id);
       setModels(providerModels);
@@ -168,6 +210,38 @@ export function ModelsSetting() {
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  // 自动保存逻辑 (防抖)
+  useEffect(() => {
+    if (!activeProvider) return;
+
+    // 比较去除空格后的值，若与已保存的相同则跳过
+    const savedApiKey = activeProvider.api_key ?? "";
+    const savedBaseUrl = activeProvider.base_url ?? "";
+
+    if (apiKey.trim() === savedApiKey && baseUrl.trim() === savedBaseUrl) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const updatedProvider: Provider = {
+        ...activeProvider,
+        api_key: apiKey.trim() || undefined,
+        base_url: baseUrl.trim() || undefined,
+      };
+      setSaving(true);
+      upsertProvider(updatedProvider)
+        .then(() => {
+          setProviders((prev) =>
+            prev.map((p) => (p.id === updatedProvider.id ? updatedProvider : p))
+          );
+        })
+        .catch((error) => console.error("Auto-save failed:", error))
+        .finally(() => setSaving(false));
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [apiKey, baseUrl, activeProvider]);
 
   /**
    * 保存当前 Provider 配置。
@@ -271,44 +345,244 @@ export function ModelsSetting() {
     }
   }
 
+  function openAddModelDialog(): void {
+    setIsAddModelDialogOpen(true);
+  }
+
+  function openAddProviderDialog(): void {
+    setIsAddProviderDialogOpen(true);
+  }
+
+  function openEditModelDialog(model: Model): void {
+    setEditingModel(model);
+    setIsEditModelDialogOpen(true);
+  }
+
   /**
-   * 新增模型（通过 prompt 交互，保持原布局不变）。
+   * 新增模型（通过弹窗表单录入）。
    */
-  async function handleAddModel(): Promise<void> {
+  async function handleCreateModel(formValues: AddModelFormValues): Promise<void> {
     if (!activeProviderId) {
-      return;
+      throw new Error("请先选择模型平台");
     }
 
-    const modelName = window.prompt("请输入模型名称（例如：gpt-4o-mini）");
-    const normalizedModelName = (modelName ?? "").trim();
-    if (!normalizedModelName) {
-      return;
+    const normalizedModelId = formValues.modelId.trim();
+    if (!normalizedModelId) {
+      throw new Error("模型 ID 为必填项");
     }
 
     const hasDuplicate = models.some(
-      (model) => model.id.toLowerCase() === normalizedModelName.toLowerCase()
+      (model) => model.id.toLowerCase() === normalizedModelId.toLowerCase()
     );
     if (hasDuplicate) {
-      return;
+      throw new Error("该模型 ID 已存在");
     }
 
+    const normalizedModelName = formValues.modelName.trim() || normalizedModelId;
+    const normalizedGroupName = formValues.groupName.trim();
+
     try {
-      await upsertModel({
-        id: normalizedModelName,
+      const newModel: Model = {
+        id: normalizedModelId,
         provider_id: activeProviderId,
         name: normalizedModelName,
         is_enabled: true,
-      });
+        group_name: normalizedGroupName || null,
+      };
 
+      await upsertModel(newModel);
       const refreshedModels = await getModelsByProvider(activeProviderId);
       setModels(refreshedModels);
 
       if (!activeModelId) {
-        setActiveModelId(normalizedModelName);
-        await setActiveModelSelection(activeProviderId, normalizedModelName);
+        setActiveModelId(normalizedModelId);
+        await setActiveModelSelection(activeProviderId, normalizedModelId);
       }
     } catch (error) {
       console.error("Failed to add model:", error);
+      throw new Error("新增模型失败，请稍后重试");
+    }
+  }
+
+  /**
+   * 修改模型（通过弹窗表单录入）。
+   */
+  async function handleUpdateModel(formValues: AddModelFormValues): Promise<void> {
+    if (!activeProviderId || !editingModel) {
+      throw new Error("请先选择要修改的模型");
+    }
+
+    const normalizedModelId = formValues.modelId.trim();
+    if (!normalizedModelId) {
+      throw new Error("模型 ID 为必填项");
+    }
+
+    const editingIdLower = editingModel.id.toLowerCase();
+    const hasDuplicate = models.some(
+      (model) =>
+        model.id.toLowerCase() === normalizedModelId.toLowerCase() &&
+        model.id.toLowerCase() !== editingIdLower
+    );
+    if (hasDuplicate) {
+      throw new Error("该模型 ID 已存在");
+    }
+
+    const normalizedModelName = formValues.modelName.trim() || normalizedModelId;
+    const normalizedGroupName = formValues.groupName.trim();
+
+    try {
+      const nextModel: Model = {
+        ...editingModel,
+        id: normalizedModelId,
+        provider_id: activeProviderId,
+        name: normalizedModelName,
+        group_name: normalizedGroupName || null,
+      };
+
+      if (normalizedModelId !== editingModel.id) {
+        await deleteModel(editingModel.id);
+      }
+      await upsertModel(nextModel);
+
+      const refreshedModels = await getModelsByProvider(activeProviderId);
+      setModels(refreshedModels);
+
+      if (activeModelId === editingModel.id) {
+        setActiveModelId(normalizedModelId);
+        await setActiveModelSelection(activeProviderId, normalizedModelId);
+      }
+
+      setEditingModel(nextModel);
+    } catch (error) {
+      console.error("Failed to update model:", error);
+      throw new Error("修改模型失败，请稍后重试");
+    }
+  }
+
+  async function handleDeleteModel(model: Model): Promise<void> {
+    if (!activeProviderId) {
+      return;
+    }
+
+    const accepted = await confirm({
+      title: "删除模型",
+      description: `确认删除模型 “${model.id}” 吗？删除后不可恢复。`,
+      confirmText: "删除",
+      cancelText: "取消",
+      variant: "destructive",
+    });
+    if (!accepted) {
+      return;
+    }
+
+    try {
+      await deleteModel(model.id);
+      const refreshedModels = await getModelsByProvider(activeProviderId);
+      setModels(refreshedModels);
+
+      if (activeModelId === model.id) {
+        const fallbackModel = refreshedModels.find((item) => item.is_enabled) ?? refreshedModels[0] ?? null;
+        if (fallbackModel) {
+          setActiveModelId(fallbackModel.id);
+          await setActiveModelSelection(activeProviderId, fallbackModel.id);
+        } else {
+          setActiveModelId("");
+          await Promise.all([setConfig("active_provider_id", activeProviderId), setConfig("active_model_id", "")]);
+        }
+      }
+
+      if (editingModel?.id === model.id) {
+        setIsEditModelDialogOpen(false);
+        setEditingModel(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete model:", error);
+      throw new Error("删除模型失败，请稍后重试");
+    }
+  }
+
+  async function handleDeleteModelGroup(groupName: string, groupModels: Model[]): Promise<void> {
+    if (!activeProviderId || groupModels.length === 0) {
+      return;
+    }
+
+    const accepted = await confirm({
+      title: "删除模型分组",
+      description: `确认删除分组 “${groupName}” 下的 ${groupModels.length} 个模型吗？删除后不可恢复。`,
+      confirmText: "删除分组",
+      cancelText: "取消",
+      variant: "destructive",
+    });
+    if (!accepted) {
+      return;
+    }
+
+    const deletedModelIdSet = new Set(groupModels.map((model) => model.id));
+
+    try {
+      await Promise.all(groupModels.map((model) => deleteModel(model.id)));
+      const refreshedModels = await getModelsByProvider(activeProviderId);
+      setModels(refreshedModels);
+
+      if (activeModelId && deletedModelIdSet.has(activeModelId)) {
+        const fallbackModel = refreshedModels.find((item) => item.is_enabled) ?? refreshedModels[0] ?? null;
+        if (fallbackModel) {
+          setActiveModelId(fallbackModel.id);
+          await setActiveModelSelection(activeProviderId, fallbackModel.id);
+        } else {
+          setActiveModelId("");
+          await Promise.all([setConfig("active_provider_id", activeProviderId), setConfig("active_model_id", "")]);
+        }
+      }
+
+      if (editingModel && deletedModelIdSet.has(editingModel.id)) {
+        setIsEditModelDialogOpen(false);
+        setEditingModel(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete model group:", error);
+      throw new Error("删除模型分组失败，请稍后重试");
+    }
+  }
+
+  async function handleCreateProvider(formValues: AddProviderFormValues): Promise<void> {
+    const normalizedProviderName = formValues.providerName.trim();
+    if (!normalizedProviderName) {
+      throw new Error("提供商名称为必填项");
+    }
+
+    const duplicateName = providers.some(
+      (provider) => provider.name.trim().toLowerCase() === normalizedProviderName.toLowerCase()
+    );
+    if (duplicateName) {
+      throw new Error("该提供商名称已存在");
+    }
+
+    const existingProviderIds = new Set(providers.map((provider) => provider.id.toLowerCase()));
+    const providerId = buildUniqueProviderId(
+      normalizedProviderName,
+      formValues.providerType,
+      existingProviderIds
+    );
+    const providerIcon = normalizedProviderName.charAt(0).toUpperCase() || "P";
+
+    const newProvider: Provider = {
+      id: providerId,
+      name: normalizedProviderName,
+      icon: providerIcon,
+      is_enabled: true,
+      api_key: undefined,
+      base_url: PROVIDER_TYPE_DEFAULT_BASE_URLS[formValues.providerType],
+    };
+
+    try {
+      await upsertProvider(newProvider);
+      const refreshedProviders = await ensureProvidersReady();
+      setProviders(refreshedProviders);
+      await loadProviderDetail(providerId, refreshedProviders, null);
+    } catch (error) {
+      console.error("Failed to add provider:", error);
+      throw new Error("新增提供商失败，请稍后重试");
     }
   }
 
@@ -372,7 +646,10 @@ export function ModelsSetting() {
                     className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
                     style={{ background: getProviderBadgeColor(provider.id) }}
                   >
-                    {provider.icon}
+                    {(() => {
+                      const Icon = getProviderIcon(provider.id);
+                      return Icon ? <Icon className="w-3.5 h-3.5" /> : provider.icon;
+                    })()}
                   </div>
                   <span
                     className="font-medium truncate max-w-[100px] text-left"
@@ -406,6 +683,7 @@ export function ModelsSetting() {
               background: "var(--glass-surface)",
               borderColor: "var(--glass-border)",
             }}
+            onClick={openAddProviderDialog}
           >
             <HugeiconsIcon icon={Add01Icon} size={16} className="mr-1.5" />
             添加
@@ -416,6 +694,17 @@ export function ModelsSetting() {
       <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--bg-primary)" }}>
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--divider)" }}>
           <div className="flex items-center gap-2">
+            {activeProvider && (() => {
+               const Icon = getProviderIcon(activeProvider.id);
+               return (
+                 <div
+                   className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
+                   style={{ background: getProviderBadgeColor(activeProvider.id) }}
+                 >
+                   {Icon ? <Icon className="w-3.5 h-3.5" /> : activeProvider.icon}
+                 </div>
+               );
+             })()}
             <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
               {activeProvider?.name ?? "模型设置"}
             </h2>
@@ -498,20 +787,11 @@ export function ModelsSetting() {
                   <span className="text-[11px] flex gap-2" style={{ color: "var(--text-tertiary)" }}>
                     <span>预览:</span>
                     <span className="truncate opacity-50">
-                      {(baseUrl || getProviderDefaultBaseUrl(activeProviderId))}/chat/completions
+                      {baseUrl.trim()
+                        ? `${baseUrl.trim()}/chat/completions`
+                        : "请先填写 API 地址"}
                     </span>
                   </span>
-                </div>
-
-                <div className="pt-2">
-                  <Button
-                    onClick={() => void handleSave()}
-                    disabled={saving || !activeProvider}
-                    size="sm"
-                    className="h-9 rounded-xl px-4"
-                  >
-                    {saving ? "保存中..." : "保存专属配置"}
-                  </Button>
                 </div>
               </div>
 
@@ -542,32 +822,40 @@ export function ModelsSetting() {
                       当前 Provider 尚未配置模型
                     </div>
                   ) : (
-                    modelGroups.map(([groupName, groupModels], groupIndex) => (
-                      <div
+                    modelGroups.map(([groupName, groupModels]) => (
+                      <CollapsiblePanel
                         key={groupName}
-                        style={{
-                          borderBottom:
-                            groupIndex < modelGroups.length - 1 ? "1px solid var(--divider)" : "none",
+                        defaultOpen={true}
+                        title={groupName}
+                        iconColor="var(--brand-primary)"
+                        className="group/panel rounded-none border-0"
+                        headerStyle={{
+                          background: "var(--glass-overlay)",
+                          color: "var(--brand-primary)",
+                          borderBottom: "1px solid var(--divider)",
                         }}
+                        headerActions={
+                          <button
+                            type="button"
+                            className="rounded-md p-1 opacity-0 transition-opacity duration-150 group-hover/panel:opacity-100 hover:opacity-100"
+                            style={{ color: "var(--danger)" }}
+                            onClick={() => void handleDeleteModelGroup(groupName, groupModels)}
+                            aria-label={`删除分组 ${groupName}`}
+                          >
+                            <HugeiconsIcon icon={Delete01Icon} size={14} />
+                          </button>
+                        }
                       >
-                        <button
-                          className="w-full flex items-center gap-2 p-3 text-sm font-medium transition-colors"
-                          style={{
-                            background: "rgba(59, 130, 246, 0.08)",
-                            color: "var(--brand-primary)",
-                          }}
-                        >
-                          <HugeiconsIcon icon={ArrowDown01Icon} size={16} style={{ color: "var(--brand-primary)" }} />
-                          {groupName}
-                        </button>
-
                         {groupModels.map((model) => {
                           const isDefaultModel = activeModelId === model.id;
                           return (
                             <div
                               key={model.id}
-                              className="flex items-center justify-between p-3 pl-8"
-                              style={{ background: "var(--bg-primary)" }}
+                              className="flex items-center justify-between p-3 pl-8 border-b last:border-0"
+                              style={{
+                                background: "var(--bg-primary)",
+                                borderColor: "var(--divider)"
+                              }}
                             >
                               <button
                                 className="flex items-center gap-3 min-w-0 text-left"
@@ -579,16 +867,38 @@ export function ModelsSetting() {
                                     background: isDefaultModel ? "var(--brand-primary)" : "var(--glass-border-strong)",
                                   }}
                                 >
-                                  <span className="text-[10px] font-bold text-white">
-                                    {isDefaultModel ? "✓" : model.name.slice(0, 1).toUpperCase()}
-                                  </span>
+                                  {isDefaultModel ? (
+                                    <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  ) : (
+                                    <span className="text-[10px] font-bold" style={{ color: "var(--text-tertiary)" }}>
+                                      {model.id.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
                                 </div>
-                                <span className="text-sm truncate" style={{ color: "var(--text-primary)" }}>
-                                  {model.name}
-                                </span>
+                                <div className="min-w-0">
+                                  <div className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{model.name}</div>
+                                  <div className="text-[11px] truncate opacity-50" style={{ color: "var(--text-tertiary)" }}>{model.id}</div>
+                                </div>
                               </button>
-                              <div className="flex items-center gap-3" style={{ color: "var(--text-tertiary)" }}>
-                                <HugeiconsIcon icon={Settings01Icon} size={16} className="cursor-pointer hover:text-foreground" />
+                              <div className="flex items-center gap-3 shrink-0 px-2">
+                                <button
+                                  className="opacity-50 hover:opacity-100 transition-opacity"
+                                  style={{ color: "var(--text-tertiary)" }}
+                                  onClick={() => openEditModelDialog(model)}
+                                  aria-label={`编辑模型 ${model.id}`}
+                                >
+                                  <HugeiconsIcon icon={Edit03Icon} size={16} />
+                                </button>
+                                <button
+                                  className="opacity-70 hover:opacity-100 transition-opacity"
+                                  style={{ color: "var(--danger)" }}
+                                  onClick={() => void handleDeleteModel(model)}
+                                  aria-label={`删除模型 ${model.id}`}
+                                >
+                                  <HugeiconsIcon icon={Delete01Icon} size={16} />
+                                </button>
                                 <Switch
                                   checked={model.is_enabled}
                                   onCheckedChange={(checked) => void handleToggleModel(model, checked)}
@@ -597,7 +907,7 @@ export function ModelsSetting() {
                             </div>
                           );
                         })}
-                      </div>
+                      </CollapsiblePanel>
                     ))
                   )}
                 </div>
@@ -617,7 +927,7 @@ export function ModelsSetting() {
                       }
                     }}
                   >
-                    <span className="mr-1.5">☰</span> 管理
+                    <HugeiconsIcon icon={ListSettingIcon} size={14} className="mr-1.5" /> 管理
                   </Button>
                   <Button
                     variant="outline"
@@ -627,7 +937,7 @@ export function ModelsSetting() {
                       background: "var(--glass-surface)",
                       borderColor: "var(--glass-border)",
                     }}
-                    onClick={() => void handleAddModel()}
+                    onClick={openAddModelDialog}
                   >
                     <HugeiconsIcon icon={Add01Icon} size={14} className="mr-1.5" /> 添加
                   </Button>
@@ -637,6 +947,42 @@ export function ModelsSetting() {
           )}
         </div>
       </div>
+      <AddProviderDialog
+        open={isAddProviderDialogOpen}
+        onOpenChange={setIsAddProviderDialogOpen}
+        existingProviderNames={providers.map((provider) => provider.name)}
+        onSubmitProvider={handleCreateProvider}
+      />
+      <AddModelDialog
+        open={isAddModelDialogOpen}
+        onOpenChange={setIsAddModelDialogOpen}
+        existingModelIds={models.map((model) => model.id)}
+        disabled={!activeProviderId}
+        onSubmitModel={handleCreateModel}
+      />
+      <AddModelDialog
+        mode="edit"
+        open={isEditModelDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditModelDialogOpen(open);
+          if (!open) {
+            setEditingModel(null);
+          }
+        }}
+        initialValues={
+          editingModel
+            ? {
+                modelId: editingModel.id,
+                modelName: editingModel.name,
+                groupName: editingModel.group_name ?? "",
+              }
+            : undefined
+        }
+        excludeModelId={editingModel?.id ?? null}
+        existingModelIds={models.map((model) => model.id)}
+        disabled={!activeProviderId || !editingModel}
+        onSubmitModel={handleUpdateModel}
+      />
     </div>
   );
 }

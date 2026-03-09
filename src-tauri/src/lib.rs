@@ -34,6 +34,7 @@ pub fn run() {
             commands::db_upsert_provider,
             commands::db_get_models_by_provider,
             commands::db_upsert_model,
+            commands::db_delete_model,
             commands::db_get_mcp_servers,
             commands::db_upsert_mcp_server,
             commands::db_get_threads,

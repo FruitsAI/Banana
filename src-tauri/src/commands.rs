@@ -43,6 +43,11 @@ pub async fn db_upsert_model(state: State<'_, AppState>, model: Model) -> Result
     state.db.upsert_model(&model).await
 }
 
+#[tauri::command]
+pub async fn db_delete_model(state: State<'_, AppState>, model_id: String) -> Result<()> {
+    state.db.delete_model(&model_id).await
+}
+
 /// ---- McpServers ----
 #[tauri::command]
 pub async fn db_get_mcp_servers(state: State<'_, AppState>) -> Result<Vec<McpServer>> {
@@ -96,6 +101,7 @@ pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<
         db_upsert_provider,
         db_get_models_by_provider,
         db_upsert_model,
+        db_delete_model,
         db_get_mcp_servers,
         db_upsert_mcp_server,
         db_get_threads,

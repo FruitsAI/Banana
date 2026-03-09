@@ -20,6 +20,15 @@ interface ModelSeed {
   name: string;
 }
 
+const DEFAULT_PROVIDER_BASE_URLS: Record<string, string> = {
+  openai: "https://api.openai.com/v1",
+  anthropic: "https://api.anthropic.com/v1",
+  gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+  openrouter: "https://openrouter.ai/api/v1",
+  ollama: "http://localhost:11434/v1",
+};
+const LEGACY_PLACEHOLDER_BASE_URL = "https://api.example.com/v1";
+
 const DEFAULT_PROVIDER_SEEDS: ProviderSeed[] = [
   { id: "openai", name: "OpenAI", icon: "O" },
   { id: "anthropic", name: "Anthropic", icon: "A" },
@@ -45,6 +54,20 @@ const DEFAULT_MODEL_SEEDS: Record<string, ModelSeed[]> = {
   ollama: [{ id: "llama3.1:8b", name: "llama3.1:8b" }],
 };
 
+function getProviderModelsSeededKey(providerId: string): string {
+  return `provider_models_seeded_${providerId}`;
+}
+
+/**
+ * 获取系统预设 Provider 的默认 Base URL。
+ * @param providerId - 供应商 id
+ * @returns 默认 URL；未知 provider 返回占位地址
+ */
+function resolveDefaultProviderBaseUrl(providerId: string): string {
+  const normalizedProviderId = providerId.trim().toLowerCase();
+  return DEFAULT_PROVIDER_BASE_URLS[normalizedProviderId] ?? LEGACY_PLACEHOLDER_BASE_URL;
+}
+
 /**
  * 初始化模型供应商列表（仅补齐缺失项，不覆盖已有用户配置）。
  * @returns Promise<Provider[]>
@@ -59,14 +82,31 @@ export async function ensureProvidersReady(): Promise<Provider[]> {
 
   if (missingProviders.length > 0) {
     for (const seedProvider of missingProviders) {
-      const baseUrl = seedProvider.id === "openai" ? "https://api.openai.com/v1" : undefined;
       await upsertProvider({
         id: seedProvider.id,
         name: seedProvider.name,
         icon: seedProvider.icon,
         is_enabled: seedProvider.id === "openai",
-        base_url: baseUrl,
+        base_url: resolveDefaultProviderBaseUrl(seedProvider.id),
         api_key: undefined,
+      });
+    }
+  }
+
+  // 对已有 provider 做一次默认地址补齐（仅在 base_url 为空时，不覆盖用户配置）
+  const providersWithMissingBaseUrl = providers.filter((provider) => {
+    const normalizedBaseUrl = provider.base_url?.trim() ?? "";
+    const hasUserBaseUrl = normalizedBaseUrl.length > 0;
+    const isLegacyPlaceholderBaseUrl = normalizedBaseUrl === LEGACY_PLACEHOLDER_BASE_URL;
+    const hasSystemDefaultBaseUrl = provider.id.toLowerCase() in DEFAULT_PROVIDER_BASE_URLS;
+    return (!hasUserBaseUrl || isLegacyPlaceholderBaseUrl) && hasSystemDefaultBaseUrl;
+  });
+
+  if (providersWithMissingBaseUrl.length > 0) {
+    for (const provider of providersWithMissingBaseUrl) {
+      await upsertProvider({
+        ...provider,
+        base_url: resolveDefaultProviderBaseUrl(provider.id),
       });
     }
   }
@@ -81,13 +121,24 @@ export async function ensureProvidersReady(): Promise<Provider[]> {
  * @returns Promise<Model[]>
  */
 export async function ensureProviderModelsReady(providerId: string): Promise<Model[]> {
+  const seedStateKey = getProviderModelsSeededKey(providerId);
   const currentModels = await getModelsByProvider(providerId);
   if (currentModels.length > 0) {
+    const seededState = await getConfig(seedStateKey);
+    if (seededState !== "1") {
+      await setConfig(seedStateKey, "1");
+    }
     return currentModels;
+  }
+
+  const seededState = await getConfig(seedStateKey);
+  if (seededState === "1") {
+    return [];
   }
 
   const modelSeeds = DEFAULT_MODEL_SEEDS[providerId] ?? [];
   if (modelSeeds.length === 0) {
+    await setConfig(seedStateKey, "1");
     return [];
   }
 
@@ -99,6 +150,8 @@ export async function ensureProviderModelsReady(providerId: string): Promise<Mod
       is_enabled: true,
     });
   }
+
+  await setConfig(seedStateKey, "1");
 
   return getModelsByProvider(providerId);
 }
@@ -149,4 +202,3 @@ export function filterProviders(providers: Provider[], keyword: string): Provide
     return providerName.includes(normalizedKeyword) || providerId.includes(normalizedKeyword);
   });
 }
-

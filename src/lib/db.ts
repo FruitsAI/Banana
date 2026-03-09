@@ -82,6 +82,7 @@ export interface Model {
   provider_id: string;
   name: string;
   is_enabled: boolean;
+  group_name?: string | null;
 }
 
 export async function getModelsByProvider(providerId: string): Promise<Model[]> {
@@ -90,6 +91,10 @@ export async function getModelsByProvider(providerId: string): Promise<Model[]> 
 
 export async function upsertModel(m: Model): Promise<void> {
   await invoke('db_upsert_model', { model: m });
+}
+
+export async function deleteModel(modelId: string): Promise<void> {
+  await invoke('db_delete_model', { modelId });
 }
 
 export interface McpServer {

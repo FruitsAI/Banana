@@ -6,7 +6,7 @@ impl Database {
     /// ---- Models ----
     pub async fn get_models_by_provider(&self, provider_id: &str) -> Result<Vec<Model>> {
         let records = sqlx::query_as::<_, Model>(
-            r#"SELECT id, provider_id, name, is_enabled FROM models WHERE provider_id = ? ORDER BY name ASC"#,
+            r#"SELECT id, provider_id, name, is_enabled, group_name FROM models WHERE provider_id = ? ORDER BY name ASC"#,
         )
         .bind(provider_id)
         .fetch_all(&self.pool)
@@ -19,6 +19,7 @@ impl Database {
                 provider_id: record.provider_id,
                 name: record.name,
                 is_enabled: record.is_enabled,
+                group_name: record.group_name,
             })
             .collect())
     }
@@ -26,11 +27,21 @@ impl Database {
     pub async fn upsert_model(&self, model: &Model) -> Result<()> {
         let is_enabled_int = if model.is_enabled { 1 } else { 0 };
 
-        sqlx::query(r#"INSERT OR REPLACE INTO models (id, provider_id, name, is_enabled) VALUES (?, ?, ?, ?)"#)
+        sqlx::query(r#"INSERT OR REPLACE INTO models (id, provider_id, name, is_enabled, group_name) VALUES (?, ?, ?, ?, ?)"#)
             .bind(&model.id)
             .bind(&model.provider_id)
             .bind(&model.name)
             .bind(is_enabled_int)
+            .bind(&model.group_name)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete_model(&self, model_id: &str) -> Result<()> {
+        sqlx::query(r#"DELETE FROM models WHERE id = ?"#)
+            .bind(model_id)
             .execute(&self.pool)
             .await?;
 
