@@ -22,6 +22,7 @@ pub struct Model {
     pub provider_id: String,
     pub name: String,
     pub is_enabled: bool,
+    pub group_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

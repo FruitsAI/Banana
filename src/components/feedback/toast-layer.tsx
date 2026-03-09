@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,14 @@ const TOAST_ACCENT_STYLE: Record<ToastVariant, string> = {
  * @description 全局 Toast 渲染层，通过 Portal 挂载到 body。
  */
 export function ToastLayer({ messages, onDismiss, onAction }: ToastLayerProps) {
-  if (typeof document === "undefined") {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  if (!mounted || typeof document === "undefined") {
     return null;
   }
 

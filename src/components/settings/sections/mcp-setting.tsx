@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, Add01Icon, Edit03Icon, CheckmarkCircle02Icon, Delete01Icon, Settings01Icon, Package01Icon, Store01Icon, ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+import { Search01Icon, Add01Icon, Edit03Icon, CheckmarkCircle02Icon, Delete01Icon, Settings01Icon, McpServerIcon, Store01Icon, ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 /**
  * McpSetting 组件 (MCP 服务器设置)
@@ -28,7 +28,7 @@ interface McpProvider {
 }
 
 const mockMcpCategories: McpProvider[] = [
-  { id: "builtin", name: "内置服务器", icon: "box", type: "discover" },
+  { id: "builtin", name: "MCP 服务器", icon: "box", type: "discover" },
   { id: "market", name: "市场", icon: "store", type: "discover" },
 ];
 
@@ -107,7 +107,7 @@ export function McpSetting() {
                     whileTap={{ scale: 0.99 }}
                   >
                     {cat.icon === "box" ? (
-                      <HugeiconsIcon icon={Package01Icon} size={16} className="mr-3" style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-tertiary)' }} />
+                      <HugeiconsIcon icon={McpServerIcon} size={16} className="mr-3" style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-tertiary)' }} />
                     ) : (
                       <HugeiconsIcon icon={Store01Icon} size={16} className="mr-3" style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-tertiary)' }} />
                     )}

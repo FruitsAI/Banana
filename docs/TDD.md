@@ -1,82 +1,140 @@
-# 技术架构与设计文档 (TDD)
+# Banana 技术架构与设计文档（TDD，现行实现）
 
-## 1. 技术栈选型
+> 更新日期：2026-03-09
+> 范围：描述仓库“当前已实现”的技术架构与关键数据流。
 
-基于现有环境配置与需求，采用以下核心栈：
+---
 
-- **桌面层：** Tauri 2 (Rust) -> 轻量化，提供底层 OS 能力与文件访问集成。
-- **前端框架：** Next.js 15+ (App Router, `output: "export"`) -> 进行跨平台 UI 渲染。
-- **开发语言：** TypeScript -> 严谨的全栈类型提示。
-- **大模型集成：** **Vercel AI SDK** -> 提供标准的流式返回解析与 AI 工具链调用支持。
-- **UI 组件库与样式：**
-  - **Radix UI + shadcn/ui** -> 以极高的灵活性、高度无障碍标准构建严谨组件。
-  - **Tailwind CSS** + 原生 `tokens.css` -> 实现标志性的 macOS 26 液态玻璃动态视觉特征。
-- **动画引擎：** **Framer Motion** -> 构建符合真实物理规律与流畅过场的液态交互微动效。
-- **数据库：** **SQLite3** -> 高效、健壮的本地关系型数据库，用于处理聊天记录和大容量记忆。
-- **图标系统：** **Remixicon** -> 简约、整洁的线条图标，统一跨平台体验。
-- **工程化基建：**
-  - **测试方案：** **Playwright** -> 负责端到端 (E2E) 测试，保障各个平台渲染界面与交互逻辑的正确率。
-  - **持续集成与部署 (CI/CD)：** **GitHub Actions** -> 负责自动化构建、代码检测以及全平台打包发布流程。
+## 1. 技术栈
 
-## 2. 目录骨架与分层
+### 1.1 前端
+- Next.js 16（App Router）
+- React 19
+- TypeScript（strict）
+- Tailwind CSS v4 + shadcn/ui + Radix primitives
+- Framer Motion
 
-### 前端分层 (Next.js Layer)
+### 1.2 AI 与协议
+- Vercel AI SDK（`streamText`）
+- `@ai-sdk/openai`（OpenAI 兼容接口）
+- `@modelcontextprotocol/sdk`（MCP client）
 
-由于采用了单页或静态导出体系，尽量减少路由刷新：
+### 1.3 桌面与后端
+- Tauri 2（Rust）
+- sqlx + SQLite（`banana.db`）
 
-- `app/page.tsx`: 全局入口，容纳主应用的 `Layout` 与毛玻璃容器框架。
-- `components/`
-  - `layout/`: `Titlebar`, `Rail`, `ThreadsSidebar`, `Stage` 等。
-  - `ui/`: `Button`, `Input`, `Dialog` 等具备液态玻璃封装的基础组件。
-  - `chat/`: `MessageBubble`, `Composer`。
-- `stores/`: 全局状态管理（如当前选中的 Provider、配置好的 MCP 服务器状态、历史对话持久化等）。
+---
 
-### 桌面层分层 (Tauri Rust Layer)
+## 2. 工程结构
 
-- `src-tauri/src/main.rs`: 注册各系统插件与自定义 Command。
-- 采用库如 `@tauri-apps/plugin-store` 实现配置持久化，确保应用重启配置不丢。若需更强本地化，可引入基于 SQLite/RocksDB 的本地数据库。
+```text
+src/
+  app/
+    layout.tsx              # 根布局与全局 Provider 装配
+    page.tsx                # 主聊天页
+    settings/page.tsx       # 设置页入口
+  components/
+    layout/                 # 标题栏、Rail、ThreadsSidebar、Stage
+    settings/               # 模型/MCP/主题/关于
+    feedback/               # Toast / Confirm
+    ui/                     # Button/Input/Dialog/Switch/Label
+  hooks/
+    useBananaChat.ts        # 聊天主流程
+  lib/
+    db.ts                   # 前端 -> Tauri command 桥
+    mcp.ts                  # MCP transport
+    model-settings.ts       # Provider/Model 业务辅助
 
-## 3. 数据流与通信设计
-
-### 3.1 跨平台配置文件 (Settings Store)
-
-需存储结构：
-
-```typescript
-interface AppConfig {
-  providers: {
-    id: string; // openai, anthropic, ollama 等
-    apiKey: string;
-    baseUrl?: string;
-    customModels?: string[];
-  }[];
-  activeProviderId: string;
-  mcpServers: {
-    id: string;
-    name: string; // 例如: "Weather-MCP"
-    command: string; // 例如 "npx"
-    args: string[]; // ["-y", "@weather/mcp"]
-    env: Record<string, string>;
-    enabled: boolean;
-  }[];
-}
+src-tauri/src/
+  lib.rs                    # 应用入口，注册 commands/state
+  commands.rs               # Tauri 命令层
+  db/                       # 数据模型与数据库访问
+  mcp.rs                    # MCP 子进程管理
+  error.rs                  # AppError 定义
 ```
 
-### 3.2 大模型集成与 MCP (Model Context Protocol)
+---
 
-- **对话流处理:** 前端直接使用标准化请求函数，通过 HTTP/SSE 建立流式解析链。
-- **MCP 网关:** 模型吐出 Tool Call 时，解析协议；前端交由 Rust 侧的 Tauri Command 或 Node.js sidecar （如果适用，因为单纯前端无法轻易执行系统级别的 npx 进程，必须依托 Rust 衍生子进程）执行。
-- _重点设计决策：_ **由于涉及到执行任意 MCP 命令行，必须将相关逻辑下沉到 Rust 端**，通过 `std::process::Command` 或者跨平台的 `tauri-plugin-shell`，维护常驻子进程（长链接 stdin/stdout 通信以符合 MCP 标准）。
+## 3. 运行与构建链路
 
-## 4. 关键实现节点 (核心 UI Token)
+1. 前端开发
+- `pnpm dev`
 
-应用 `preview.html` 提供的 macOS 液态玻璃视觉规则：
+2. 桌面开发
+- `pnpm tauri dev`
+- Tauri 会读取 `tauri.conf.json` 的 `beforeDevCommand` 启动前端。
 
-- 全局 CSS 映射到 Tailwind 主题或直接采用原生 CSS variables 驱动。
-- 对 `Window` 设置 `backdrop-filter: blur(26px) saturate(1.2)` ，底层辅以 SVG noise 提升材质拟真度。
-- 为防止 Next.js 切换页面破坏动效和背景光路，将聊天区到设置区等视为组件视图的条件渲染（而非完整页面路由切换）。
+3. 生产构建
+- `pnpm build` 生成 `out/`
+- `pnpm tauri build` 打包桌面应用
 
-## 5. 扩展性预留
+---
 
-- 后续支持图片和文件读取（视网多模态）。
-- 提供拖拽组件，便于未来实现多文档的 Reference 功能。
+## 4. 关键数据流
+
+### 4.1 对话流（当前实现）
+
+1. Stage 调用 `useBananaChat("default-thread")`。
+2. 用户发送消息后：
+- 先写入本地前端状态。
+- 调 `appendMessage` 通过 Tauri command 写入 SQLite。
+3. `useBananaChat` 读取 config（API Key/Base URL/MCP command/args）。
+4. 若 MCP 配置存在：
+- 建立 `TauriMcpTransport`。
+- `Client.listTools()` 动态注入 AI tools。
+5. 调 `streamText` 获取流式文本。
+6. assistant 文本增量渲染并最终落库。
+
+### 4.2 设置流
+
+1. 模型设置页
+- 通过 `ensureProvidersReady` / `ensureProviderModelsReady` 做默认种子补齐。
+- `active_provider_id` / `active_model_id` 保存在 `config` 表。
+
+2. MCP 设置页
+- 当前主要保存 `mcp_command` 和 `mcp_args` 到 `config`。
+
+3. 外观设置
+- 主题由 `next-themes` 管理。
+- 动画强度写入 `config.animation_intensity`，并映射到 `data-motion-level`。
+
+---
+
+## 5. 数据库设计（当前）
+
+表：`config`, `providers`, `models`, `mcp_servers`, `threads`, `messages`
+
+关系：
+- `models.provider_id -> providers.id`
+- `messages.thread_id -> threads.id`
+
+说明：表结构由 Rust 启动时执行 `CREATE TABLE IF NOT EXISTS` 自动创建。
+
+---
+
+## 6. Tauri 命令面
+
+### 6.1 数据命令
+- `db_get_config` / `db_set_config`
+- `db_get_providers` / `db_upsert_provider`
+- `db_get_models_by_provider` / `db_upsert_model`
+- `db_get_mcp_servers` / `db_upsert_mcp_server`
+- `db_get_threads` / `db_create_thread`
+- `db_get_messages` / `db_append_message`
+
+### 6.2 MCP 命令
+- `start_mcp_server`
+- `send_mcp_message`
+
+事件：
+- `mcp-stdout`
+- `mcp-stderr`
+
+---
+
+## 7. 当前技术债（需要关注）
+
+1. 线程 UI 仍是 mock，数据库线程数据未驱动 sidebar。
+2. 聊天模型调用与 `active_model_id` 未联动。
+3. MCP 管理页未完整操作 `mcp_servers` 表。
+4. 自动化测试未建立。

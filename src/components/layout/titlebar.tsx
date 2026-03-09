@@ -7,7 +7,7 @@
 export function Titlebar() {
   return (
     <header
-      className="titlebar h-11 sm:h-12 flex items-center px-3 sm:px-4 relative z-50"
+      className="titlebar h-9 flex items-center px-3 sm:px-4 relative z-50"
       data-tauri-drag-region="true"
     >
       <div className="w-16 sm:w-20 flex-shrink-0" style={{ pointerEvents: "none" }} />
