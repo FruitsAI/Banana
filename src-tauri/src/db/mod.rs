@@ -1,4 +1,6 @@
+mod model_store;
 pub mod models;
+mod provider_store;
 
 use crate::error::Result;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
@@ -98,71 +100,6 @@ impl Database {
             .bind(value)
             .execute(&self.pool)
             .await?;
-        Ok(())
-    }
-
-    /// ---- Providers ----
-    pub async fn get_providers(&self) -> Result<Vec<Provider>> {
-        let records = sqlx::query_as::<_, Provider>(
-            r#"SELECT id, name, icon, is_enabled, api_key, base_url FROM providers ORDER BY is_enabled DESC, name ASC"#
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(records
-            .into_iter()
-            .map(|r| Provider {
-                id: r.id,
-                name: r.name,
-                icon: r.icon,
-                is_enabled: r.is_enabled,
-                api_key: r.api_key,
-                base_url: r.base_url,
-            })
-            .collect())
-    }
-
-    pub async fn upsert_provider(&self, p: &Provider) -> Result<()> {
-        let is_enabled_int = if p.is_enabled { 1 } else { 0 };
-        sqlx::query(r#"INSERT OR REPLACE INTO providers (id, name, icon, is_enabled, api_key, base_url) VALUES (?, ?, ?, ?, ?, ?)"#)
-            .bind(&p.id)
-            .bind(&p.name)
-            .bind(&p.icon)
-            .bind(is_enabled_int)
-            .bind(&p.api_key)
-            .bind(&p.base_url)
-        .execute(&self.pool)
-        .await?;
-        Ok(())
-    }
-
-    /// ---- Models ----
-    pub async fn get_models_by_provider(&self, provider_id: &str) -> Result<Vec<Model>> {
-        let records = sqlx::query_as::<_, Model>(r#"SELECT id, provider_id, name, is_enabled FROM models WHERE provider_id = ? ORDER BY name ASC"#)
-            .bind(provider_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(records
-            .into_iter()
-            .map(|r| Model {
-                id: r.id,
-                provider_id: r.provider_id,
-                name: r.name,
-                is_enabled: r.is_enabled,
-            })
-            .collect())
-    }
-
-    pub async fn upsert_model(&self, m: &Model) -> Result<()> {
-        let is_enabled_int = if m.is_enabled { 1 } else { 0 };
-        sqlx::query(r#"INSERT OR REPLACE INTO models (id, provider_id, name, is_enabled) VALUES (?, ?, ?, ?)"#)
-            .bind(&m.id)
-            .bind(&m.provider_id)
-            .bind(&m.name)
-            .bind(is_enabled_int)
-        .execute(&self.pool)
-        .await?;
         Ok(())
     }
 

@@ -18,26 +18,16 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground h-10 w-full min-w-0 rounded-xl px-4 py-2 text-base transition-all duration-200 ease-out file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+        "h-10 w-full min-w-0 rounded-xl border px-4 py-2 text-base file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground selection:bg-primary selection:text-primary-foreground placeholder:text-[var(--text-placeholder)] transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-out focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--brand-primary-light)] focus-visible:border-[var(--brand-primary)] focus-visible:bg-[var(--glass-overlay)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
         className
       )}
       style={{
-        background: 'var(--glass-surface)',
-        border: '1px solid var(--glass-border)',
+        background: "var(--glass-surface)",
+        borderColor: "var(--glass-border)",
       }}
       spellCheck={false}
       autoComplete="off"
       autoCorrect="off"
-      onFocus={(e) => {
-        e.currentTarget.style.background = 'var(--glass-overlay)';
-        e.currentTarget.style.borderColor = 'var(--brand-primary)';
-        e.currentTarget.style.boxShadow = '0 0 0 3px var(--brand-primary-light)';
-      }}
-      onBlur={(e) => {
-        e.currentTarget.style.background = 'var(--glass-surface)';
-        e.currentTarget.style.borderColor = 'var(--glass-border)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
       {...props}
     />
   )

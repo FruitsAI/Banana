@@ -1,9 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { AiChat02Icon, Settings01Icon } from "@hugeicons/core-free-icons";
+import {
+  AiChat02Icon,
+  Settings01Icon,
+  Sun03Icon,
+  Moon02Icon,
+} from "@hugeicons/core-free-icons";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useTheme } from "next-themes";
 
 // 定义侧边栏主体导航项数据源，方便后续扩展更多模块（如知识库、插件市场等）
 const navItems = [
@@ -20,9 +27,16 @@ const navItems = [
 export function Rail() {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   // 判断当前路由是否处于设置页面下，以控制底部设置入口的高亮状态
   const isSettingsActive = pathname === "/settings" || pathname.startsWith("/settings/");
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   return (
     <aside
@@ -82,34 +96,68 @@ export function Rail() {
       
       {/* Spacer - 空白占位块：负责将底部的设置按钮推至可用容器的最下方 */}
       <div className="flex-1" />
-      
-      {/* Settings - 全局设置入口 */}
-      <motion.button
-        className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl relative"
-        style={{
-          background: isSettingsActive ? 'var(--brand-primary-light)' : 'transparent',
-          color: isSettingsActive ? 'var(--brand-primary)' : 'var(--text-tertiary)',
-        }}
-        whileHover={{
-          background: isSettingsActive ? 'var(--brand-primary-light)' : 'var(--glass-subtle)',
-          color: isSettingsActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
-        }}
-        whileTap={{ scale: 0.95 }}
-        title="设置"
-        aria-label="设置"
-        onClick={() => router.push("/settings")}
-      >
-        <HugeiconsIcon icon={Settings01Icon} size={20} />
-        {/* 如果处于设置页面，指示条将滑动停留于此 */}
-        {isSettingsActive && (
-          <motion.div
-            className="absolute left-0 w-0.5 sm:w-1 h-4 sm:h-5 rounded-r-full"
-            style={{ background: 'var(--brand-primary)' }}
-            layoutId="activeIndicator"
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          />
+
+      <div className="flex flex-col gap-2 w-full items-center">
+        {/* Theme Toggle - moved from top-right to bottom-left area */}
+        {mounted && (
+          <motion.button
+            className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl relative"
+            style={{
+              background: "transparent",
+              color: "var(--text-tertiary)",
+            }}
+            whileHover={{
+              background: "var(--glass-subtle)",
+              color: "var(--text-secondary)",
+            }}
+            whileTap={{ scale: 0.95 }}
+            title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
+            aria-label="切换主题"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            <motion.div
+              key={theme}
+              initial={{ opacity: 0, rotate: -90 }}
+              animate={{ opacity: 1, rotate: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {theme === "dark" ? (
+                <HugeiconsIcon icon={Sun03Icon} size={20} />
+              ) : (
+                <HugeiconsIcon icon={Moon02Icon} size={20} />
+              )}
+            </motion.div>
+          </motion.button>
         )}
-      </motion.button>
+
+        {/* Settings - 全局设置入口 */}
+        <motion.button
+          className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl relative"
+          style={{
+            background: isSettingsActive ? "var(--brand-primary-light)" : "transparent",
+            color: isSettingsActive ? "var(--brand-primary)" : "var(--text-tertiary)",
+          }}
+          whileHover={{
+            background: isSettingsActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
+            color: isSettingsActive ? "var(--brand-primary)" : "var(--text-secondary)",
+          }}
+          whileTap={{ scale: 0.95 }}
+          title="设置"
+          aria-label="设置"
+          onClick={() => router.push("/settings")}
+        >
+          <HugeiconsIcon icon={Settings01Icon} size={20} />
+          {/* 如果处于设置页面，指示条将滑动停留于此 */}
+          {isSettingsActive && (
+            <motion.div
+              className="absolute left-0 w-0.5 sm:w-1 h-4 sm:h-5 rounded-r-full"
+              style={{ background: "var(--brand-primary)" }}
+              layoutId="activeIndicator"
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            />
+          )}
+        </motion.button>
+      </div>
     </aside>
   );
 }
