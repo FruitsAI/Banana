@@ -1,11 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from "react";
-import { streamText, tool, jsonSchema } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { getConfig, appendMessage } from "@/lib/db";
+import { appendMessage, getProviders, createThread } from "@/lib/db";
+import { getActiveModelSelection, ensureProvidersReady, ensureProviderModelsReady } from "@/lib/model-settings";
 import { v4 as uuidv4 } from "uuid";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { TauriMcpTransport } from "@/lib/mcp";
 
 export interface ChatMessage {
   id: string;
@@ -55,83 +51,96 @@ export function useBananaChat(threadId: string) {
 
       setMessages((prev) => [...prev, newMessage]);
 
-      if (threadId) {
-        await appendMessage({
-          id: newMessage.id,
-          thread_id: threadId,
-          role: newMessage.role,
-          content: newMessage.content,
-        });
-      }
-
       const newMessagesList = [...messages, newMessage];
       const coreMessages = newMessagesList.map((m) => ({
         role: m.role as "user" | "assistant" | "system",
-        content: m.content,
+        content: m.content as string,
       }));
 
-      let mcpClient: Client | null = null;
-      let mcpTransport: TauriMcpTransport | null = null;
-
       try {
-        const apiKey = await getConfig("openai_api_key");
-        const baseURL = await getConfig("openai_base_url");
-        const mcpCmd = await getConfig("mcp_command");
-        const mcpArgsStr = await getConfig("mcp_args");
-
-        if (!apiKey) {
-          throw new Error("API Key 未配置，请先在设置中填写。");
-        }
-
-        const aiTools: Record<string, any> = {};
-
-        if (mcpCmd && mcpArgsStr) {
+        if (threadId) {
+          // Ensure the thread row exists before inserting a message (FK constraint)
           try {
-            const mcpArgs = mcpArgsStr.split(" ").filter(Boolean);
-            mcpTransport = new TauriMcpTransport(mcpCmd, mcpArgs);
-            mcpClient = new Client(
-              { name: "banana-mcp", version: "1.0.0" },
-              { capabilities: {} }
-            );
-            await mcpClient.connect(mcpTransport);
-            
-            const toolList = await mcpClient.listTools();
-            for (const t of toolList.tools) {
-              aiTools[t.name] = tool({
-                description: t.description || "",
-                parameters: jsonSchema(t.inputSchema as any),
-                execute: async (args: any) => {
-                  try {
-                    const res = await mcpClient!.callTool({
-                      name: t.name,
-                      arguments: args,
-                    });
-                    // Stringify complex MCP results because AI SDK expects text or JSON for execution output
-                    return JSON.stringify(res.content);
-                  } catch (e: unknown) {
-                    return `Error executing tool: ${e instanceof Error ? e.message : String(e)}`;
-                  }
-                },
-              } as any);
-            }
-          } catch (mcpError) {
-            console.error("Failed to connect to MCP server:", mcpError);
+            await createThread(threadId, "新会话");
+          } catch {
+            // Thread already exists — safe to ignore
+          }
+          await appendMessage({
+            id: newMessage.id,
+            thread_id: threadId,
+            role: newMessage.role,
+            content: newMessage.content,
+          });
+        }
+        
+        const { activeProviderId, activeModelId } = await getActiveModelSelection();
+        const providers = await getProviders();
+        
+        let targetProviderId = activeProviderId;
+        let targetModelId = activeModelId;
+        
+        // Fallback context if no selection is made yet
+        if (!targetProviderId || !targetModelId) {
+          const defaultProviders = await ensureProvidersReady();
+          if (defaultProviders.length > 0) {
+             const defaultProvider = defaultProviders[0];
+             targetProviderId = defaultProvider.id;
+             const models = await ensureProviderModelsReady(defaultProvider.id);
+             if (models.length > 0) {
+                targetModelId = models[0].id;
+             } else {
+                 throw new Error("模型未配置，请前往设置配置");
+             }
+          } else {
+              throw new Error("供应商尚未就绪，请前往设置页面检查配置");
           }
         }
 
-        const openai = createOpenAI({
-          apiKey,
-          baseURL: baseURL || "https://api.openai.com/v1",
+        const activeProvider = providers.find(p => p.id === targetProviderId);
+        if (!activeProvider) {
+          throw new Error("当前激活的供应商未找到，请检查设置。");
+        }
+
+        const apiKey = activeProvider.api_key;
+        const baseURL = activeProvider.base_url;
+
+        if (!apiKey) {
+          throw new Error(`[${activeProvider.name}] API Key 未配置，请先在设置中填写。`);
+        }
+
+        const finalBaseURL = baseURL || "https://api.openai.com/v1";
+        const finalModelId = targetModelId || "gpt-4o-mini";
+        
+        console.log("[BananaChat] 🚀 API 调用配置:", {
+          provider: activeProvider.name,
+          providerId: activeProvider.id,
+          modelId: finalModelId,
+          baseURL: finalBaseURL,
+          apiKeyPresent: !!apiKey,
+          apiKeyPreview: apiKey ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : "(empty)",
+          messageCount: coreMessages.length,
         });
 
-        // Use 'as any' to bypass the complex TS overloads for streamText when passing dynamic tools
-        const result = await streamText({
-          model: openai("gpt-4o-mini"),
-          messages: coreMessages,
-          ...(Object.keys(aiTools).length > 0
-            ? { tools: aiTools as any, maxSteps: 5 }
-            : {}),
-        } as any);
+        // Call server-side API route to bypass CORS restrictions
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: coreMessages,
+            apiKey,
+            baseURL: finalBaseURL,
+            modelId: finalModelId,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `API 请求失败 (HTTP ${response.status})`);
+        }
+
+        if (!response.body) {
+          throw new Error("API 返回了空的响应体");
+        }
 
         const assistantMessageId = uuidv4();
         let assistantContent = "";
@@ -141,9 +150,16 @@ export function useBananaChat(threadId: string) {
           { id: assistantMessageId, role: "assistant", content: "" },
         ]);
 
-        for await (const textPart of result.textStream) {
-          assistantContent += textPart;
+        // Read the plain text streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
 
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          assistantContent += chunk;
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMessageId
@@ -162,16 +178,15 @@ export function useBananaChat(threadId: string) {
           });
         }
       } catch (err: unknown) {
-        console.error("Chat Error:", err);
-        setError(err instanceof Error ? err.message : "未知错误");
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error("[BananaChat] ❌ Chat Error:", err);
+        console.error("[BananaChat] 错误详情:", {
+          errorType: err instanceof Error ? err.constructor.name : typeof err,
+          message: errMsg,
+          stack: err instanceof Error ? err.stack : undefined,
+        });
+        setError(errMsg);
       } finally {
-        if (mcpClient) {
-          try {
-            await mcpClient.close();
-          } catch (e) {
-            console.error("Error closing MCP client:", e);
-          }
-        }
         setIsLoading(false);
       }
     },

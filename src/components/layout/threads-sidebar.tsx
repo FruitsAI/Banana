@@ -4,27 +4,32 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, Search01Icon, AiMagicIcon } from "@hugeicons/core-free-icons";
 import { motion, useReducedMotion } from "framer-motion";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { v4 as uuidv4 } from "uuid";
+import { getThreads, createThread, type Thread } from "@/lib/db";
 
-interface ThreadItem {
-  id: string;
-  title: string;
-  time: string;
-  model: string;
-  selected?: boolean;
+function formatTime(dateStr: string) {
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-const threadsData: {
-  today: ThreadItem[];
-  yesterday: ThreadItem[];
-} = {
-  today: [
-    { id: "1", title: "项目架构重构计划", time: "12:34", model: "Claude 3.5 Sonnet", selected: true },
-    { id: "2", title: "液态玻璃视觉实现指南", time: "09:15", model: "GPT-4o" },
-  ],
-  yesterday: [{ id: "3", title: "如何写好一个 PRD", time: "20:45", model: "Kimi" }],
-};
+function getDayCategory(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  
+  const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  if (isToday) return "today";
 
-function ThreadItemComponent({ thread, index }: { thread: ThreadItem; index: number }) {
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+  if (isYesterday) return "yesterday";
+
+  return "earlier";
+}
+
+function ThreadItemComponent({ thread, index, selected, onClick }: { thread: Thread; index: number; selected: boolean; onClick: () => void }) {
   const shouldReduceMotion = useReducedMotion();
   const { factors, intensity } = useAnimationIntensity();
   const motionReduced = shouldReduceMotion || intensity === "low";
@@ -35,10 +40,11 @@ function ThreadItemComponent({ thread, index }: { thread: ThreadItem; index: num
 
   return (
     <motion.div
+      onClick={onClick}
       className="stage-action-button px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl cursor-pointer group border"
       style={{
-        background: thread.selected ? "var(--brand-primary-lighter)" : "transparent",
-        borderColor: thread.selected ? "var(--brand-primary-border)" : "var(--glass-border)",
+        background: selected ? "var(--brand-primary-lighter)" : "transparent",
+        borderColor: selected ? "var(--brand-primary-border)" : "var(--glass-border)",
         transformStyle: "preserve-3d",
       }}
       initial={motionReduced ? false : { opacity: 0, x: motionDistance(-8), y: motionDistance(4) }}
@@ -55,9 +61,9 @@ function ThreadItemComponent({ thread, index }: { thread: ThreadItem; index: num
               x: motionDistance(4),
               y: motionDistance(-1),
               rotateX: motionDistance(-2),
-              rotateY: thread.selected ? 0 : motionDistance(-2),
-              background: thread.selected ? "var(--brand-primary-light)" : "var(--glass-subtle)",
-              borderColor: thread.selected
+              rotateY: selected ? 0 : motionDistance(-2),
+              background: selected ? "var(--brand-primary-light)" : "var(--glass-subtle)",
+              borderColor: selected
                 ? "var(--brand-primary-border-strong)"
                 : "var(--glass-border-strong)",
             }
@@ -66,20 +72,20 @@ function ThreadItemComponent({ thread, index }: { thread: ThreadItem; index: num
     >
       <div
         className="font-medium text-xs sm:text-sm mb-0.5 truncate"
-        style={{ color: thread.selected ? "var(--brand-primary)" : "var(--text-primary)" }}
+        style={{ color: selected ? "var(--brand-primary)" : "var(--text-primary)" }}
       >
-        {thread.title}
+        {thread.title || "新会话"}
       </div>
       <div className="text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5" style={{ color: "var(--text-tertiary)" }}>
-        <span>{thread.time}</span>
+        <span>{formatTime(thread.created_at)}</span>
         <span style={{ color: "var(--text-quaternary)" }}>·</span>
-        <span className="truncate">{thread.model}</span>
+        <span className="truncate">{thread.model_id || "默认模型"}</span>
       </div>
     </motion.div>
   );
 }
 
-export function ThreadsSidebar() {
+function ThreadsSidebarContent() {
   const shouldReduceMotion = useReducedMotion();
   const { factors, intensity } = useAnimationIntensity();
   const motionReduced = shouldReduceMotion || intensity === "low";
@@ -87,6 +93,44 @@ export function ThreadsSidebar() {
   const motionDistance = (value: number) => Number((value * factors.distance).toFixed(3));
   const motionScale = (value: number) =>
     Number((1 - (1 - value) * factors.scale).toFixed(3));
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeThreadId = searchParams.get("thread");
+
+  const [threads, setThreads] = useState<Thread[]>([]);
+
+  useEffect(() => {
+    loadThreads();
+  }, []);
+
+  const loadThreads = async () => {
+    try {
+      const data = await getThreads();
+      // Sort descending by created_at
+      data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setThreads(data);
+    } catch (e) {
+      console.error("Failed to load threads", e);
+    }
+  };
+
+  const handleCreateThread = async () => {
+    try {
+      const newId = uuidv4();
+      await createThread(newId, "新会话");
+      await loadThreads();
+      router.push(`/?thread=${newId}`);
+    } catch (e) {
+      console.error("Failed to create thread", e);
+    }
+  };
+
+  const groupedThreads = {
+    today: threads.filter((t) => getDayCategory(t.created_at) === "today"),
+    yesterday: threads.filter((t) => getDayCategory(t.created_at) === "yesterday"),
+    earlier: threads.filter((t) => getDayCategory(t.created_at) === "earlier"),
+  };
 
   return (
     <motion.div
@@ -159,6 +203,7 @@ export function ThreadsSidebar() {
         </motion.div>
 
         <motion.button
+          onClick={handleCreateThread}
           className="sidebar-glow-btn stage-action-button w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl"
           style={{
             background: "var(--glass-subtle)",
@@ -183,35 +228,74 @@ export function ThreadsSidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-1.5 sm:px-2 py-2 space-y-3 sm:space-y-4">
-        <motion.div
-          initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: motionDuration(0.3), delay: motionDuration(0.08) }}
-        >
-          <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>
-            今天
-          </div>
-          <div className="space-y-0.5">
-            {threadsData.today.map((thread, index) => (
-              <ThreadItemComponent key={thread.id} thread={thread} index={index} />
-            ))}
-          </div>
-        </motion.div>
+        {groupedThreads.today.length > 0 && (
+          <motion.div
+            initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: motionDuration(0.3), delay: motionDuration(0.08) }}
+          >
+            <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>
+              今天
+            </div>
+            <div className="space-y-0.5">
+              {groupedThreads.today.map((thread, index) => (
+                <ThreadItemComponent
+                  key={thread.id}
+                  thread={thread}
+                  index={index}
+                  selected={activeThreadId === thread.id}
+                  onClick={() => router.push(`/?thread=${thread.id}`)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
 
-        <motion.div
-          initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: motionDuration(0.3), delay: motionDuration(0.14) }}
-        >
-          <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>
-            昨天
-          </div>
-          <div className="space-y-0.5">
-            {threadsData.yesterday.map((thread, index) => (
-              <ThreadItemComponent key={thread.id} thread={thread} index={threadsData.today.length + index} />
-            ))}
-          </div>
-        </motion.div>
+        {groupedThreads.yesterday.length > 0 && (
+          <motion.div
+            initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: motionDuration(0.3), delay: motionDuration(0.14) }}
+          >
+            <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>
+              昨天
+            </div>
+            <div className="space-y-0.5">
+              {groupedThreads.yesterday.map((thread, index) => (
+                <ThreadItemComponent
+                  key={thread.id}
+                  thread={thread}
+                  index={groupedThreads.today.length + index}
+                  selected={activeThreadId === thread.id}
+                  onClick={() => router.push(`/?thread=${thread.id}`)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {groupedThreads.earlier.length > 0 && (
+          <motion.div
+            initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: motionDuration(0.3), delay: motionDuration(0.20) }}
+          >
+            <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>
+              更早
+            </div>
+            <div className="space-y-0.5">
+              {groupedThreads.earlier.map((thread, index) => (
+                <ThreadItemComponent
+                  key={thread.id}
+                  thread={thread}
+                  index={groupedThreads.today.length + groupedThreads.yesterday.length + index}
+                  selected={activeThreadId === thread.id}
+                  onClick={() => router.push(`/?thread=${thread.id}`)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
 
       <div className="p-2.5 sm:p-3 border-t" style={{ borderColor: "var(--divider)" }}>
@@ -237,5 +321,13 @@ export function ThreadsSidebar() {
         </motion.button>
       </div>
     </motion.div>
+  );
+}
+
+export function ThreadsSidebar() {
+  return (
+    <Suspense fallback={<div className="w-60 sm:w-64 lg:w-72 flex-shrink-0 border-r border-[#ffffff1a] bg-[#1a1a1a]" />}>
+      <ThreadsSidebarContent />
+    </Suspense>
   );
 }

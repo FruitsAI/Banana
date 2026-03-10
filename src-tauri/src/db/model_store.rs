@@ -27,14 +27,24 @@ impl Database {
     pub async fn upsert_model(&self, model: &Model) -> Result<()> {
         let is_enabled_int = if model.is_enabled { 1 } else { 0 };
 
-        sqlx::query(r#"INSERT OR REPLACE INTO models (id, provider_id, name, is_enabled, group_name) VALUES (?, ?, ?, ?, ?)"#)
-            .bind(&model.id)
-            .bind(&model.provider_id)
-            .bind(&model.name)
-            .bind(is_enabled_int)
-            .bind(&model.group_name)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            r#"
+            INSERT INTO models (id, provider_id, name, is_enabled, group_name) 
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                provider_id = excluded.provider_id,
+                name = excluded.name,
+                is_enabled = excluded.is_enabled,
+                group_name = excluded.group_name
+            "#,
+        )
+        .bind(&model.id)
+        .bind(&model.provider_id)
+        .bind(&model.name)
+        .bind(is_enabled_int)
+        .bind(&model.group_name)
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }

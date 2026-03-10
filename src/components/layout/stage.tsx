@@ -9,11 +9,13 @@ import {
   InternetIcon,
   AiBrain01Icon,
 } from "@hugeicons/core-free-icons";
-import { useState, KeyboardEvent, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState, KeyboardEvent, useEffect, useRef } from "react";
 import { useBananaChat } from "@/hooks/useBananaChat";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
+import { ModelSelector } from "@/components/models/model-selector";
 
 const QUICK_ACTIONS = [
   { icon: ArtificialIntelligence08Icon, label: "帮我写一段代码" },
@@ -21,16 +23,22 @@ const QUICK_ACTIONS = [
   { icon: RoboticIcon, label: "角色扮演对话" },
 ] as const;
 
-export function Stage() {
-  const { messages, append, isLoading } = useBananaChat("default-thread");
+function StageContent() {
+  const searchParams = useSearchParams();
+  const threadId = searchParams.get("thread") || "default-thread";
+  const { messages, append, isLoading, error } = useBananaChat(threadId);
   const [input, setInput] = useState("");
+  const [isSearchEnabled, setIsSearchEnabled] = useState(false);
+  const [isThinkingEnabled, setIsThinkingEnabled] = useState(false);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const { factors, intensity } = useAnimationIntensity();
 
   const motionReduced = shouldReduceMotion || intensity === "low";
-  const motionDuration = (value: number) => Number((value * factors.duration).toFixed(3));
-  const motionDistance = (value: number) => Number((value * factors.distance).toFixed(3));
+  const motionDuration = (value: number) =>
+    Number((value * factors.duration).toFixed(3));
+  const motionDistance = (value: number) =>
+    Number((value * factors.distance).toFixed(3));
   const motionScale = (value: number) =>
     Number((1 - (1 - value) * factors.scale).toFixed(3));
 
@@ -70,19 +78,33 @@ export function Stage() {
                 border: "1px solid var(--glass-border)",
                 boxShadow: "var(--shadow-lg)",
               }}
-              initial={motionReduced ? false : { scale: motionScale(0.86), opacity: 0 }}
+              initial={
+                motionReduced ? false : { scale: motionScale(0.86), opacity: 0 }
+              }
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: motionDuration(0.5), ease: [0.22, 1, 0.36, 1] }}
+              transition={{
+                duration: motionDuration(0.5),
+                ease: [0.22, 1, 0.36, 1],
+              }}
             >
-              <img src="/logo.png" alt="Banana Logo" className="w-full h-full object-cover" />
+              <img
+                src="/logo.png"
+                alt="Banana Logo"
+                className="w-full h-full object-cover"
+              />
             </motion.div>
 
             <motion.h2
               className="text-2xl sm:text-3xl font-semibold mb-2"
               style={{ color: "var(--text-primary)" }}
-              initial={motionReduced ? false : { y: motionDistance(12), opacity: 0 }}
+              initial={
+                motionReduced ? false : { y: motionDistance(12), opacity: 0 }
+              }
               animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: motionDuration(0.45), delay: motionDuration(0.05) }}
+              transition={{
+                duration: motionDuration(0.45),
+                delay: motionDuration(0.05),
+              }}
             >
               Banana
             </motion.h2>
@@ -90,18 +112,28 @@ export function Stage() {
             <motion.p
               className="text-sm sm:text-base text-center px-4 mb-6"
               style={{ color: "var(--text-secondary)" }}
-              initial={motionReduced ? false : { y: motionDistance(12), opacity: 0 }}
+              initial={
+                motionReduced ? false : { y: motionDistance(12), opacity: 0 }
+              }
               animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: motionDuration(0.45), delay: motionDuration(0.12) }}
+              transition={{
+                duration: motionDuration(0.45),
+                delay: motionDuration(0.12),
+              }}
             >
               欢迎使用，开始你的 AI 对话之旅
             </motion.p>
 
             <motion.div
               className="flex flex-wrap justify-center gap-3 px-4"
-              initial={motionReduced ? false : { opacity: 0, y: motionDistance(12) }}
+              initial={
+                motionReduced ? false : { opacity: 0, y: motionDistance(12) }
+              }
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: motionDuration(0.45), delay: motionDuration(0.18) }}
+              transition={{
+                duration: motionDuration(0.45),
+                delay: motionDuration(0.18),
+              }}
             >
               {QUICK_ACTIONS.map((item, index) => (
                 <motion.button
@@ -115,7 +147,11 @@ export function Stage() {
                   initial={
                     motionReduced
                       ? false
-                      : { opacity: 0, y: motionDistance(10), scale: motionScale(0.98) }
+                      : {
+                          opacity: 0,
+                          y: motionDistance(10),
+                          scale: motionScale(0.98),
+                        }
                   }
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{
@@ -134,7 +170,9 @@ export function Stage() {
                           borderColor: "var(--glass-border-strong)",
                         }
                   }
-                  whileTap={motionReduced ? undefined : { scale: motionScale(0.98) }}
+                  whileTap={
+                    motionReduced ? undefined : { scale: motionScale(0.98) }
+                  }
                   onClick={() => setInput(item.label)}
                 >
                   <HugeiconsIcon icon={item.icon} size={16} />
@@ -144,55 +182,32 @@ export function Stage() {
             </motion.div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-3 px-2 sm:px-4 py-4">
-            <AnimatePresence initial={false}>
-              {messages.map((msg, index) => (
-                <motion.div
-                  key={msg.id}
-                  layout
-                  initial={
-                    motionReduced
-                      ? false
-                      : { opacity: 0, y: motionDistance(16), scale: motionScale(0.97) }
-                  }
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{
-                    duration: motionDuration(0.32),
-                    ease: [0.22, 1, 0.36, 1],
-                    delay: motionReduced
-                      ? 0
-                      : motionDuration(Math.min(index * 0.035, 0.14)),
-                  }}
-                  className={`message-bubble max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-3 sm:px-5 sm:py-4 rounded-2xl ${
-                    msg.role === "user" ? "self-end" : "self-start"
-                  }`}
-                  style={{
-                    background: msg.role === "user" ? "var(--brand-primary)" : "var(--glass-surface)",
-                    border: "1px solid var(--glass-border)",
-                    color:
-                      msg.role === "user" ? "var(--text-primary-foreground)" : "var(--text-primary)",
-                    lineHeight: 1.6,
-                    boxShadow: msg.role === "user" ? "var(--shadow-md)" : "var(--shadow-sm)",
-                    backdropFilter:
-                      msg.role !== "user" ? "blur(var(--blur-md)) saturate(180%)" : "none",
-                    WebkitBackdropFilter:
-                      msg.role !== "user" ? "blur(var(--blur-md)) saturate(180%)" : "none",
-                  }}
-                >
-                  <div
-                    className="prose dark:prose-invert max-w-none text-current"
-                    style={{ overflowWrap: "anywhere" }}
-                  >
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+          <div className="flex-1 overflow-y-auto min-h-0 flex flex-col-reverse px-2 sm:px-4 py-4 gap-3">
+            {/* In column-reverse: first items appear at BOTTOM. Order: error → endRef → loading → messages(newest first) */}
+            
+            {error && (
+              <motion.div
+                className="self-start max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-3 rounded-2xl text-sm"
+                initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: "var(--danger-light)",
+                  border: "1px solid var(--danger)",
+                  color: "var(--danger)",
+                }}
+              >
+                ⚠️ {error}
+              </motion.div>
+            )}
+
+            <div ref={endOfMessagesRef} />
 
             {isLoading && (
               <motion.div
                 className="ai-thinking self-start"
-                initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
+                initial={
+                  motionReduced ? false : { opacity: 0, y: motionDistance(8) }
+                }
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: motionDuration(0.22) }}
@@ -201,7 +216,62 @@ export function Stage() {
               </motion.div>
             )}
 
-            <div ref={endOfMessagesRef} />
+            {[...messages].reverse().map((msg, index) => (
+              <motion.div
+                key={msg.id}
+                initial={
+                  motionReduced
+                    ? false
+                    : {
+                        opacity: 0,
+                        y: motionDistance(-16),
+                        scale: motionScale(0.97),
+                      }
+                }
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{
+                  duration: motionDuration(0.32),
+                  ease: [0.22, 1, 0.36, 1],
+                  delay: motionReduced
+                    ? 0
+                    : motionDuration(Math.min(index * 0.035, 0.14)),
+                }}
+                className={`message-bubble max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-3 sm:px-5 sm:py-4 rounded-2xl ${
+                  msg.role === "user" ? "self-end" : "self-start"
+                }`}
+                style={{
+                  background:
+                    msg.role === "user"
+                      ? "var(--brand-primary)"
+                      : "var(--glass-surface)",
+                  border: "1px solid var(--glass-border)",
+                  color:
+                    msg.role === "user"
+                      ? "var(--text-primary-foreground)"
+                      : "var(--text-primary)",
+                  lineHeight: 1.6,
+                  boxShadow:
+                    msg.role === "user"
+                      ? "var(--shadow-md)"
+                      : "var(--shadow-sm)",
+                  backdropFilter:
+                    msg.role !== "user"
+                      ? "blur(var(--blur-md)) saturate(180%)"
+                      : "none",
+                  WebkitBackdropFilter:
+                    msg.role !== "user"
+                      ? "blur(var(--blur-md)) saturate(180%)"
+                      : "none",
+                }}
+              >
+                <div
+                  className="prose dark:prose-invert max-w-none text-current"
+                  style={{ overflowWrap: "anywhere" }}
+                >
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
 
@@ -213,9 +283,14 @@ export function Stage() {
               borderColor: "var(--glass-border)",
               boxShadow: "var(--shadow-md)",
             }}
-            initial={motionReduced ? false : { opacity: 0, y: motionDistance(12) }}
+            initial={
+              motionReduced ? false : { opacity: 0, y: motionDistance(12) }
+            }
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: motionDuration(0.35), ease: [0.16, 1, 0.3, 1] }}
+            transition={{
+              duration: motionDuration(0.35),
+              ease: [0.16, 1, 0.3, 1],
+            }}
           >
             <textarea
               placeholder="给 AI 发送消息... (Shift + Enter 换行)"
@@ -242,47 +317,49 @@ export function Stage() {
                   style={{ background: "var(--glass-subtle)" }}
                   role="group"
                   aria-label="功能开关"
-                  whileHover={motionReduced ? undefined : { y: motionDistance(-1) }}
+                  whileHover={
+                    motionReduced ? undefined : { y: motionDistance(-1) }
+                  }
                 >
-                  <span className="flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+                  <button
+                    onClick={() => setIsSearchEnabled(!isSearchEnabled)}
+                    className="flex items-center gap-1 px-2 py-1 rounded transition-colors"
+                    style={{ 
+                      color: isSearchEnabled ? "var(--brand-primary)" : "var(--text-tertiary)",
+                      background: isSearchEnabled ? "var(--brand-primary-light)" : "transparent"
+                    }}
+                  >
                     <HugeiconsIcon icon={InternetIcon} size={14} />
                     <span className="hidden sm:inline">联网搜索</span>
-                  </span>
-                  <span className="flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+                  </button>
+                  <button
+                    onClick={() => setIsThinkingEnabled(!isThinkingEnabled)}
+                    className="flex items-center gap-1 px-2 py-1 rounded transition-colors"
+                    style={{ 
+                      color: isThinkingEnabled ? "var(--brand-primary)" : "var(--text-tertiary)",
+                      background: isThinkingEnabled ? "var(--brand-primary-light)" : "transparent"
+                    }}
+                  >
                     <HugeiconsIcon icon={AiBrain01Icon} size={14} />
                     <span className="hidden sm:inline">深度思考</span>
-                  </span>
+                  </button>
                 </motion.div>
 
-                <motion.button
-                  className="floating-chip px-2.5 py-1.5 rounded-lg text-xs font-medium"
-                  style={{
-                    background: "var(--brand-primary-light)",
-                    color: "var(--brand-primary)",
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-label="选择模型"
-                  whileHover={
-                    motionReduced
-                      ? undefined
-                      : {
-                          y: motionDistance(-1),
-                          scale: Number((1 + 0.02 * factors.scale).toFixed(3)),
-                        }
-                  }
-                  whileTap={motionReduced ? undefined : { scale: motionScale(0.98) }}
-                >
-                  GPT-4o-mini
-                </motion.button>
+                <ModelSelector disabled={isLoading} />
               </div>
 
               <motion.button
                 className="stage-action-button w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full flex-shrink-0 outline-none"
                 style={{
-                  background: canSend ? "var(--brand-primary)" : "var(--glass-subtle)",
-                  color: canSend ? "var(--text-primary-foreground)" : "var(--text-tertiary)",
-                  boxShadow: canSend ? "0 10px 24px var(--brand-primary-glow)" : "none",
+                  background: canSend
+                    ? "var(--brand-primary)"
+                    : "var(--glass-subtle)",
+                  color: canSend
+                    ? "var(--text-primary-foreground)"
+                    : "var(--text-tertiary)",
+                  boxShadow: canSend
+                    ? "0 10px 24px var(--brand-primary-glow)"
+                    : "none",
                 }}
                 aria-label="发送消息"
                 onClick={handleSend}
@@ -295,7 +372,11 @@ export function Stage() {
                       }
                     : undefined
                 }
-                whileTap={canSend && !motionReduced ? { scale: motionScale(0.95) } : undefined}
+                whileTap={
+                  canSend && !motionReduced
+                    ? { scale: motionScale(0.95) }
+                    : undefined
+                }
                 animate={
                   canSend && !motionReduced
                     ? {
@@ -333,7 +414,11 @@ export function Stage() {
                       : { duration: motionDuration(0.2) }
                   }
                 >
-                  <HugeiconsIcon icon={ArrowUp02Icon} size={20} color={canSend ? "#ffffff" : undefined} />
+                  <HugeiconsIcon
+                    icon={ArrowUp02Icon}
+                    size={20}
+                    color={canSend ? "#ffffff" : undefined}
+                  />
                 </motion.span>
               </motion.button>
             </div>
@@ -341,5 +426,13 @@ export function Stage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function Stage() {
+  return (
+    <Suspense fallback={<div className="flex-1" />}>
+      <StageContent />
+    </Suspense>
   );
 }

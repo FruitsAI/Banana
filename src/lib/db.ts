@@ -54,7 +54,7 @@ export async function getMessages(threadId: string): Promise<Message[]> {
 }
 
 export async function appendMessage(msg: Omit<Message, 'created_at'>): Promise<void> {
-  await invoke('db_append_message', { msg });
+  await invoke('db_append_message', { msg: { ...msg, created_at: new Date().toISOString() } });
 }
 
 /**

@@ -28,7 +28,16 @@ impl Database {
         let is_enabled_int = if provider.is_enabled { 1 } else { 0 };
 
         sqlx::query(
-            r#"INSERT OR REPLACE INTO providers (id, name, icon, is_enabled, api_key, base_url) VALUES (?, ?, ?, ?, ?, ?)"#,
+            r#"
+            INSERT INTO providers (id, name, icon, is_enabled, api_key, base_url) 
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                icon = excluded.icon,
+                is_enabled = excluded.is_enabled,
+                api_key = excluded.api_key,
+                base_url = excluded.base_url
+            "#,
         )
         .bind(&provider.id)
         .bind(&provider.name)

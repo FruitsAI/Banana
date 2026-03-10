@@ -60,9 +60,7 @@ const PROVIDER_TYPE_DEFAULT_BASE_URLS: Record<ProviderType, string | undefined> 
   "openai-response": "https://api.openai.com/v1",
   gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
   anthropic: "https://api.anthropic.com/v1",
-  "azure-openai": undefined,
   "new-api": undefined,
-  cherryin: undefined,
   ollama: "http://localhost:11434/v1",
 };
 
