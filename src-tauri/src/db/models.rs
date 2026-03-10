@@ -14,6 +14,7 @@ pub struct Provider {
     pub is_enabled: bool,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
+    pub provider_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

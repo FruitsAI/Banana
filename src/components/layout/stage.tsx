@@ -30,7 +30,7 @@ function StageContent() {
   const [input, setInput] = useState("");
   const [isSearchEnabled, setIsSearchEnabled] = useState(false);
   const [isThinkingEnabled, setIsThinkingEnabled] = useState(false);
-  const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const { factors, intensity } = useAnimationIntensity();
 
@@ -43,9 +43,13 @@ function StageContent() {
     Number((1 - (1 - value) * factors.scale).toFixed(3));
 
   useEffect(() => {
-    endOfMessagesRef.current?.scrollIntoView({
-      behavior: motionReduced ? "auto" : "smooth",
-    });
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: motionReduced ? "auto" : "smooth",
+      });
+    }
   }, [messages, motionReduced]);
 
   const handleSend = () => {
@@ -65,10 +69,10 @@ function StageContent() {
 
   return (
     <div
-      className="stage-aurora flex-1 flex flex-col min-w-0 h-full"
+      className="stage-aurora flex-1 flex flex-col min-w-0 min-h-0 h-full"
       style={{ background: "var(--bg-primary)" }}
     >
-      <div className="flex-1 flex flex-col min-w-0 px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center min-h-0">
             <motion.div
@@ -182,41 +186,8 @@ function StageContent() {
             </motion.div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto min-h-0 flex flex-col-reverse px-2 sm:px-4 py-4 gap-3">
-            {/* In column-reverse: first items appear at BOTTOM. Order: error → endRef → loading → messages(newest first) */}
-            
-            {error && (
-              <motion.div
-                className="self-start max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-3 rounded-2xl text-sm"
-                initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  background: "var(--danger-light)",
-                  border: "1px solid var(--danger)",
-                  color: "var(--danger)",
-                }}
-              >
-                ⚠️ {error}
-              </motion.div>
-            )}
-
-            <div ref={endOfMessagesRef} />
-
-            {isLoading && (
-              <motion.div
-                className="ai-thinking self-start"
-                initial={
-                  motionReduced ? false : { opacity: 0, y: motionDistance(8) }
-                }
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: motionDuration(0.22) }}
-              >
-                AI 正在思考...
-              </motion.div>
-            )}
-
-            {[...messages].reverse().map((msg, index) => (
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 flex flex-col px-2 sm:px-4 py-4 gap-3">
+            {messages.map((msg, index) => (
               <motion.div
                 key={msg.id}
                 initial={
@@ -224,7 +195,7 @@ function StageContent() {
                     ? false
                     : {
                         opacity: 0,
-                        y: motionDistance(-16),
+                        y: motionDistance(16),
                         scale: motionScale(0.97),
                       }
                 }
@@ -272,6 +243,37 @@ function StageContent() {
                 </div>
               </motion.div>
             ))}
+
+            {isLoading && (
+              <motion.div
+                className="ai-thinking self-start"
+                initial={
+                  motionReduced ? false : { opacity: 0, y: motionDistance(8) }
+                }
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: motionDuration(0.22) }}
+              >
+                AI 正在思考...
+              </motion.div>
+            )}
+
+            {error && (
+              <motion.div
+                className="self-start max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-3 rounded-2xl text-sm"
+                initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: "var(--danger-light)",
+                  border: "1px solid var(--danger)",
+                  color: "var(--danger)",
+                }}
+              >
+                ⚠️ {error}
+              </motion.div>
+            )}
+
+
           </div>
         )}
 

@@ -11,10 +11,9 @@ import {
   PinLocation01Icon,
 } from "@hugeicons/core-free-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { getProviderIcon, OpenAiIcon, AnthropicIcon, GeminiIcon, OllamaIcon } from "@/components/icons/provider-icons";
+import { OpenAiIcon, AnthropicIcon, GeminiIcon, OllamaIcon } from "@/components/icons/provider-icons";
 import { getActiveModelSelection, ensureProvidersReady, setActiveModelSelection } from "@/lib/model-settings";
-import { type Provider, type Model, getProviders, getModelsByProvider } from "@/lib/db";
-import { motion } from "framer-motion";
+import { type Provider, type Model, getModelsByProvider } from "@/lib/db";
 
 function ModelIcon({ modelName }: { modelName: string }) {
   const n = modelName.toLowerCase();
@@ -79,29 +78,35 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const loadData = async () => {
-    try {
-      const readyProviders = await ensureProvidersReady();
-      setProviders(readyProviders);
-
-      const activeSelection = await getActiveModelSelection();
-      setActiveProviderId(activeSelection.activeProviderId);
-      setActiveModelId(activeSelection.activeModelId);
-
-      let allModels: Model[] = [];
-      for (const p of readyProviders) {
-        if (!p.is_enabled) continue;
-        const pModels = await getModelsByProvider(p.id);
-        allModels = [...allModels, ...pModels.filter((m: Model) => m.is_enabled)];
-      }
-      setModels(allModels);
-    } catch (e) {
-      console.error("Failed to load models for selector", e);
-    }
-  };
-
   useEffect(() => {
+    let ignore = false;
+    
+    const loadData = async () => {
+      try {
+        const readyProviders = await ensureProvidersReady();
+        if (ignore) return;
+        setProviders(readyProviders);
+
+        const activeSelection = await getActiveModelSelection();
+        if (ignore) return;
+        setActiveProviderId(activeSelection.activeProviderId);
+        setActiveModelId(activeSelection.activeModelId);
+
+        let allModels: Model[] = [];
+        for (const p of readyProviders) {
+          if (!p.is_enabled) continue;
+          const pModels = await getModelsByProvider(p.id);
+          allModels = [...allModels, ...pModels.filter((m: Model) => m.is_enabled)];
+        }
+        if (ignore) return;
+        setModels(allModels);
+      } catch (e) {
+        console.error("Failed to load models for selector", e);
+      }
+    };
+
     loadData();
+    return () => { ignore = true; };
   }, []);
 
   const handleSelect = async (providerId: string, modelId: string) => {
@@ -211,7 +216,6 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
           ) : (
             groupedModels.map(([providerId, groupModels]) => {
                 const provider = providers.find(p => p.id === providerId);
-                const ProviderIcon = provider ? getProviderIcon(provider.id) : null;
                 const displayName = provider ? provider.name : providerId;
                 
                 return (

@@ -33,6 +33,10 @@ export async function createThread(id: string, title: string, model_id?: string)
   await invoke('db_create_thread', { id, title, modelId: model_id });
 }
 
+export async function updateThreadTitle(id: string, title: string): Promise<void> {
+  await invoke('db_update_thread_title', { id, title });
+}
+
 export async function updateThreadTime(): Promise<void> {
   // Update thread time is handled automatically by rust when saving a message. 
   // Should rarely be needed on frontend directly now, but we'll leave invoke if needed.
@@ -67,6 +71,7 @@ export interface Provider {
   is_enabled: boolean;
   api_key?: string;
   base_url?: string;
+  provider_type?: string;
 }
 
 export async function getProviders(): Promise<Provider[]> {

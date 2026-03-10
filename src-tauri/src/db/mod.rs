@@ -87,6 +87,11 @@ impl Database {
             .execute(&pool)
             .await;
 
+        // 兼容旧版本：尝试在存在 providers 表的情况下为其添加 provider_type（如果已有则忽略错误）
+        let _ = sqlx::query("ALTER TABLE providers ADD COLUMN provider_type TEXT")
+            .execute(&pool)
+            .await;
+
         Ok(Self { pool })
     }
 
@@ -184,6 +189,15 @@ impl Database {
                 .execute(&self.pool)
                 .await?;
         }
+        Ok(())
+    }
+
+    pub async fn update_thread_title(&self, id: &str, title: &str) -> Result<()> {
+        sqlx::query(r#"UPDATE threads SET title = ? WHERE id = ?"#)
+            .bind(title)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 

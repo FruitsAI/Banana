@@ -89,6 +89,7 @@ export async function ensureProvidersReady(): Promise<Provider[]> {
         is_enabled: seedProvider.id === "openai",
         base_url: resolveDefaultProviderBaseUrl(seedProvider.id),
         api_key: undefined,
+        provider_type: seedProvider.id === "openrouter" ? "openai" : seedProvider.id,
       });
     }
   }
@@ -107,6 +108,30 @@ export async function ensureProvidersReady(): Promise<Provider[]> {
       await upsertProvider({
         ...provider,
         base_url: resolveDefaultProviderBaseUrl(provider.id),
+      });
+    }
+  }
+
+  // 对已有 provider 做一次 provider_type 补齐（仅在 provider_type 为空时）
+  const allProviders = await getProviders();
+  const providersWithMissingType = allProviders.filter(
+    (provider) => !provider.provider_type
+  );
+
+  if (providersWithMissingType.length > 0) {
+    const KNOWN_TYPES: Record<string, string> = {
+      openai: "openai",
+      anthropic: "anthropic",
+      gemini: "gemini",
+      ollama: "ollama",
+      openrouter: "openai",
+    };
+
+    for (const provider of providersWithMissingType) {
+      const inferredType = KNOWN_TYPES[provider.id.toLowerCase()] ?? "openai";
+      await upsertProvider({
+        ...provider,
+        provider_type: inferredType,
       });
     }
   }

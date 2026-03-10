@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { appendMessage, getProviders, createThread } from "@/lib/db";
+import { useState, useCallback, useEffect } from "react";
+import { appendMessage, getProviders, createThread, getMessages, updateThreadTitle } from "@/lib/db";
 import { getActiveModelSelection, ensureProvidersReady, ensureProviderModelsReady } from "@/lib/model-settings";
 import { v4 as uuidv4 } from "uuid";
 
@@ -12,13 +12,8 @@ export interface ChatMessage {
 /**
  * 核心钩子：大语言模型与 MCP 工具调度 (useBananaChat)
  * @description 
- *   封装了基于 Vercel AI SDK 的核心流式对话渲染业务。
- *   内置对用户自定义 OpenAI 兼容 Provider（如 NVIDIA、Kimi 等）的支持，以及本地 MCP 协议的系统级桥接。
- *   集成了以下功能：
- *     1. UI 的 Loading 态与通用错误捕获；
- *     2. LLM 流式消息的分片聚合展示；
- *     3. 将对话持久化至 Tauri 底层 SQLite。
- * @param {string} threadId - 当前激活的会话 (Thread) ID，用于定位数据库消息列
+ *   封装了基于 Vercel AI SDK 的 core 流式对话渲染业务。
+ *   支持 OpenAI 兼容 Provider，以及本地 MCP 协议桥接。
  */
 export function useBananaChat(threadId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -26,14 +21,29 @@ export function useBananaChat(threadId: string) {
   const [error, setError] = useState<string | null>(null);
 
   const loadMessages = useCallback(async () => {
-    try {
-      // Intentionally left empty for future implementations
-    } catch (e) {
-      console.error(e);
+    if (!threadId || threadId === "default-thread") {
+      setMessages([]);
+      return;
     }
-  }, []);
+    try {
+      const data = await getMessages(threadId);
+      setMessages(data.map(m => ({
+        id: m.id,
+        role: m.role as "user" | "assistant" | "system",
+        content: m.content
+      })));
+    } catch (e) {
+      console.error("Failed to load messages", e);
+    }
+  }, [threadId]);
 
-  const reload = useCallback(() => {}, []);
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
+
+  const reload = useCallback(() => {
+    loadMessages();
+  }, [loadMessages]);
 
   const append = useCallback(
     async (
@@ -58,12 +68,34 @@ export function useBananaChat(threadId: string) {
       }));
 
       try {
-        if (threadId) {
-          // Ensure the thread row exists before inserting a message (FK constraint)
+        const { activeProviderId, activeModelId } = await getActiveModelSelection();
+        const providers = await getProviders();
+        
+        let targetProviderId = activeProviderId;
+        let targetModelId = activeModelId;
+        
+        // Fallback context
+        if (!targetProviderId || !targetModelId) {
+          const defaultProviders = await ensureProvidersReady();
+          if (defaultProviders.length > 0) {
+             const defaultProvider = defaultProviders[0];
+             targetProviderId = defaultProvider.id;
+             const models = await ensureProviderModelsReady(defaultProvider.id);
+             if (models.length > 0) {
+                 targetModelId = models[0].id;
+             } else {
+                 throw new Error("模型未配置，请前往设置配置");
+             }
+          } else {
+              throw new Error("供应商尚未就绪，请前往设置页面检查配置");
+          }
+        }
+
+        if (threadId && threadId !== "default-thread") {
           try {
-            await createThread(threadId, "新会话");
+            await createThread(threadId, "新会话", targetModelId);
           } catch {
-            // Thread already exists — safe to ignore
+            // Already exists
           }
           await appendMessage({
             id: newMessage.id,
@@ -73,73 +105,29 @@ export function useBananaChat(threadId: string) {
           });
         }
         
-        const { activeProviderId, activeModelId } = await getActiveModelSelection();
-        const providers = await getProviders();
-        
-        let targetProviderId = activeProviderId;
-        let targetModelId = activeModelId;
-        
-        // Fallback context if no selection is made yet
-        if (!targetProviderId || !targetModelId) {
-          const defaultProviders = await ensureProvidersReady();
-          if (defaultProviders.length > 0) {
-             const defaultProvider = defaultProviders[0];
-             targetProviderId = defaultProvider.id;
-             const models = await ensureProviderModelsReady(defaultProvider.id);
-             if (models.length > 0) {
-                targetModelId = models[0].id;
-             } else {
-                 throw new Error("模型未配置，请前往设置配置");
-             }
-          } else {
-              throw new Error("供应商尚未就绪，请前往设置页面检查配置");
-          }
-        }
-
         const activeProvider = providers.find(p => p.id === targetProviderId);
-        if (!activeProvider) {
-          throw new Error("当前激活的供应商未找到，请检查设置。");
-        }
+        if (!activeProvider) throw new Error("供应商未找到");
 
         const apiKey = activeProvider.api_key;
-        const baseURL = activeProvider.base_url;
+        const baseURL = activeProvider.base_url || "https://api.openai.com/v1";
 
-        if (!apiKey) {
-          throw new Error(`[${activeProvider.name}] API Key 未配置，请先在设置中填写。`);
-        }
+        if (!apiKey) throw new Error("API Key 未配置");
 
-        const finalBaseURL = baseURL || "https://api.openai.com/v1";
-        const finalModelId = targetModelId || "gpt-4o-mini";
-        
-        console.log("[BananaChat] 🚀 API 调用配置:", {
-          provider: activeProvider.name,
-          providerId: activeProvider.id,
-          modelId: finalModelId,
-          baseURL: finalBaseURL,
-          apiKeyPresent: !!apiKey,
-          apiKeyPreview: apiKey ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : "(empty)",
-          messageCount: coreMessages.length,
-        });
-
-        // Call server-side API route to bypass CORS restrictions
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: coreMessages,
             apiKey,
-            baseURL: finalBaseURL,
-            modelId: finalModelId,
+            baseURL,
+            modelId: targetModelId,
+            providerType: activeProvider.provider_type ?? "openai",
           }),
         });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `API 请求失败 (HTTP ${response.status})`);
-        }
-
-        if (!response.body) {
-          throw new Error("API 返回了空的响应体");
+          throw new Error(errorData.error || `API 错误 ${response.status}`);
         }
 
         const assistantMessageId = uuidv4();
@@ -150,16 +138,13 @@ export function useBananaChat(threadId: string) {
           { id: assistantMessageId, role: "assistant", content: "" },
         ]);
 
-        // Read the plain text streaming response
-        const reader = response.body.getReader();
+        const reader = response.body!.getReader();
         const decoder = new TextDecoder();
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          assistantContent += chunk;
+          assistantContent += decoder.decode(value, { stream: true });
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMessageId
@@ -169,22 +154,51 @@ export function useBananaChat(threadId: string) {
           );
         }
 
-        if (threadId) {
+        if (threadId && threadId !== "default-thread") {
           await appendMessage({
             id: assistantMessageId,
             thread_id: threadId,
             role: "assistant",
             content: assistantContent,
           });
+
+          // 第一条消息自动总结标题
+          if (newMessagesList.length === 1) {
+            try {
+              const summaryResponse = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  messages: [
+                    ...coreMessages,
+                    { role: "assistant", content: assistantContent },
+                    { role: "user", content: "请用10字以内总结这段对话作为标题，不要标点。" }
+                  ],
+                  apiKey,
+                  baseURL,
+                  modelId: targetModelId,
+                  providerType: activeProvider.provider_type ?? "openai",
+                }),
+              });
+              if (summaryResponse.ok && summaryResponse.body) {
+                const sReader = summaryResponse.body.getReader();
+                let summaryTitle = "";
+                while (true) {
+                  const { done, value } = await sReader.read();
+                  if (done) break;
+                  summaryTitle += decoder.decode(value, { stream: true });
+                }
+                const cleanTitle = summaryTitle.trim().replace(/[#*`"']/g, '');
+                if (cleanTitle) {
+                  await updateThreadTitle(threadId, cleanTitle);
+                }
+              }
+            } catch (e) { console.error(e); }
+          }
+          window.dispatchEvent(new CustomEvent("refresh-threads"));
         }
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
-        console.error("[BananaChat] ❌ Chat Error:", err);
-        console.error("[BananaChat] 错误详情:", {
-          errorType: err instanceof Error ? err.constructor.name : typeof err,
-          message: errMsg,
-          stack: err instanceof Error ? err.stack : undefined,
-        });
         setError(errMsg);
       } finally {
         setIsLoading(false);
@@ -193,13 +207,5 @@ export function useBananaChat(threadId: string) {
     [messages, threadId]
   );
 
-  return {
-    messages,
-    setMessages,
-    isLoading,
-    error,
-    append,
-    reload,
-    loadMessages,
-  };
+  return { messages, setMessages, isLoading, error, append, reload, loadMessages };
 }

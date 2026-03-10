@@ -65,6 +65,29 @@ const PROVIDER_TYPE_DEFAULT_BASE_URLS: Record<ProviderType, string | undefined> 
 };
 
 /**
+ * 不同供应商类型对应的 API 路径后缀。
+ * @description 用于预览和实际 API 调用时拼接正确的路径。
+ */
+const PROVIDER_TYPE_API_SUFFIXES: Record<string, string> = {
+  openai: "/chat/completions",
+  "openai-response": "/responses",
+  gemini: "/chat/completions",
+  anthropic: "/messages",
+  "new-api": "/chat/completions",
+  ollama: "/chat/completions",
+};
+
+/**
+ * 获取当前 Provider 的 API 路径后缀。
+ * @param providerType - 供应商类型标识
+ * @returns API 路径后缀
+ */
+function getApiSuffix(providerType?: string): string {
+  if (!providerType) return "/chat/completions";
+  return PROVIDER_TYPE_API_SUFFIXES[providerType] ?? "/chat/completions";
+}
+
+/**
  * 获取 Provider 徽标底色。
  * @param providerId - 供应商标识
  * @returns 颜色值
@@ -571,6 +594,7 @@ export function ModelsSetting() {
       is_enabled: true,
       api_key: undefined,
       base_url: PROVIDER_TYPE_DEFAULT_BASE_URLS[formValues.providerType],
+      provider_type: formValues.providerType,
     };
 
     try {
@@ -786,7 +810,7 @@ export function ModelsSetting() {
                     <span>预览:</span>
                     <span className="truncate opacity-50">
                       {baseUrl.trim()
-                        ? `${baseUrl.trim()}/chat/completions`
+                        ? `${baseUrl.trim()}${getApiSuffix(activeProvider?.provider_type)}`
                         : "请先填写 API 地址"}
                     </span>
                   </span>

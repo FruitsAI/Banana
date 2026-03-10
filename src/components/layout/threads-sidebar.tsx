@@ -10,8 +10,18 @@ import { v4 as uuidv4 } from "uuid";
 import { getThreads, createThread, type Thread } from "@/lib/db";
 
 function formatTime(dateStr: string) {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  try {
+    // SQLite TIMESTAMP 默认是 UTC，JavaScript Date 需要 'Z' 标识来解析为 UTC
+    const date = new Date(dateStr.includes('Z') ? dateStr : dateStr + 'Z');
+    const now = new Date();
+    
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'numeric', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
 }
 
 function getDayCategory(dateStr: string) {
@@ -100,10 +110,6 @@ function ThreadsSidebarContent() {
 
   const [threads, setThreads] = useState<Thread[]>([]);
 
-  useEffect(() => {
-    loadThreads();
-  }, []);
-
   const loadThreads = async () => {
     try {
       const data = await getThreads();
@@ -114,6 +120,28 @@ function ThreadsSidebarContent() {
       console.error("Failed to load threads", e);
     }
   };
+
+  useEffect(() => {
+    let ignore = false;
+    
+    const load = () => {
+      getThreads().then((data) => {
+        if (ignore || !data) return;
+        data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setThreads(data);
+      });
+    };
+
+    load();
+
+    // 监听刷新事件
+    window.addEventListener("refresh-threads", load);
+
+    return () => {
+      ignore = true;
+      window.removeEventListener("refresh-threads", load);
+    };
+  }, []);
 
   const handleCreateThread = async () => {
     try {
