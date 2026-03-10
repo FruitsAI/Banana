@@ -4,15 +4,14 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, Search01Icon, AiMagicIcon } from "@hugeicons/core-free-icons";
 import { motion, useReducedMotion } from "framer-motion";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
-import { getThreads, createThread, type Thread } from "@/lib/db";
+import { getThreads, type Thread } from "@/lib/db";
 
 function formatTime(dateStr: string) {
   try {
-    // SQLite TIMESTAMP 默认是 UTC，JavaScript Date 需要 'Z' 标识来解析为 UTC
-    const date = new Date(dateStr.includes('Z') ? dateStr : dateStr + 'Z');
+    const date = new Date(dateStr.includes('T') || dateStr.includes('Z') ? dateStr : dateStr.replace(' ', 'T') + 'Z');
     const now = new Date();
     
     if (date.toDateString() === now.toDateString()) {
@@ -25,17 +24,18 @@ function formatTime(dateStr: string) {
 }
 
 function getDayCategory(dateStr: string) {
-  const date = new Date(dateStr);
-  const now = new Date();
-  
-  const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-  if (isToday) return "today";
-
-  const yesterday = new Date();
-  yesterday.setDate(now.getDate() - 1);
-  const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
-  if (isYesterday) return "yesterday";
-
+  try {
+    const date = new Date(dateStr.includes('T') || dateStr.includes('Z') ? dateStr : dateStr.replace(' ', 'T') + 'Z');
+    const now = new Date();
+    
+    if (date.toDateString() === now.toDateString()) return "today";
+    
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) return "yesterday";
+  } catch (e) {
+    console.warn("Time parse failed", e);
+  }
   return "earlier";
 }
 
@@ -51,7 +51,9 @@ function ThreadItemComponent({ thread, index, selected, onClick }: { thread: Thr
   return (
     <motion.div
       onClick={onClick}
-      className="stage-action-button px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl cursor-pointer group border"
+      className={`stage-action-button px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl cursor-pointer group border transition-all ${
+        selected ? 'selected-thread' : ''
+      }`}
       style={{
         background: selected ? "var(--brand-primary-lighter)" : "transparent",
         borderColor: selected ? "var(--brand-primary-border)" : "var(--glass-border)",
@@ -110,44 +112,59 @@ function ThreadsSidebarContent() {
 
   const [threads, setThreads] = useState<Thread[]>([]);
 
-  const loadThreads = async () => {
+  const loadThreads = useCallback(async () => {
     try {
       const data = await getThreads();
-      // Sort descending by created_at
-      data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      if (!data) return;
+      // Sort descending by created_at or updated_at
+      data.sort((a, b) => {
+        const timeA = new Date(a.updated_at || a.created_at).getTime();
+        const timeB = new Date(b.updated_at || b.created_at).getTime();
+        return timeB - timeA;
+      });
       setThreads(data);
     } catch (e) {
       console.error("Failed to load threads", e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
     
-    const load = () => {
-      getThreads().then((data) => {
+    const load = async () => {
+      try {
+        const data = await getThreads();
         if (ignore || !data) return;
-        data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        data.sort((a, b) => {
+          const timeA = new Date(a.updated_at || a.created_at).getTime();
+          const timeB = new Date(b.updated_at || b.created_at).getTime();
+          return timeB - timeA;
+        });
         setThreads(data);
-      });
+      } catch (e) {
+        console.error("Failed to load threads", e);
+      }
     };
 
     load();
 
     // 监听刷新事件
-    window.addEventListener("refresh-threads", load);
-
+    const handleRefresh = () => {
+      loadThreads();
+    };
+    
+    window.addEventListener("refresh-threads", handleRefresh);
     return () => {
       ignore = true;
-      window.removeEventListener("refresh-threads", load);
+      window.removeEventListener("refresh-threads", handleRefresh);
     };
-  }, []);
+  }, [loadThreads]);
 
   const handleCreateThread = async () => {
     try {
       const newId = uuidv4();
-      await createThread(newId, "新会话");
-      await loadThreads();
+      // 这里可以先不创建数据库记录，等发消息时核心 Hook 会处理
+      // 导航到新 ID
       router.push(`/?thread=${newId}`);
     } catch (e) {
       console.error("Failed to create thread", e);

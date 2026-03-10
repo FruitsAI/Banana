@@ -91,15 +91,25 @@ export function useBananaChat(threadId: string) {
           }
         }
 
-        if (threadId && threadId !== "default-thread") {
+        // 处理新会话的首次创建
+        let currentThreadId = threadId;
+        if (threadId === "default-thread") {
+          currentThreadId = uuidv4();
+          // 更新 URL 参数以保持持久化
+          const url = new URL(window.location.href);
+          url.searchParams.set("thread", currentThreadId);
+          window.history.replaceState(null, "", url.toString());
+        }
+
+        if (currentThreadId) {
           try {
-            await createThread(threadId, "新会话", targetModelId);
+            await createThread(currentThreadId, "新会话", targetModelId);
           } catch {
             // Already exists
           }
           await appendMessage({
             id: newMessage.id,
-            thread_id: threadId,
+            thread_id: currentThreadId,
             role: newMessage.role,
             content: newMessage.content,
           });
@@ -154,10 +164,10 @@ export function useBananaChat(threadId: string) {
           );
         }
 
-        if (threadId && threadId !== "default-thread") {
+        if (currentThreadId) {
           await appendMessage({
             id: assistantMessageId,
-            thread_id: threadId,
+            thread_id: currentThreadId,
             role: "assistant",
             content: assistantContent,
           });
@@ -172,7 +182,7 @@ export function useBananaChat(threadId: string) {
                   messages: [
                     ...coreMessages,
                     { role: "assistant", content: assistantContent },
-                    { role: "user", content: "请用10字以内总结这段对话作为标题，不要标点。" }
+                    { role: "user", content: "请用10字以内总结这段对话作为标题，不要标点、引号或多余说明。仅输出标题文字。" }
                   ],
                   apiKey,
                   baseURL,
@@ -190,10 +200,10 @@ export function useBananaChat(threadId: string) {
                 }
                 const cleanTitle = summaryTitle.trim().replace(/[#*`"']/g, '');
                 if (cleanTitle) {
-                  await updateThreadTitle(threadId, cleanTitle);
+                  await updateThreadTitle(currentThreadId, cleanTitle);
                 }
               }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Summary failed", e); }
           }
           window.dispatchEvent(new CustomEvent("refresh-threads"));
         }
