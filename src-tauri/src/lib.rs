@@ -39,6 +39,8 @@ pub fn run() {
             commands::db_upsert_mcp_server,
             commands::db_get_threads,
             commands::db_create_thread,
+            commands::db_update_thread_title,
+            commands::db_delete_thread,
             commands::db_append_message,
             commands::db_get_messages
         ])

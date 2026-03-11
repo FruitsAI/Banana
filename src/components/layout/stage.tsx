@@ -8,12 +8,14 @@ import {
   ArrowUp02Icon,
   InternetIcon,
   AiBrain01Icon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, KeyboardEvent, useEffect, useRef } from "react";
 import { useBananaChat } from "@/hooks/useBananaChat";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { cn } from "@/lib/utils";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
 import { ModelSelector } from "@/components/models/model-selector";
 
@@ -72,7 +74,7 @@ function StageContent() {
       className="stage-aurora flex-1 flex flex-col min-w-0 min-h-0 h-full"
       style={{ background: "var(--bg-primary)" }}
     >
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden px-4 sm:px-8 py-4 sm:py-6">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center min-h-0">
             <motion.div
@@ -186,7 +188,7 @@ function StageContent() {
             </motion.div>
           </div>
         ) : (
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 flex flex-col px-2 sm:px-4 py-4 gap-3">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 flex flex-col py-4 gap-3 w-full">
             {messages.map((msg, index) => (
               <motion.div
                 key={msg.id}
@@ -207,9 +209,12 @@ function StageContent() {
                     ? 0
                     : motionDuration(Math.min(index * 0.035, 0.14)),
                 }}
-                className={`message-bubble max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-3 sm:px-5 sm:py-4 rounded-2xl ${
-                  msg.role === "user" ? "self-end" : "self-start"
-                }`}
+                className={cn(
+                  "message-bubble px-4 py-3 sm:px-5 sm:py-4 rounded-2xl",
+                  msg.role === "user" 
+                    ? "self-end max-w-[85%] sm:max-w-[75%] lg:max-w-[70%]" 
+                    : "w-full"
+                )}
                 style={{
                   background:
                     msg.role === "user"
@@ -236,10 +241,10 @@ function StageContent() {
                 }}
               >
                 <div
-                  className="prose dark:prose-invert max-w-none text-current"
+                  className="prose dark:prose-invert max-w-none w-full text-current"
                   style={{ overflowWrap: "anywhere" }}
                 >
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <ThoughtContent content={msg.content} />
                 </div>
               </motion.div>
             ))}
@@ -260,7 +265,7 @@ function StageContent() {
 
             {error && (
               <motion.div
-                className="self-start max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] px-4 py-3 rounded-2xl text-sm"
+                className="self-start w-full px-4 py-3 rounded-2xl text-sm"
                 initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{
@@ -277,9 +282,9 @@ function StageContent() {
           </div>
         )}
 
-        <div className="w-full max-w-3xl mx-auto mt-auto">
+        <div className="w-full mt-auto">
           <motion.div
-            className="composer rounded-2xl p-4 sm:p-5 transition-all duration-200 border"
+            className="composer w-full rounded-2xl p-4 sm:p-5 transition-all duration-200 border"
             style={{
               background: "var(--glass-elevated)",
               borderColor: "var(--glass-border)",
@@ -304,10 +309,10 @@ function StageContent() {
               spellCheck={false}
               autoComplete="off"
               autoCorrect="off"
-              className="w-full bg-transparent resize-none text-sm sm:text-base mb-4 p-0 outline-none"
+              className="w-full bg-transparent resize-none text-sm sm:text-base mb-3 p-0 outline-none"
               style={{
                 color: "var(--text-primary)",
-                minHeight: "60px",
+                minHeight: "44px",
                 maxHeight: "300px",
               }}
             />
@@ -428,6 +433,103 @@ function StageContent() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Reasoning Thought Component (Collapsible)
+ */
+function ThoughtBlock({ thought, isStreaming }: { thought: string; isStreaming: boolean }) {
+  const [userExpanded, setUserExpanded] = useState(false);
+  const isExpanded = isStreaming || userExpanded;
+
+  return (
+    <div
+      className="text-xs mb-3 rounded-lg border bg-glass-subtle/50 overflow-hidden transition-colors duration-300 w-full"
+      style={{
+        borderColor: "var(--glass-border)",
+      }}
+    >
+      {/* 头部：切换开关 */}
+      <button
+        onClick={() => !isStreaming && setUserExpanded(!userExpanded)}
+        className={cn(
+          "w-full flex items-center justify-between p-3 transition-colors",
+          !isStreaming && "hover:bg-glass-hover"
+        )}
+        disabled={isStreaming}
+      >
+        <div className="flex items-center gap-1.5 font-semibold text-[10px] uppercase tracking-wider opacity-70" style={{ color: "var(--text-tertiary)" }}>
+          <HugeiconsIcon
+            icon={AiBrain01Icon}
+            size={12}
+            className={cn(isStreaming && "animate-pulse")}
+          />
+          <span>{isStreaming ? "正在思考..." : "推理思维"}</span>
+        </div>
+        {!isStreaming && (
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          >
+            <HugeiconsIcon icon={ArrowRight01Icon} size={12} style={{ color: "var(--text-quaternary)" }} />
+          </motion.div>
+        )}
+      </button>
+
+      {/* 内容区：动画折叠 */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <div className="px-3 pb-3 italic" style={{ color: "var(--text-tertiary)" }}>
+              <ReactMarkdown>{thought}</ReactMarkdown>
+              {isStreaming && (
+                 <div className="flex gap-1 mt-2">
+                    <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce" />
+                    <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce [animation-delay:0.2s]" />
+                    <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce [animation-delay:0.4s]" />
+                 </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Main Content Parser for Messages
+ */
+function ThoughtContent({ content }: { content: string }) {
+  // 处理推理思维解析
+  let thought = "";
+  let mainContent = content;
+  let isThinking = false;
+
+  const thinkStartIndex = content.indexOf("<think>");
+  if (thinkStartIndex !== -1) {
+    const thinkEndIndex = content.indexOf("</think>");
+    if (thinkEndIndex !== -1) {
+      thought = content.substring(thinkStartIndex + 7, thinkEndIndex).trim();
+      mainContent = (content.substring(0, thinkStartIndex) + content.substring(thinkEndIndex + 8)).trim();
+    } else {
+      thought = content.substring(thinkStartIndex + 7).trim();
+      mainContent = content.substring(0, thinkStartIndex).trim();
+      isThinking = true;
+    }
+  }
+
+  return (
+    <>
+      {thought && <ThoughtBlock thought={thought} isStreaming={isThinking} />}
+      {mainContent && <ReactMarkdown>{mainContent}</ReactMarkdown>}
+    </>
   );
 }
 

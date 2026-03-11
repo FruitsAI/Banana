@@ -2,12 +2,13 @@
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, Search01Icon, AiMagicIcon } from "@hugeicons/core-free-icons";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Delete02Icon } from "@hugeicons/core-free-icons";
 import { v4 as uuidv4 } from "uuid";
-import { getThreads, type Thread } from "@/lib/db";
+import { getThreads, deleteThread, type Thread } from "@/lib/db";
 
 function formatTime(dateStr: string) {
   try {
@@ -39,7 +40,7 @@ function getDayCategory(dateStr: string) {
   return "earlier";
 }
 
-function ThreadItemComponent({ thread, index, selected, onClick }: { thread: Thread; index: number; selected: boolean; onClick: () => void }) {
+function ThreadItemComponent({ thread, index, selected, onClick, onContextMenu }: { thread: Thread; index: number; selected: boolean; onClick: () => void; onContextMenu: (e: React.MouseEvent, threadId: string) => void }) {
   const shouldReduceMotion = useReducedMotion();
   const { factors, intensity } = useAnimationIntensity();
   const motionReduced = shouldReduceMotion || intensity === "low";
@@ -51,6 +52,7 @@ function ThreadItemComponent({ thread, index, selected, onClick }: { thread: Thr
   return (
     <motion.div
       onClick={onClick}
+      onContextMenu={(e) => onContextMenu(e, thread.id)}
       className={`stage-action-button px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl cursor-pointer group border transition-all ${
         selected ? 'selected-thread' : ''
       }`}
@@ -111,6 +113,8 @@ function ThreadsSidebarContent() {
   const activeThreadId = searchParams.get("thread");
 
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; threadId: string } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -154,11 +158,40 @@ function ThreadsSidebarContent() {
     };
     
     window.addEventListener("refresh-threads", handleRefresh);
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    window.addEventListener("click", handleClickOutside);
+
     return () => {
       ignore = true;
       window.removeEventListener("refresh-threads", handleRefresh);
+      window.removeEventListener("click", handleClickOutside);
     };
   }, [loadThreads]);
+
+  const handleContextMenu = (e: React.MouseEvent, threadId: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, threadId });
+  };
+
+  const handleDeleteThread = async (id: string) => {
+    try {
+      await deleteThread(id);
+      setContextMenu(null);
+      await loadThreads();
+      
+      // 如果删除的是当前选中的会话，跳转到新会话
+      if (activeThreadId === id) {
+        router.push("/");
+      }
+    } catch (e) {
+      console.error("Failed to delete thread", e);
+    }
+  };
 
   const handleCreateThread = async () => {
     try {
@@ -290,6 +323,7 @@ function ThreadsSidebarContent() {
                   index={index}
                   selected={activeThreadId === thread.id}
                   onClick={() => router.push(`/?thread=${thread.id}`)}
+                  onContextMenu={handleContextMenu}
                 />
               ))}
             </div>
@@ -313,6 +347,7 @@ function ThreadsSidebarContent() {
                   index={groupedThreads.today.length + index}
                   selected={activeThreadId === thread.id}
                   onClick={() => router.push(`/?thread=${thread.id}`)}
+                  onContextMenu={handleContextMenu}
                 />
               ))}
             </div>
@@ -336,6 +371,7 @@ function ThreadsSidebarContent() {
                   index={groupedThreads.today.length + groupedThreads.yesterday.length + index}
                   selected={activeThreadId === thread.id}
                   onClick={() => router.push(`/?thread=${thread.id}`)}
+                  onContextMenu={handleContextMenu}
                 />
               ))}
             </div>
@@ -365,6 +401,42 @@ function ThreadsSidebarContent() {
           <span className="text-xs sm:text-sm hidden sm:inline">快捷指令</span>
         </motion.button>
       </div>
+
+      {/* Context Menu */}
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div
+            ref={menuRef}
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+            style={{
+              position: "fixed",
+              top: contextMenu.y,
+              left: contextMenu.x,
+              zIndex: 1000,
+              minWidth: "140px",
+              background: "var(--glass-surface)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              border: "1px solid var(--glass-border)",
+              borderRadius: "12px",
+              boxShadow: "0 10px 30px -10px rgba(0,0,0,0.3)",
+              padding: "4px",
+            }}
+          >
+            <motion.button
+              onClick={() => handleDeleteThread(contextMenu.threadId)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+              whileHover={{ x: 2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <HugeiconsIcon icon={Delete02Icon} size={16} />
+              <span>删除会话</span>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

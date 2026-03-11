@@ -164,6 +164,8 @@ export function useBananaChat(threadId: string) {
           );
         }
 
+        setIsLoading(false);
+
         if (currentThreadId) {
           await appendMessage({
             id: assistantMessageId,
@@ -171,17 +173,23 @@ export function useBananaChat(threadId: string) {
             role: "assistant",
             content: assistantContent,
           });
-
+          
+          // 立即刷新侧边栏以显示新会话
+          window.dispatchEvent(new CustomEvent("refresh-threads"));
+          
           // 第一条消息自动总结标题
           if (newMessagesList.length === 1) {
             try {
+              // 清理掉推理思维后再进行总结，避免干扰
+              const cleanContextContent = assistantContent.replace(/<think>[\s\S]*?<\/think>/, "").trim();
+              
               const summaryResponse = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   messages: [
                     ...coreMessages,
-                    { role: "assistant", content: assistantContent },
+                    { role: "assistant", content: cleanContextContent },
                     { role: "user", content: "请用10字以内总结这段对话作为标题，不要标点、引号或多余说明。仅输出标题文字。" }
                   ],
                   apiKey,
@@ -198,19 +206,27 @@ export function useBananaChat(threadId: string) {
                   if (done) break;
                   summaryTitle += decoder.decode(value, { stream: true });
                 }
-                const cleanTitle = summaryTitle.trim().replace(/[#*`"']/g, '');
+                // 二次清理：有些模型即便要求了也可能输出 <think>
+                const cleanTitle = summaryTitle
+                   .replace(/<think>[\s\S]*?<\/think>/, "")
+                   .replace(/[#*`"']/g, '')
+                   .trim();
+                
                 if (cleanTitle) {
                   await updateThreadTitle(currentThreadId, cleanTitle);
+                  // 总结完成后再次刷新以更新标题
+                  window.dispatchEvent(new CustomEvent("refresh-threads"));
                 }
               }
             } catch (e) { console.error("Summary failed", e); }
           }
-          window.dispatchEvent(new CustomEvent("refresh-threads"));
         }
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
         setError(errMsg);
       } finally {
+        // isLoading is already set to false after stream ends in the try block
+        // but we keep it here for safety in case of errors before stream starts
         setIsLoading(false);
       }
     },

@@ -201,6 +201,14 @@ impl Database {
         Ok(())
     }
 
+    pub async fn delete_thread(&self, id: &str) -> Result<()> {
+        sqlx::query(r#"DELETE FROM threads WHERE id = ?"#)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn update_thread_time(&self, id: &str) -> Result<()> {
         sqlx::query(r#"UPDATE threads SET updated_at = CURRENT_TIMESTAMP WHERE id = ?"#)
             .bind(id)

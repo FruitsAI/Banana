@@ -87,6 +87,11 @@ pub async fn db_update_thread_title(
     state.db.update_thread_title(&id, &title).await
 }
 
+#[tauri::command]
+pub async fn db_delete_thread(state: State<'_, AppState>, id: String) -> Result<()> {
+    state.db.delete_thread(&id).await
+}
+
 /// ---- Messages ----
 #[tauri::command]
 pub async fn db_get_messages(
@@ -116,6 +121,7 @@ pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<
         db_get_threads,
         db_create_thread,
         db_update_thread_title,
+        db_delete_thread,
         db_get_messages,
         db_append_message,
     ])
