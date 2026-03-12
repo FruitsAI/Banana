@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
 /**
- * Dialog 相关组件 (模态对话框)
- * @description 
- *   基于 `@radix-ui/react-dialog` 构建，具有原生级别的无障碍访问能力 (a11y)。
- *   提供了覆盖层 (Overlay)、内容区 (Content) 和各种布局子模块。
- *   包含出入场动画，强制焦点锁定。
+ * Dialog 相关组件 (黏土风格模态对话框)
+ * @description
+ *   基于 `@radix-ui/react-dialog` 构建的黏土形态对话框。
+ *   采用蓬松的黏土卡片样式，带有柔和的阴影和弹性动画。
+ *   提供完整的无障碍访问能力 (a11y) 和焦点锁定。
  * @example
  * <Dialog>
  *   <DialogTrigger>打开</DialogTrigger>
@@ -57,7 +57,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/44 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:duration-250 data-[state=closed]:duration-200",
+        "fixed inset-0 z-50 bg-[rgba(42,38,36,0.5)] backdrop-blur-[3px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:duration-300 data-[state=closed]:duration-200",
         className
       )}
       {...props}
@@ -79,14 +79,17 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border p-6 shadow-xl outline-none sm:max-w-lg motion-safe:will-change-transform data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-3 data-[state=open]:duration-300 data-[state=closed]:duration-200",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-5 rounded-[var(--r-2xl)] p-7 outline-none sm:max-w-lg motion-safe:will-change-transform",
+          "bg-[var(--clay-surface-light)] shadow-[var(--shadow-clay-xl)]",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "data-[state=closed]:slide-out-to-bottom-3 data-[state=open]:slide-in-from-bottom-4",
+          "data-[state=open]:duration-350 data-[state=closed]:duration-250",
           className
         )}
         style={{
-          background: "var(--glass-elevated)",
-          borderColor: "var(--glass-border)",
-          backdropFilter: "blur(20px) saturate(180%)",
-          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          transitionTimingFunction: "cubic-bezier(0.68, -0.55, 0.265, 1.55)",
         }}
         {...props}
       >
@@ -94,7 +97,15 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-md p-1.5 opacity-70 transition-[transform,opacity,background-color,color] duration-200 ease-out hover:opacity-100 motion-safe:hover:rotate-90 motion-safe:hover:scale-110 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className={cn(
+              "absolute top-4 right-4 rounded-[var(--r-lg)] p-2.5",
+              "bg-[var(--clay-surface)] shadow-[var(--shadow-clay-sm)]",
+              "text-[var(--text-tertiary)] opacity-80",
+              "transition-all duration-250 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)]",
+              "hover:opacity-100 hover:shadow-[var(--shadow-clay-md)] hover:-translate-y-0.5",
+              "active:shadow-[var(--shadow-clay-pressed)] active:scale-95",
+              "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
+            )}
           >
             <HugeiconsIcon icon={Cancel01Icon} size={16} />
             <span className="sr-only">Close</span>
@@ -109,7 +120,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      className={cn("flex flex-col gap-3 text-center sm:text-left", className)}
       {...props}
     />
   )
@@ -127,7 +138,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-3 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -149,7 +160,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-none font-semibold", className)}
+      className={cn("text-xl leading-none font-bold text-[var(--text-primary)]", className)}
       {...props}
     />
   )
@@ -162,7 +173,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-[var(--text-secondary)] text-sm leading-relaxed", className)}
       {...props}
     />
   )

@@ -5,6 +5,22 @@ import { Popover as PopoverPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Popover 相关组件 (黏土风格弹出层)
+ * @description
+ *   黏土形态的弹出层组件，带有蓬松的卡片样式和弹性动画。
+ *   支持多种对齐方式和偏移量配置。
+ * @example
+ * <Popover>
+ *   <PopoverTrigger>点击打开</PopoverTrigger>
+ *   <PopoverContent>
+ *     <PopoverHeader>
+ *       <PopoverTitle>标题</PopoverTitle>
+ *     </PopoverHeader>
+ *   </PopoverContent>
+ * </Popover>
+ */
+
 function Popover({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
@@ -20,7 +36,7 @@ function PopoverTrigger({
 function PopoverContent({
   className,
   align = "center",
-  sideOffset = 4,
+  sideOffset = 8,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
@@ -30,9 +46,17 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "z-50 w-80 origin-(--radix-popover-content-transform-origin) rounded-[var(--r-xl)] p-5 outline-none",
+          "bg-[var(--clay-surface-light)] shadow-[var(--shadow-clay-lg)]",
+          "data-[side=bottom]:slide-in-from-top-3 data-[side=left]:slide-in-from-right-3",
+          "data-[side=right]:slide-in-from-left-3 data-[side=top]:slide-in-from-bottom-3",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           className
         )}
+        style={{
+          transitionTimingFunction: "cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+        }}
         {...props}
       />
     </PopoverPrimitive.Portal>
@@ -49,7 +73,7 @@ function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="popover-header"
-      className={cn("flex flex-col gap-1 text-sm", className)}
+      className={cn("flex flex-col gap-2 text-sm", className)}
       {...props}
     />
   )
@@ -59,7 +83,7 @@ function PopoverTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return (
     <div
       data-slot="popover-title"
-      className={cn("font-medium", className)}
+      className={cn("font-bold text-[var(--text-primary)]", className)}
       {...props}
     />
   )
@@ -72,7 +96,7 @@ function PopoverDescription({
   return (
     <p
       data-slot="popover-description"
-      className={cn("text-muted-foreground", className)}
+      className={cn("text-[var(--text-secondary)] text-sm", className)}
       {...props}
     />
   )
