@@ -35,6 +35,7 @@ import {
   ensureProvidersReady,
   filterProviders,
   getActiveModelSelection,
+  inferModelCapabilities,
   setActiveModelSelection,
 } from "@/lib/model-settings";
 import {
@@ -178,12 +179,15 @@ export function ModelsSetting() {
     try {
       setLoading(true);
       for (const m of remoteModels) {
+        const inferredCapabilities = inferModelCapabilities(activeProvider.id, m.id);
         await upsertModel({
           provider_id: activeProvider.id,
           id: m.id,
           name: m.name,
           group_name: m.groupName,
           is_enabled: true,
+          capabilities: inferredCapabilities,
+          capabilities_source: "auto",
         });
       }
       
@@ -438,12 +442,15 @@ export function ModelsSetting() {
     const normalizedGroupName = formValues.groupName.trim();
 
     try {
+      const inferredCapabilities = inferModelCapabilities(activeProviderId, normalizedModelId);
       const newModel: Model = {
         id: normalizedModelId,
         provider_id: activeProviderId,
         name: normalizedModelName,
         is_enabled: true,
         group_name: normalizedGroupName || null,
+        capabilities: inferredCapabilities,
+        capabilities_source: "auto",
       };
 
       await upsertModel(newModel);
@@ -487,12 +494,24 @@ export function ModelsSetting() {
     const normalizedGroupName = formValues.groupName.trim();
 
     try {
+      const shouldReinfer =
+        !editingModel.capabilities ||
+        editingModel.capabilities.length === 0 ||
+        (editingModel.capabilities_source === "auto" &&
+          normalizedModelId !== editingModel.id);
+      const inferredCapabilities = shouldReinfer
+        ? inferModelCapabilities(activeProviderId, normalizedModelId)
+        : editingModel.capabilities ?? [];
       const nextModel: Model = {
         ...editingModel,
         id: normalizedModelId,
         provider_id: activeProviderId,
         name: normalizedModelName,
         group_name: normalizedGroupName || null,
+        capabilities: inferredCapabilities,
+        capabilities_source: shouldReinfer
+          ? "auto"
+          : editingModel.capabilities_source ?? "auto",
       };
 
       if (normalizedModelId !== editingModel.id) {
