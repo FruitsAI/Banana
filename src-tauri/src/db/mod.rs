@@ -50,6 +50,8 @@ impl Database {
                 name TEXT NOT NULL,
                 is_enabled INTEGER NOT NULL DEFAULT 1,
                 group_name TEXT,
+                capabilities TEXT,
+                capabilities_source TEXT,
                 FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE CASCADE
             );
             CREATE TABLE IF NOT EXISTS mcp_servers (
@@ -85,6 +87,12 @@ impl Database {
 
         // 兼容旧版本：尝试在存在 models 表的情况下为其添加 group_name（如果已有则忽略错误）
         let _ = sqlx::query("ALTER TABLE models ADD COLUMN group_name TEXT")
+            .execute(&pool)
+            .await;
+        let _ = sqlx::query("ALTER TABLE models ADD COLUMN capabilities TEXT")
+            .execute(&pool)
+            .await;
+        let _ = sqlx::query("ALTER TABLE models ADD COLUMN capabilities_source TEXT")
             .execute(&pool)
             .await;
 
