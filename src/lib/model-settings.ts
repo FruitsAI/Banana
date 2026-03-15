@@ -168,11 +168,14 @@ export async function ensureProviderModelsReady(providerId: string): Promise<Mod
   }
 
   for (const seedModel of modelSeeds) {
+    const inferredCapabilities = inferModelCapabilities(providerId, seedModel.id);
     await upsertModel({
       id: seedModel.id,
       provider_id: providerId,
       name: seedModel.name,
       is_enabled: true,
+      capabilities: inferredCapabilities,
+      capabilities_source: "auto",
     });
   }
 
@@ -226,4 +229,31 @@ export function filterProviders(providers: Provider[], keyword: string): Provide
     const providerId = provider.id.toLowerCase();
     return providerName.includes(normalizedKeyword) || providerId.includes(normalizedKeyword);
   });
+}
+
+export function inferModelCapabilities(providerId: string, modelId: string): string[] {
+  const source = `${providerId} ${modelId}`.toLowerCase();
+  const capabilities = new Set<string>();
+  const includesAny = (tokens: string[]): boolean => tokens.some((token) => source.includes(token));
+
+  if (includesAny(["vision", "image", "multimodal", "mm"])) {
+    capabilities.add("vision");
+  }
+  if (includesAny(["audio", "speech", "tts", "whisper"])) {
+    capabilities.add("audio");
+  }
+  if (includesAny(["embedding", "embed"])) {
+    capabilities.add("embedding");
+  }
+  if (includesAny(["tool", "function", "tools"])) {
+    capabilities.add("tools");
+  }
+  if (includesAny(["reason", "o1", "o3", "r1"])) {
+    capabilities.add("reasoning");
+  }
+  if (includesAny(["web", "browser", "search"])) {
+    capabilities.add("web");
+  }
+
+  return Array.from(capabilities);
 }
