@@ -24,6 +24,8 @@ pub struct Model {
     pub name: String,
     pub is_enabled: bool,
     pub group_name: Option<String>,
+    pub capabilities: Option<String>,
+    pub capabilities_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

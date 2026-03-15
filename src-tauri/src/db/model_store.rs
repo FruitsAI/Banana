@@ -6,7 +6,7 @@ impl Database {
     /// ---- Models ----
     pub async fn get_models_by_provider(&self, provider_id: &str) -> Result<Vec<Model>> {
         let records = sqlx::query_as::<_, Model>(
-            r#"SELECT id, provider_id, name, is_enabled, group_name FROM models WHERE provider_id = ? ORDER BY name ASC"#,
+            r#"SELECT id, provider_id, name, is_enabled, group_name, capabilities, capabilities_source FROM models WHERE provider_id = ? ORDER BY name ASC"#,
         )
         .bind(provider_id)
         .fetch_all(&self.pool)
@@ -20,6 +20,8 @@ impl Database {
                 name: record.name,
                 is_enabled: record.is_enabled,
                 group_name: record.group_name,
+                capabilities: record.capabilities,
+                capabilities_source: record.capabilities_source,
             })
             .collect())
     }
@@ -29,13 +31,15 @@ impl Database {
 
         sqlx::query(
             r#"
-            INSERT INTO models (id, provider_id, name, is_enabled, group_name) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO models (id, provider_id, name, is_enabled, group_name, capabilities, capabilities_source)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 provider_id = excluded.provider_id,
                 name = excluded.name,
                 is_enabled = excluded.is_enabled,
-                group_name = excluded.group_name
+                group_name = excluded.group_name,
+                capabilities = excluded.capabilities,
+                capabilities_source = excluded.capabilities_source
             "#,
         )
         .bind(&model.id)
@@ -43,6 +47,8 @@ impl Database {
         .bind(&model.name)
         .bind(is_enabled_int)
         .bind(&model.group_name)
+        .bind(&model.capabilities)
+        .bind(&model.capabilities_source)
         .execute(&self.pool)
         .await?;
 
