@@ -8,11 +8,12 @@ import {
   AiBrain02Icon,
   Wrench01Icon,
   InternetIcon,
-  PinLocation01Icon,
+  AudioWave01Icon,
+  Database01Icon,
 } from "@hugeicons/core-free-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ModelIcon as LobeModelIcon, ProviderIcon } from "@lobehub/icons";
-import { getActiveModelSelection, ensureProvidersReady, setActiveModelSelection } from "@/lib/model-settings";
+import { getActiveModelSelection, ensureProvidersReady, inferModelCapabilities, setActiveModelSelection } from "@/lib/model-settings";
 import { type Provider, type Model, getModelsByProvider } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { getProviderIcon } from "@/components/icons/provider-icons";
@@ -187,6 +188,17 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
     return models.find((m) => m.id === activeModelId && m.provider_id === activeProviderId) || models[0];
   }, [models, activeModelId, activeProviderId]);
 
+  const capabilityConfig: Record<string, { icon: unknown; color: string }> = {
+    vision: { icon: ViewIcon, color: "var(--success)" },
+    reasoning: { icon: AiBrain02Icon, color: "var(--brand-primary)" },
+    tools: { icon: Wrench01Icon, color: "var(--warning)" },
+    web: { icon: InternetIcon, color: "var(--brand-primary)" },
+    audio: { icon: AudioWave01Icon, color: "var(--text-secondary)" },
+    embedding: { icon: Database01Icon, color: "var(--text-secondary)" },
+  };
+
+  const capabilityOrder = ["vision", "reasoning", "tools", "web", "audio", "embedding"];
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -289,24 +301,40 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                               </div>
                             </div>
                             
-                            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                              {/* mock capabilities tags */}
-                              <div className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
-                                style={{ background: isSelected ? "var(--bg-white)" : "var(--glass-subtle)", color: isSelected ? "var(--success)" : "var(--success)" }}>
-                                <HugeiconsIcon icon={ViewIcon} size={12} />
-                              </div>
-                              <div className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
-                                style={{ background: isSelected ? "var(--bg-white)" : "var(--glass-subtle)", color: isSelected ? "var(--brand-primary)" : "var(--brand-primary)" }}>
-                                <HugeiconsIcon icon={AiBrain02Icon} size={12} />
-                              </div>
-                              <div className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
-                                style={{ background: isSelected ? "var(--bg-white)" : "var(--glass-subtle)", color: isSelected ? "var(--warning)" : "var(--warning)" }}>
-                                <HugeiconsIcon icon={Wrench01Icon} size={12} />
-                              </div>
-                              <div className="w-6 h-6 flex items-center justify-center" style={{ color: "var(--text-quaternary)" }}>
-                                <HugeiconsIcon icon={PinLocation01Icon} size={14} className={isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-40 transition-opacity"} />
-                              </div>
-                            </div>
+                            {(() => {
+                              const resolvedCapabilities =
+                                model.capabilities && model.capabilities.length > 0
+                                  ? model.capabilities
+                                  : inferModelCapabilities(model.provider_id, model.id);
+                              const displayCapabilities = capabilityOrder.filter((capability) =>
+                                resolvedCapabilities.includes(capability)
+                              );
+                              if (displayCapabilities.length === 0) {
+                                return null;
+                              }
+                              return (
+                                <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                                  {displayCapabilities.map((capability) => {
+                                    const config = capabilityConfig[capability];
+                                    if (!config) {
+                                      return null;
+                                    }
+                                    return (
+                                      <div
+                                        key={capability}
+                                        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
+                                        style={{
+                                          background: isSelected ? "var(--bg-white)" : "var(--glass-subtle)",
+                                          color: config.color,
+                                        }}
+                                      >
+                                        <HugeiconsIcon icon={config.icon} size={12} />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}

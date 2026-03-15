@@ -101,14 +101,57 @@ export interface Model {
   name: string;
   is_enabled: boolean;
   group_name?: string | null;
+  capabilities?: string[];
+  capabilities_source?: "auto" | "manual";
+}
+
+type ModelPayload = Omit<Model, "capabilities" | "capabilities_source"> & {
+  capabilities?: string | null;
+  capabilities_source?: string | null;
+};
+
+function parseCapabilities(raw?: string | null): string[] | undefined {
+  if (!raw || !raw.trim()) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item) => typeof item === "string");
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function serializeCapabilities(value?: string[] | null): string | null {
+  if (!value || value.length === 0) {
+    return null;
+  }
+  return JSON.stringify(value);
+}
+
+function normalizeModel(raw: ModelPayload): Model {
+  return {
+    ...raw,
+    capabilities: parseCapabilities(raw.capabilities),
+    capabilities_source: raw.capabilities_source ?? undefined,
+  };
 }
 
 export async function getModelsByProvider(providerId: string): Promise<Model[]> {
-  return await invoke('db_get_models_by_provider', { providerId });
+  const rows = await invoke<ModelPayload[]>('db_get_models_by_provider', { providerId });
+  return rows.map(normalizeModel);
 }
 
 export async function upsertModel(m: Model): Promise<void> {
-  await invoke('db_upsert_model', { model: m });
+  const payload: ModelPayload = {
+    ...m,
+    capabilities: serializeCapabilities(m.capabilities),
+    capabilities_source: m.capabilities_source ?? null,
+  };
+  await invoke('db_upsert_model', { model: payload });
 }
 
 export async function deleteModel(modelId: string): Promise<void> {
@@ -132,4 +175,8 @@ export async function getMcpServers(): Promise<McpServer[]> {
 
 export async function upsertMcpServer(s: McpServer): Promise<void> {
   await invoke('db_upsert_mcp_server', { server: s });
+}
+
+export async function deleteMcpServer(serverId: string): Promise<void> {
+  await invoke('db_delete_mcp_server', { serverId });
 }
