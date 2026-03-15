@@ -12,6 +12,9 @@ import {
   Refresh01Icon,
   PencilEdit01Icon,
   Copy01Icon,
+  Wrench01Icon,
+  CheckmarkCircle01Icon,
+  Loading01Icon,
 } from "@hugeicons/core-free-icons";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, KeyboardEvent, useEffect, useRef } from "react";
@@ -417,7 +420,32 @@ function StageContent() {
                         </div>
                       </div>
                     ) : (
-                      <ThoughtContent content={msg.content} />
+                      <>
+                        {msg.toolInvocations && msg.toolInvocations.length > 0 && (
+                          <div className="flex flex-col gap-2 mb-3">
+                            {msg.toolInvocations.map((tool, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-xs px-3 py-2 rounded-xl border transition-all duration-300" style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}>
+                                <div className="flex items-center gap-2 font-mono text-xs opacity-80" style={{ color: "var(--text-primary)" }}>
+                                  <HugeiconsIcon icon={Wrench01Icon} size={14} />
+                                  <span className="font-semibold">{tool.toolName}</span>
+                                </div>
+                                <div className="flex items-center">
+                                   {tool.state === 'call' ? (
+                                      <HugeiconsIcon icon={Loading01Icon} size={14} className="animate-spin opacity-60" style={{ color: "var(--brand-primary)" }} />
+                                   ) : (
+                                      <div className="flex items-center gap-1 opacity-80" 
+                                           style={{ color: (tool.result as any)?.isError ? "var(--semantic-error, #ef4444)" : "var(--semantic-success, #10b981)" }}>
+                                        <span className="text-[10px]">{(tool.result as any)?.isError ? "调用失败" : "已完成"}</span>
+                                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
+                                      </div>
+                                   )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <ThoughtContent content={msg.content} />
+                      </>
                     )}
                   </div>
 
@@ -761,21 +789,32 @@ function ThoughtBlock({ thought, isStreaming }: { thought: string; isStreaming: 
  * Main Content Parser for Messages
  */
 function ThoughtContent({ content }: { content: string }) {
-  // 处理推理思维解析
+  // 解析推理思维内容，支持 <think> 和 <思考> 标签
   let thought = "";
   let mainContent = content;
   let isThinking = false;
 
-  const thinkStartIndex = content.indexOf("<think>");
-  if (thinkStartIndex !== -1) {
-    const thinkEndIndex = content.indexOf("</think>");
-    if (thinkEndIndex !== -1) {
-      thought = content.substring(thinkStartIndex + 7, thinkEndIndex).trim();
-      mainContent = (content.substring(0, thinkStartIndex) + content.substring(thinkEndIndex + 8)).trim();
-    } else {
-      thought = content.substring(thinkStartIndex + 7).trim();
-      mainContent = content.substring(0, thinkStartIndex).trim();
-      isThinking = true;
+  // 同时支持英文 <think> 和中文 <思考> 标签
+  const thinkPatterns = [
+    { start: "<think>", end: "</think>" },
+    { start: "<思考>", end: "</思考>" }
+  ];
+
+  for (const pattern of thinkPatterns) {
+    const thinkStartIndex = content.indexOf(pattern.start);
+    if (thinkStartIndex !== -1) {
+      const thinkEndIndex = content.indexOf(pattern.end);
+      if (thinkEndIndex !== -1) {
+        // 完整的标签块
+        thought = content.substring(thinkStartIndex + pattern.start.length, thinkEndIndex).trim();
+        mainContent = (content.substring(0, thinkStartIndex) + content.substring(thinkEndIndex + pattern.end.length)).trim();
+      } else {
+        // 只有开始标签（正在流式输出）
+        thought = content.substring(thinkStartIndex + pattern.start.length).trim();
+        mainContent = content.substring(0, thinkStartIndex).trim();
+        isThinking = true;
+      }
+      break; // 匹配到一组标签即退出，不支持嵌套或多组（符合主流 AI 行为）
     }
   }
 

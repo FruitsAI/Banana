@@ -80,3 +80,40 @@ export class TauriMcpTransport implements Transport {
     }
   }
 }
+
+/**
+ * 获取指定 MCP 服务器的所有可用工具
+ */
+export async function mcpListTools(server: {
+  id: string;
+  command: string;
+  args?: string;
+  env_vars?: string;
+}): Promise<{ tools: Record<string, unknown>[] }> {
+  // MCP 参数约定：一行一个参数。这样可以完美支持带有空格的文件路径或特殊参数。
+  const argsArray = server.args 
+    ? server.args.split('\n').map(a => a.trim()).filter(a => a !== "") 
+    : [];
+    
+  return await invoke<{ tools: Record<string, unknown>[] }>("mcp_list_tools", {
+    serverId: server.id,
+    command: server.command,
+    args: argsArray,
+    envVars: server.env_vars
+  });
+}
+
+/**
+ * 执行指定的 MCP 工具
+ */
+export async function mcpCallTool(
+  serverId: string,
+  toolName: string,
+  arguments_obj: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  return await invoke<Record<string, unknown>>("mcp_call_tool", {
+    serverId,
+    toolName,
+    arguments: arguments_obj
+  });
+}

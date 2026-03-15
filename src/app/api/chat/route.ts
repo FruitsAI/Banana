@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, tool, jsonSchema } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 
 /**
@@ -18,7 +18,7 @@ function shouldUseCompatibleMode(providerType: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    const { messages, apiKey, baseURL, modelId, providerType, isSearch, isThink } = await req.json();
+    const { messages, apiKey, baseURL, modelId, providerType, isSearch, isThink, tools: clientTools } = await req.json();
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "API Key 未提供" }), {
@@ -31,67 +31,109 @@ export async function POST(req: Request) {
     const resolvedBaseURL = baseURL || "https://api.openai.com/v1";
     const useCompatible = shouldUseCompatibleMode(resolvedType);
 
-    console.log("[API /chat] 🚀 收到请求:", {
+    console.log("[API /chat] \ud83d\ude80 收到请求:", {
       modelId: modelId || "gpt-4o-mini",
       isSearch,
       isThink,
+      hasTools: !!clientTools?.length,
     });
 
+    // @ts-expect-error Disable strict check for compatibility flag on older @ai-sdk/openai versions
     const openai = createOpenAI({
       apiKey,
       baseURL: resolvedBaseURL,
+      compatibility: "strict" // forces strict completions path avoiding /v1/responses
     });
 
     const modelParams = useCompatible 
       ? openai.chat(modelId || "gpt-4o-mini") 
       : openai(modelId || "gpt-4o-mini");
 
-    // 构造增强的消息列表
+    // 构造增强的消息列表: System 提示词必须放在对话的最前面，绝对不能放在用户提问的后面！
     const finalMessages = [...messages];
     
-    // 如果开启了搜索或思考，且模型可能支持（或者通过提示词引导）
-    // 注意：这里可以根据具体的 Provider 类型做更精细的处理
-    if (isSearch) {
-      finalMessages.push({
-        role: "system",
-        content: "[System Instruction: Network Search is ENABLED. You MUST use internet search to verify facts and provide the most current information.]"
-      });
-    } else {
-      finalMessages.push({
-        role: "system",
-        content: "[System Instruction: Network Search is DISABLED. Do NOT use any search tools. Answer based on your existing knowledge only.]"
-      });
-    }
+    // 自动添加当前时间与时区上下文，防止某些依赖时间的 MCP 工具缺少参数
+    const now = new Date();
+    finalMessages.unshift({
+      role: "system",
+      content: `[IMPORTANT Context]
+Current local time: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+Local timezone: Asia/Shanghai
 
+When using any tool (like get_current_time), you MUST explicitly provide the 'timezone' parameter as "Asia/Shanghai" unless the user asks for a different one. DO NOT leave required parameters empty.`
+    });
+    
+    // 如果开启了搜索或思考，且模型可能支持（或者通过提示词引导）
     if (isThink) {
-      finalMessages.push({
+      finalMessages.unshift({
         role: "system",
         content: "[System Instruction: Deep Thinking is ENABLED. You MUST show your reasoning process inside <think> tags.]"
       });
-    } else {
-      // 更加强力的禁止指令
-      finalMessages.push({
+    }
+
+    if (isSearch) {
+      finalMessages.unshift({
         role: "system",
-        content: "[System Instruction: Deep Thinking is DISABLED. Do NOT generate a <think> block. Go straight to providing your response.]"
+        content: "[System Instruction: Network Search is ENABLED. You MUST use internet search to verify facts and provide the most current information.]"
       });
     }
 
-    const result = streamText({
-      model: modelParams,
-      messages: finalMessages,
-      // 针对深思等供应商的专有参数透传（如支持）
-      providerOptions: {
-        openai: {
-          // 如果后端检测到供应商是 deepseek，可以尝试传参数
-          // ...(resolvedType.includes('deepseek') ? { reasoning_effort: isThink ? 'high' : 'off' } : {})
-        }
-      }
-    });
+    // 转换客户端工具定义为 AI SDK 格式
+    const sdkTools: Record<string, any> = {};
+    if (clientTools && Array.isArray(clientTools)) {
+      clientTools.forEach((t: { name: string; description?: string; inputSchema: any }) => {
+        const schema = jsonSchema(t.inputSchema);
+        // @ai-sdk/openai older versions expect a `.schema` property on the parameters object
+        // jsonSchema() from ai returns an object with `{ type: "object", jsonSchema: {...}, validate: ... }`
+        // We shim the `.schema` property to bypass the `schema is not a function` error
+        (schema as any).schema = (schema as any).jsonSchema;
+        
+        sdkTools[t.name] = tool({
+          description: t.description,
+          parameters: schema,
+        });
+      });
+    }
 
-    return result.toTextStreamResponse();
+    let result;
+    try {
+      result = await streamText({
+        model: modelParams,
+        messages: finalMessages,
+        tools: sdkTools as any,
+      });
+    } catch (e: any) {
+      console.error("[API /chat] streamText ERROR:", e.message, e.stack);
+      return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+    }
+
+    // Use the native UI Message Stream Response from ai@6
+    if (typeof (result as any).toUIMessageStreamResponse === 'function') {
+      const originalResponse = (result as any).toUIMessageStreamResponse();
+      
+      const debugTransform = new TransformStream({
+        transform(chunk, controller) {
+          const text = new TextDecoder().decode(chunk);
+          console.log("[DEBUG API] Stream emitting chunk =>", text.substring(0, 150));
+          // pass it along intact
+          controller.enqueue(chunk);
+        }
+      });
+      
+      const newBody = originalResponse.body.pipeThrough(debugTransform);
+      return new Response(newBody, {
+        status: originalResponse.status,
+        statusText: originalResponse.statusText,
+        headers: originalResponse.headers
+      });
+    }
+
+    throw new Error("Unable to create stream response from AI SDK result (missing toUIMessageStreamResponse)");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[API /chat] Error:", message);
+    console.error("[API /chat] Error in /api/chat:", message);
+    if (err instanceof Error && err.stack) console.error(err.stack);
+    
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
