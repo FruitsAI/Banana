@@ -42,7 +42,9 @@ pub fn run() {
             commands::db_update_thread_title,
             commands::db_delete_thread,
             commands::db_append_message,
-            commands::db_get_messages
+            commands::db_get_messages,
+            commands::db_delete_messages_after,
+            commands::db_update_message
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

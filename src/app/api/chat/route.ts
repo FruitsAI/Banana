@@ -4,14 +4,6 @@ import { createOpenAI } from "@ai-sdk/openai";
 /**
  * 不同供应商类型对应的 API 路径后缀（仅用于日志）。
  */
-const PROVIDER_TYPE_API_SUFFIXES: Record<string, string> = {
-  openai: "/chat/completions",
-  "openai-response": "/responses",
-  gemini: "/chat/completions",
-  anthropic: "/messages",
-  "new-api": "/chat/completions",
-  ollama: "/chat/completions",
-};
 
 /**
  * 判断是否应使用 OpenAI 兼容模式（/chat/completions）。
@@ -26,7 +18,7 @@ function shouldUseCompatibleMode(providerType: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    const { messages, apiKey, baseURL, modelId, providerType } = await req.json();
+    const { messages, apiKey, baseURL, modelId, providerType, isSearch, isThink } = await req.json();
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "API Key 未提供" }), {
@@ -39,27 +31,61 @@ export async function POST(req: Request) {
     const resolvedBaseURL = baseURL || "https://api.openai.com/v1";
     const useCompatible = shouldUseCompatibleMode(resolvedType);
 
+    console.log("[API /chat] 🚀 收到请求:", {
+      modelId: modelId || "gpt-4o-mini",
+      isSearch,
+      isThink,
+    });
+
     const openai = createOpenAI({
       apiKey,
       baseURL: resolvedBaseURL,
-    });
-
-    console.log("[API /chat] 🚀 请求配置:", {
-      providerType: resolvedType,
-      baseURL: resolvedBaseURL,
-      apiSuffix: PROVIDER_TYPE_API_SUFFIXES[resolvedType] ?? "/chat/completions",
-      modelId: modelId || "gpt-4o-mini",
     });
 
     const modelParams = useCompatible 
       ? openai.chat(modelId || "gpt-4o-mini") 
       : openai(modelId || "gpt-4o-mini");
 
-    console.log(`[API /chat] 🛠️ 分支选择: ${useCompatible ? "COMPATIBLE (/chat/completions)" : "STRICT (/responses)"}`);
+    // 构造增强的消息列表
+    const finalMessages = [...messages];
+    
+    // 如果开启了搜索或思考，且模型可能支持（或者通过提示词引导）
+    // 注意：这里可以根据具体的 Provider 类型做更精细的处理
+    if (isSearch) {
+      finalMessages.push({
+        role: "system",
+        content: "[System Instruction: Network Search is ENABLED. You MUST use internet search to verify facts and provide the most current information.]"
+      });
+    } else {
+      finalMessages.push({
+        role: "system",
+        content: "[System Instruction: Network Search is DISABLED. Do NOT use any search tools. Answer based on your existing knowledge only.]"
+      });
+    }
+
+    if (isThink) {
+      finalMessages.push({
+        role: "system",
+        content: "[System Instruction: Deep Thinking is ENABLED. You MUST show your reasoning process inside <think> tags.]"
+      });
+    } else {
+      // 更加强力的禁止指令
+      finalMessages.push({
+        role: "system",
+        content: "[System Instruction: Deep Thinking is DISABLED. Do NOT generate a <think> block. Go straight to providing your response.]"
+      });
+    }
 
     const result = streamText({
       model: modelParams,
-      messages,
+      messages: finalMessages,
+      // 针对深思等供应商的专有参数透传（如支持）
+      providerOptions: {
+        openai: {
+          // 如果后端检测到供应商是 deepseek，可以尝试传参数
+          // ...(resolvedType.includes('deepseek') ? { reasoning_effort: isThink ? 'high' : 'off' } : {})
+        }
+      }
     });
 
     return result.toTextStreamResponse();

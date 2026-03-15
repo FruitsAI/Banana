@@ -5,29 +5,28 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 /**
- * Button 组件 (按钮)
+ * Button Component
  * @description 
- *   基于 `Radix UI` 封装的无障碍按钮组件，使用 `cva` 管理样式变体。
- *   内建了 `framer-motion` 以支持物理弹簧反馈的点击缩放效果，并针对 `glass` (玻璃) 等
- *   变体加入了复杂的液态光泽反射效果。
+ *   Accessible button component with Apple visionOS Liquid Glass design.
+ *   Features iridescent edge highlights and premium glass effects.
  * @example
- * <Button variant="default">默认按钮</Button>
- * <Button variant="outline">边框按钮</Button>
- * <Button size="sm">小按钮</Button>
+ * <Button variant="default">Default Button</Button>
+ * <Button variant="glass">Glass Button</Button>
+ * <Button size="sm">Small Button</Button>
  */
 
 const buttonVariants = cva(
-  "relative isolate inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium outline-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 transition-[transform,box-shadow,background-color,border-color,color] duration-200 ease-out disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100 after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-px after:opacity-0 after:transition-opacity after:duration-300 hover:after:opacity-100 before:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.3),transparent_72%)] after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.8),transparent)]",
+  "relative isolate inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium outline-none transition-[transform,box-shadow,background-color,border-color,color] duration-200 ease-out disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none focus-visible:ring-[3px] overflow-hidden",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:shadow-[0_10px_24px_var(--brand-primary-glow)]",
-        destructive: "bg-destructive text-white shadow-sm hover:shadow-[0_10px_24px_var(--danger-glow)] focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline: "border bg-transparent shadow-sm hover:shadow-md",
-        secondary: "border bg-transparent text-secondary-foreground shadow-sm hover:shadow-md",
-        ghost: "bg-transparent hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline focus-visible:ring-primary/20 data-[state=active]:font-semibold",
-        glass: "border bg-transparent text-primary-foreground shadow-sm hover:shadow-[0_8px_20px_var(--brand-primary-light)]",
+        default: "bg-primary text-primary-foreground shadow-sm hover:shadow-[0_10px_24px_var(--brand-primary-glow)] [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
+        destructive: "bg-destructive text-white shadow-sm hover:shadow-[0_10px_24px_var(--danger-glow)] focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
+        outline: "border bg-transparent shadow-sm hover:shadow-md [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
+        secondary: "border bg-transparent text-secondary-foreground shadow-sm hover:shadow-md [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
+        ghost: "bg-transparent hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
+        link: "text-primary underline-offset-4 hover:underline focus-visible:ring-primary/20 data-[state=active]:font-semibold [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
+        glass: "border bg-transparent text-primary-foreground shadow-sm hover:shadow-[0_8px_20px_var(--brand-primary-light)] [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
       },
       size: {
         default: "h-10 px-4 py-2 has-[>svg]:px-3",
@@ -85,6 +84,26 @@ function Button({
       }
       {...props}
     >
+      {isGlassEffect && (
+        <>
+          <span 
+            className="absolute inset-0 rounded-[inherit] pointer-events-none opacity-30"
+            style={{
+              padding: "1px",
+              background: "var(--iridescent-border)",
+              WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              WebkitMaskComposite: "xor",
+              maskComposite: "exclude",
+            }}
+          />
+          <span 
+            className="absolute inset-x-0 top-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)",
+            }}
+          />
+        </>
+      )}
       <span className="relative z-10 inline-flex items-center gap-2">{children}</span>
     </Comp>
   )

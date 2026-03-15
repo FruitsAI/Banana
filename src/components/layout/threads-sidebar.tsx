@@ -1,8 +1,10 @@
 "use client";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon, Search01Icon, AiMagicIcon } from "@hugeicons/core-free-icons";
+import { Add01Icon, AiMagicIcon, Search01Icon } from "@hugeicons/core-free-icons";
+import { SearchInput } from "@/components/ui/search-input";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
 import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -53,13 +55,15 @@ function ThreadItemComponent({ thread, index, selected, onClick, onContextMenu }
     <motion.div
       onClick={onClick}
       onContextMenu={(e) => onContextMenu(e, thread.id)}
-      className={`stage-action-button px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl cursor-pointer group border transition-all ${
+      className={`stage-action-button px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl cursor-pointer group border transition-all relative overflow-hidden ${
         selected ? 'selected-thread' : ''
       }`}
       style={{
         background: selected ? "var(--brand-primary-lighter)" : "transparent",
         borderColor: selected ? "var(--brand-primary-border)" : "var(--glass-border)",
         transformStyle: "preserve-3d",
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
       }}
       initial={motionReduced ? false : { opacity: 0, x: motionDistance(-8), y: motionDistance(4) }}
       animate={{ opacity: 1, x: 0, y: 0 }}
@@ -84,13 +88,37 @@ function ThreadItemComponent({ thread, index, selected, onClick, onContextMenu }
       }
       whileTap={motionReduced ? undefined : { scale: motionScale(0.99) }}
     >
+      <span 
+        className="absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-300"
+        style={{
+          padding: "1px",
+          opacity: selected ? 0.6 : 0,
+          background: "var(--iridescent-border)",
+          WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+          backgroundSize: "300% 300%",
+          animation: selected ? "iridescent-border-flow 5s ease-in-out infinite" : "none",
+        }}
+      />
+      {/* 悬停时显示的虹彩边框 */}
+      <span 
+        className="absolute inset-0 rounded-xl pointer-events-none opacity-0 group-hover:opacity-40 transition-opacity duration-300"
+        style={{
+          padding: "1px",
+          background: "var(--iridescent-border)",
+          WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+        }}
+      />
       <div
-        className="font-medium text-xs sm:text-sm mb-0.5 truncate"
+        className="font-medium text-xs sm:text-sm mb-0.5 truncate relative z-10"
         style={{ color: selected ? "var(--brand-primary)" : "var(--text-primary)" }}
       >
         {thread.title || "新会话"}
       </div>
-      <div className="text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5" style={{ color: "var(--text-tertiary)" }}>
+      <div className="text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 relative z-10" style={{ color: "var(--text-tertiary)" }}>
         <span>{formatTime(thread.created_at)}</span>
         <span style={{ color: "var(--text-quaternary)" }}>·</span>
         <span className="truncate">{thread.model_id || "默认模型"}</span>
@@ -113,7 +141,9 @@ function ThreadsSidebarContent() {
   const activeThreadId = searchParams.get("thread");
 
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; threadId: string } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const loadThreads = useCallback(async () => {
@@ -151,6 +181,9 @@ function ThreadsSidebarContent() {
     };
 
     load();
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
 
     // 监听刷新事件
     const handleRefresh = () => {
@@ -204,18 +237,28 @@ function ThreadsSidebarContent() {
     }
   };
 
+  const filteredThreads = threads.filter((t) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (t.title || "新会话").toLowerCase().includes(query) || 
+           (t.model_id || "").toLowerCase().includes(query);
+  });
+
   const groupedThreads = {
-    today: threads.filter((t) => getDayCategory(t.created_at) === "today"),
-    yesterday: threads.filter((t) => getDayCategory(t.created_at) === "yesterday"),
-    earlier: threads.filter((t) => getDayCategory(t.created_at) === "earlier"),
+    today: filteredThreads.filter((t) => getDayCategory(t.created_at) === "today"),
+    yesterday: filteredThreads.filter((t) => getDayCategory(t.created_at) === "yesterday"),
+    earlier: filteredThreads.filter((t) => getDayCategory(t.created_at) === "earlier"),
   };
 
   return (
     <motion.div
-      className="w-60 sm:w-64 lg:w-72 flex-shrink-0 flex flex-col h-full"
+      className="w-60 sm:w-64 lg:w-72 flex-shrink-0 flex flex-col h-full relative"
       style={{
-        background: "var(--bg-sidebar)",
+        background: "var(--glass-surface)",
+        backdropFilter: "blur(40px) saturate(200%) brightness(1.01)",
+        WebkitBackdropFilter: "blur(40px) saturate(200%) brightness(1.01)",
         borderRight: "1px solid var(--divider)",
+        boxShadow: "2px 0 16px rgba(0,0,0,0.06)",
       }}
       initial={motionReduced ? false : { opacity: 0, x: motionDistance(-14) }}
       animate={{ opacity: 1, x: 0 }}
@@ -260,25 +303,13 @@ function ThreadsSidebarContent() {
       </div>
 
       <div className="px-3 sm:px-4 pb-2 sm:pb-3 flex gap-2 min-w-0">
-        <motion.div
-          className="search flex-1 min-w-0 flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl transition-all duration-200 border"
-          style={{
-            background: "var(--glass-surface)",
-            borderColor: "var(--glass-border)",
-          }}
-          whileFocus={motionReduced ? undefined : { scale: Number((1 + 0.01 * factors.scale).toFixed(3)) }}
-        >
-          <HugeiconsIcon icon={Search01Icon} size={16} className="flex-shrink-0" style={{ color: "var(--text-tertiary)" }} />
-          <input
-            placeholder="搜索..."
-            className="flex-1 min-w-0 text-xs sm:text-sm placeholder:text-[var(--text-placeholder)] bg-transparent outline-none"
-            style={{ color: "var(--text-primary)" }}
-            aria-label="搜索会话记录"
-            spellCheck={false}
-            autoComplete="off"
-            autoCorrect="off"
-          />
-        </motion.div>
+        <SearchInput
+          containerClassName="flex-1 min-w-0"
+          placeholder="搜索会话..."
+          aria-label="搜索会话记录"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
 
         <motion.button
           onClick={handleCreateThread}
@@ -377,6 +408,20 @@ function ThreadsSidebarContent() {
             </div>
           </motion.div>
         )}
+
+        {filteredThreads.length === 0 && searchQuery.trim() !== "" && (
+          <motion.div
+            className="flex flex-col items-center justify-center py-12 px-4 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-glass-subtle flex items-center justify-center mb-3 text-text-tertiary">
+              <HugeiconsIcon icon={Search01Icon} size={24} />
+            </div>
+            <div className="text-sm font-medium text-text-secondary mb-1">未找到相关会话</div>
+            <div className="text-xs text-text-tertiary">尝试换个关键词搜索</div>
+          </motion.div>
+        )}
       </div>
 
       <div className="p-2.5 sm:p-3 border-t" style={{ borderColor: "var(--divider)" }}>
@@ -402,10 +447,11 @@ function ThreadsSidebarContent() {
         </motion.button>
       </div>
 
-      {/* Context Menu */}
-      <AnimatePresence>
-        {contextMenu && (
+      {/* Context Menu - 使用 Portal 挂载到 body 以避免容器剪裁 */}
+      {mounted && contextMenu && createPortal(
+        <AnimatePresence>
           <motion.div
+            key="context-menu"
             ref={menuRef}
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -415,13 +461,13 @@ function ThreadsSidebarContent() {
               position: "fixed",
               top: contextMenu.y,
               left: contextMenu.x,
-              zIndex: 1000,
+              zIndex: 9999,
               minWidth: "140px",
               background: "var(--glass-surface)",
               backdropFilter: "blur(20px) saturate(180%)",
               border: "1px solid var(--glass-border)",
               borderRadius: "12px",
-              boxShadow: "0 10px 30px -10px rgba(0,0,0,0.3)",
+              boxShadow: "var(--shadow-lg)",
               padding: "4px",
             }}
           >
@@ -435,8 +481,9 @@ function ThreadsSidebarContent() {
               <span>删除会话</span>
             </motion.button>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </motion.div>
   );
 }

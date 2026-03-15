@@ -54,6 +54,7 @@ export interface Message {
   thread_id: string;
   role: string;
   content: string;
+  model_id?: string;
   created_at: string;
 }
 
@@ -63,6 +64,14 @@ export async function getMessages(threadId: string): Promise<Message[]> {
 
 export async function appendMessage(msg: Omit<Message, 'created_at'>): Promise<void> {
   await invoke('db_append_message', { msg: { ...msg, created_at: new Date().toISOString() } });
+}
+
+export async function deleteMessagesAfter(threadId: string, messageId: string): Promise<void> {
+  await invoke('db_delete_messages_after', { threadId, messageId });
+}
+
+export async function updateMessage(id: string, content: string): Promise<void> {
+  await invoke('db_update_message', { id, content });
 }
 
 /**

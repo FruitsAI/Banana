@@ -53,5 +53,6 @@ pub struct Message {
     pub thread_id: String,
     pub role: String,
     pub content: String,
+    pub model_id: Option<String>,
     pub created_at: String,
 }

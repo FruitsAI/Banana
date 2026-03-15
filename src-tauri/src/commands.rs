@@ -106,6 +106,24 @@ pub async fn db_append_message(state: State<'_, AppState>, msg: Message) -> Resu
     state.db.append_message(&msg).await
 }
 
+#[tauri::command]
+pub async fn db_delete_messages_after(
+    state: State<'_, AppState>,
+    thread_id: String,
+    message_id: String,
+) -> Result<()> {
+    state.db.delete_messages_after(&thread_id, &message_id).await
+}
+
+#[tauri::command]
+pub async fn db_update_message(
+    state: State<'_, AppState>,
+    id: String,
+    content: String,
+) -> Result<()> {
+    state.db.update_message(&id, &content).await
+}
+
 // 统一注册 Commands
 pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
     builder.invoke_handler(tauri::generate_handler![
@@ -124,5 +142,7 @@ pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<
         db_delete_thread,
         db_get_messages,
         db_append_message,
+        db_delete_messages_after,
+        db_update_message,
     ])
 }

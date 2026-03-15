@@ -2,16 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   AiComputerIcon,
   Moon02Icon,
   Sun03Icon,
-  Tick02Icon,
 } from "@hugeicons/core-free-icons";
 
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
+import { SelectionCard } from "@/components/ui/selection-card";
 import type { AnimationIntensity } from "@/lib/animation-intensity";
 
 const THEME_OPTIONS = [
@@ -33,7 +32,6 @@ const INTENSITY_OPTIONS: Array<{
 export function ThemeSetting() {
   const { theme, setTheme } = useTheme();
   const { intensity, setIntensity } = useAnimationIntensity();
-  const shouldReduceMotion = useReducedMotion();
 
   const [mounted, setMounted] = useState(false);
   const [savingIntensity, setSavingIntensity] = useState<AnimationIntensity | null>(null);
@@ -83,40 +81,12 @@ export function ThemeSetting() {
           {THEME_OPTIONS.map((item) => {
             const isActive = theme === item.id;
             return (
-              <motion.button
+              <SelectionCard
                 key={item.id}
+                isActive={isActive}
                 onClick={() => setTheme(item.id)}
-                className="flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all duration-200 relative min-h-[100px]"
-                style={{
-                  background: isActive ? "var(--brand-primary-lighter)" : "var(--glass-surface)",
-                  borderColor: isActive ? "var(--brand-primary-border)" : "var(--glass-border)",
-                }}
-                whileHover={
-                  shouldReduceMotion
-                    ? undefined
-                    : {
-                        background: isActive ? "var(--brand-primary-light)" : "var(--glass-hover)",
-                        borderColor: isActive
-                          ? "var(--brand-primary-border-strong)"
-                          : "var(--glass-border-strong)",
-                        y: -2,
-                      }
-                }
-                whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className="flex-1 flex flex-col items-center justify-center gap-2 min-h-[100px]"
               >
-                {isActive && (
-                  <motion.div
-                    initial={shouldReduceMotion ? false : { scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--brand-primary)" }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  >
-                    <HugeiconsIcon icon={Tick02Icon} size={10} color="#ffffff" />
-                  </motion.div>
-                )}
-
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center"
                   style={{
@@ -131,7 +101,6 @@ export function ThemeSetting() {
                     }}
                   />
                 </div>
-
                 <span
                   className="text-xs font-medium"
                   style={{
@@ -140,7 +109,7 @@ export function ThemeSetting() {
                 >
                   {item.label}
                 </span>
-              </motion.button>
+              </SelectionCard>
             );
           })}
         </div>
@@ -160,40 +129,12 @@ export function ThemeSetting() {
             const isSaving = savingIntensity === item.id;
 
             return (
-              <motion.button
+              <SelectionCard
                 key={item.id}
+                isActive={isActive}
                 onClick={() => void handleIntensityChange(item.id)}
-                className="relative rounded-xl border p-4 text-left transition-all duration-200 min-h-[100px]"
-                style={{
-                  background: isActive ? "var(--brand-primary-lighter)" : "var(--glass-surface)",
-                  borderColor: isActive ? "var(--brand-primary-border)" : "var(--glass-border)",
-                }}
-                whileHover={
-                  shouldReduceMotion
-                    ? undefined
-                    : {
-                        y: -2,
-                        background: isActive ? "var(--brand-primary-light)" : "var(--glass-hover)",
-                        borderColor: isActive
-                          ? "var(--brand-primary-border-strong)"
-                          : "var(--glass-border-strong)",
-                      }
-                }
-                whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className="text-left min-h-[100px]"
               >
-                {isActive && (
-                  <motion.div
-                    initial={shouldReduceMotion ? false : { scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--brand-primary)" }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  >
-                    <HugeiconsIcon icon={Tick02Icon} size={10} color="#ffffff" />
-                  </motion.div>
-                )}
-
                 <div className="flex items-center justify-between mb-1">
                   <span
                     className="text-sm font-semibold"
@@ -210,7 +151,7 @@ export function ThemeSetting() {
                     正在保存...
                   </span>
                 )}
-              </motion.button>
+              </SelectionCard>
             );
           })}
         </div>

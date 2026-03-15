@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CloudIcon, McpServerIcon, BadgeInfoIcon, PaintBoardIcon } from "@hugeicons/core-free-icons";
+import { NavItem } from "@/components/ui/nav-item";
 import type { SettingsTab } from "./settings-container";
 
 interface SettingsSidebarProps {  
@@ -14,7 +14,7 @@ interface SettingsSidebarProps {
  * SettingsSidebar 组件 (设置导航侧边栏)
  * @description 
  *   采用类似 macOS 系统偏好设置风格的左侧边栏，排版维持与首页的一致性。
- *   包含各种细分设置页面入口。组件内部通过 framer-motion 的 layoutId 实现了平滑的焦点转移指示器动画。
+ *   包含各种细分设置页面入口。通过 NavItem 组件实现平滑的焦点转移指示器动画。
  * @param {SettingsTab} activeTab - 当前激活的选项卡
  * @param {(tab: SettingsTab) => void} onTabChange - 切换选项卡的回调函数
  * @example
@@ -48,47 +48,16 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
 
       {/* Navigation */}
       <div className="px-3 py-2 space-y-0.5">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <motion.button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200"
-              style={{
-                background: isActive ? 'var(--brand-primary-lighter)' : 'transparent',
-                color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
-              }}
-              whileHover={{
-                background: isActive ? 'var(--brand-primary-light)' : 'var(--glass-subtle)',
-              }}
-              whileTap={{ scale: 0.99 }}
-            >
-              {isActive && (
-                <motion.div
-                  className="absolute inset-0 rounded-xl border pointer-events-none"
-                  style={{ borderColor: 'var(--brand-primary-border)' }}
-                  layoutId="settingsActiveBorder"
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              )}
-              <HugeiconsIcon
-                icon={tab.icon}
-                size={18}
-                style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-tertiary)' }}
-              />
-              <span className="font-medium">{tab.label}</span>
-              {isActive && (
-                <motion.div
-                  className="absolute left-0 w-1 h-5 rounded-r-full"
-                  style={{ background: 'var(--brand-primary)' }}
-                  layoutId="settingsActiveIndicator"
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              )}
-            </motion.button>
-          );
-        })}
+        {tabs.map((tab) => (
+          <NavItem
+            key={tab.id}
+            icon={tab.icon}
+            label={tab.label}
+            isActive={activeTab === tab.id}
+            onClick={() => onTabChange(tab.id)}
+            layoutId="settingsNav"
+          />
+        ))}
       </div>
     </div>
   );

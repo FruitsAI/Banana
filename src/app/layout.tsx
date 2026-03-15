@@ -5,6 +5,7 @@ import { PlatformMarker } from "@/components/layout/platform-marker";
 import { Rail } from "@/components/layout/rail";
 import { Titlebar } from "@/components/layout/titlebar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { FluidBackground } from "@/components/ui/fluid-background";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,6 +32,7 @@ export default function RootLayout({
           <AnimationIntensityProvider>
             <FeedbackProvider>
               <div className="window theme-transition" id="window">
+                <FluidBackground />
                 <Titlebar />
                 <div className="content">
                   <Rail />

@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
+import { SearchInput } from "@/components/ui/search-input";
+import { SidebarLayout } from "@/components/ui/sidebar-layout";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useToast } from "@/hooks/use-toast";
 import {
-  Search01Icon,
   Add01Icon,
   ViewIcon,
   ViewOffIcon,
@@ -17,6 +19,7 @@ import {
   Delete01Icon,
   Settings01Icon,
   ListSettingIcon,
+  Search01Icon,
 } from "@hugeicons/core-free-icons";
 import {
   type Model,
@@ -44,16 +47,9 @@ import {
   type ProviderType,
 } from "@/components/providers/add-provider-dialog";
 import { useConfirm } from "@/components/feedback/feedback-provider";
-import { getProviderIcon } from "@/components/icons/provider-icons";
+import { ModelIcon } from "@/components/models/model-selector";
+import { ManageModelsDialog } from "@/components/models/manage-models-dialog";
 
-const PROVIDER_BADGE_COLORS: Record<string, string> = {
-  openai: "#10A37F",
-  anthropic: "#A86F41",
-  gemini: "#1A73E8",
-  openrouter: "#5A4FCF",
-  ollama: "#222222",
-  nvidia: "#76B900",
-};
 
 const PROVIDER_TYPE_DEFAULT_BASE_URLS: Record<ProviderType, string | undefined> = {
   openai: "https://api.openai.com/v1",
@@ -87,14 +83,6 @@ function getApiSuffix(providerType?: string): string {
   return PROVIDER_TYPE_API_SUFFIXES[providerType] ?? "/chat/completions";
 }
 
-/**
- * 获取 Provider 徽标底色。
- * @param providerId - 供应商标识
- * @returns 颜色值
- */
-function getProviderBadgeColor(providerId: string): string {
-  return PROVIDER_BADGE_COLORS[providerId] ?? "var(--brand-primary)";
-}
 
 function normalizeProviderId(input: string): string {
   return input
@@ -132,8 +120,82 @@ export function ModelsSetting() {
   const [isAddProviderDialogOpen, setIsAddProviderDialogOpen] = useState(false);
   const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
   const [isEditModelDialogOpen, setIsEditModelDialogOpen] = useState(false);
+  const [isManageModelsDialogOpen, setIsManageModelsDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<Model | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
   const confirm = useConfirm();
+  const toastApi = useToast();
+
+  /**
+   * 测试 API 连接性
+   */
+  async function handleTestConnection(): Promise<void> {
+    if (!activeProvider) return;
+    
+    const targetApiKey = apiKey.trim();
+    const targetBaseUrl = baseUrl.trim();
+    
+    if (!targetApiKey) {
+      toastApi.error("检测失败", "请先输入 API 密钥");
+      return;
+    }
+
+    setIsTesting(true);
+    try {
+      const response = await fetch("/api/test-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: targetApiKey,
+          baseURL: targetBaseUrl,
+          modelId: activeModelId || (models.length > 0 ? models[0].id : undefined),
+          providerType: activeProvider.provider_type ?? "openai",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toastApi.success("连接成功", `已成功连接到 ${activeProvider.name}`);
+      } else {
+        throw new Error(data.error || "连接测试失败");
+      }
+    } catch (error) {
+      toastApi.error("连接失败", error instanceof Error ? error.message : "未知错误");
+    } finally {
+      setIsTesting(false);
+    }
+  }
+
+  /**
+   * 批量添加远程模型
+   */
+  const handleAddRemoteModels = async (
+    remoteModels: { id: string; name: string; groupName: string }[]
+  ): Promise<void> => {
+    if (!activeProvider) return;
+
+    try {
+      setLoading(true);
+      for (const m of remoteModels) {
+        await upsertModel({
+          provider_id: activeProvider.id,
+          id: m.id,
+          name: m.name,
+          group_name: m.groupName,
+          is_enabled: true,
+        });
+      }
+      
+      const updatedModels = await ensureProviderModelsReady(activeProvider.id);
+      setModels(updatedModels);
+      toastApi.success("添加成功", `已添加 ${remoteModels.length} 个模型`);
+    } catch (error) {
+      toastApi.error("添加失败", error instanceof Error ? error.message : "未知错误");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const activeProvider = useMemo(
     () => providers.find((provider) => provider.id === activeProviderId) ?? null,
@@ -264,33 +326,6 @@ export function ModelsSetting() {
     return () => clearTimeout(timer);
   }, [apiKey, baseUrl, activeProvider]);
 
-  /**
-   * 保存当前 Provider 配置。
-   */
-  async function handleSave(): Promise<void> {
-    if (!activeProvider) {
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const updatedProvider: Provider = {
-        ...activeProvider,
-        api_key: apiKey.trim() || undefined,
-        base_url: baseUrl.trim() || undefined,
-      };
-      await upsertProvider(updatedProvider);
-      setProviders((previousProviders) =>
-        previousProviders.map((provider) =>
-          provider.id === updatedProvider.id ? updatedProvider : provider
-        )
-      );
-    } catch (error) {
-      console.error("Failed to save models config:", error);
-    } finally {
-      setSaving(false);
-    }
-  }
 
   /**
    * 切换 Provider 启用状态。
@@ -608,125 +643,79 @@ export function ModelsSetting() {
     }
   }
 
-  return (
-    <div className="flex h-full w-full">
-      <div
-        className="w-60 sm:w-64 lg:w-72 flex-shrink-0 flex flex-col h-full border-r"
-        style={{
-          background: "var(--bg-sidebar)",
-          borderColor: "var(--divider)",
-        }}
-      >
-        <div className="p-3 border-b" style={{ borderColor: "var(--divider)" }}>
-          <div className="relative">
-            <div
-              className="search flex items-center gap-2 px-3 py-2 rounded-xl border"
-              style={{
-                background: "var(--glass-surface)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              <HugeiconsIcon
-                icon={Search01Icon}
-                size={16}
-                className="flex-shrink-0"
-                style={{ color: "var(--text-tertiary)" }}
-              />
-              <input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="搜索模型平台..."
-                className="flex-1 bg-transparent text-xs outline-none"
-                style={{ color: "var(--text-primary)" }}
-                spellCheck={false}
-                autoComplete="off"
-                autoCorrect="off"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scroll">
-          {filteredProviders.map((provider) => {
-            const isActive = activeProviderId === provider.id;
-            return (
-              <motion.button
-                key={provider.id}
-                onClick={() => void loadProviderDetail(provider.id, providers, null)}
-                className="w-full flex items-center justify-between p-2.5 rounded-xl text-sm transition-all duration-200 border"
-                style={{
-                  background: isActive ? "var(--brand-primary-lighter)" : "transparent",
-                  borderColor: isActive ? "var(--brand-primary-border)" : "transparent",
-                }}
-                whileHover={{
-                  background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
-                }}
-                whileTap={{ scale: 0.99 }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
-                    style={{ background: getProviderBadgeColor(provider.id) }}
-                  >
-                    {(() => {
-                      const Icon = getProviderIcon(provider.id);
-                      return Icon ? <Icon className="w-3.5 h-3.5" /> : provider.icon;
-                    })()}
-                  </div>
-                  <span
-                    className="font-medium truncate max-w-[100px] text-left"
-                    style={{ color: isActive ? "var(--brand-primary)" : "var(--text-primary)" }}
-                  >
-                    {provider.name}
-                  </span>
-                </div>
-
-                {provider.is_enabled && (
-                  <span
-                    className="text-[10px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0"
-                    style={{
-                      borderColor: "var(--success)",
-                      color: "var(--success)",
-                    }}
-                  >
-                    ON
-                  </span>
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
-
-        <div className="p-3 border-t" style={{ borderColor: "var(--divider)" }}>
-          <Button
-            variant="outline"
-            className="w-full justify-center h-9 rounded-xl text-xs border"
-            style={{
-              background: "var(--glass-surface)",
-              borderColor: "var(--glass-border)",
-            }}
-            onClick={openAddProviderDialog}
-          >
-            <HugeiconsIcon icon={Add01Icon} size={16} className="mr-1.5" />
-            添加
-          </Button>
-        </div>
+  // 左侧供应商导航栏
+  const sidebar = (
+    <>
+      <div className="p-3 border-b" style={{ borderColor: "var(--divider)" }}>
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="搜索模型平台..."
+          className="text-xs"
+        />
       </div>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+      <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scroll">
+        {filteredProviders.map((provider) => {
+          const isActive = activeProviderId === provider.id;
+          return (
+            <motion.button
+              key={provider.id}
+              onClick={() => void loadProviderDetail(provider.id, providers, null)}
+              className="w-full flex items-center justify-between p-2.5 rounded-xl text-sm transition-all duration-200 border"
+              style={{
+                background: isActive ? "var(--brand-primary-lighter)" : "transparent",
+                borderColor: isActive ? "var(--brand-primary-border)" : "transparent",
+              }}
+              whileHover={{
+                background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
+              }}
+              whileTap={{ scale: 0.99 }}
+            >
+              <div className="flex items-center gap-2.5">
+                <ModelIcon modelName={provider.name} size={14} />
+                <span
+                  className="font-medium truncate max-w-[100px] text-left"
+                  style={{ color: isActive ? "var(--brand-primary)" : "var(--text-primary)" }}
+                >
+                  {provider.name}
+                </span>
+              </div>
+              {provider.is_enabled && (
+                <span
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0"
+                  style={{ borderColor: "var(--success)", color: "var(--success)" }}
+                >
+                  ON
+                </span>
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+
+      <div className="p-3 border-t" style={{ borderColor: "var(--divider)" }}>
+        <Button
+          variant="outline"
+          className="w-full justify-center h-9 rounded-xl text-xs border"
+          style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}
+          onClick={openAddProviderDialog}
+        >
+          <HugeiconsIcon icon={Add01Icon} size={16} className="mr-1.5" />
+          添加
+        </Button>
+      </div>
+    </>
+  );
+
+  // 右侧内容区
+  const content = (
+    <div className="flex flex-col h-full overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--divider)" }}>
           <div className="flex items-center gap-2">
-            {activeProvider && (() => {
-               const Icon = getProviderIcon(activeProvider.id);
-               return (
-                 <div
-                   className="w-6 h-6 rounded-md flex items-center justify-center text-white shrink-0"
-                   style={{ background: getProviderBadgeColor(activeProvider.id) }}
-                 >
-                   {Icon ? <Icon className="w-3.5 h-3.5" /> : activeProvider.icon}
-                 </div>
-               );
-             })()}
+            {activeProvider && (
+              <ModelIcon modelName={activeProvider.name} size={14} />
+            )}
             <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
               {activeProvider?.name ?? "模型设置"}
             </h2>
@@ -771,18 +760,18 @@ export function ModelsSetting() {
                       <HugeiconsIcon icon={showApiKey ? ViewOffIcon : ViewIcon} size={16} />
                     </button>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="px-4 shrink-0 h-10 rounded-xl border"
-                    style={{
-                      background: "var(--glass-surface)",
-                      borderColor: "var(--glass-border)",
-                    }}
-                    onClick={() => void handleSave()}
-                    disabled={saving || !activeProvider}
-                  >
-                    检测
-                  </Button>
+                    <Button
+                      variant="outline"
+                      className="px-4 shrink-0 h-10 rounded-xl border"
+                      style={{
+                        background: "var(--glass-surface)",
+                        borderColor: "var(--glass-border)",
+                      }}
+                      onClick={() => void handleTestConnection()}
+                      disabled={isTesting || saving || !activeProvider}
+                    >
+                      {isTesting ? "检测中..." : "检测"}
+                    </Button>
                 </div>
                 <div className="text-right">
                   <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
@@ -883,22 +872,12 @@ export function ModelsSetting() {
                                 className="flex items-center gap-3 min-w-0 text-left"
                                 onClick={() => void handleSelectDefaultModel(model.id)}
                               >
-                                <div
-                                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
-                                  style={{
-                                    background: isDefaultModel ? "var(--brand-primary)" : "var(--glass-border-strong)",
-                                  }}
-                                >
-                                  {isDefaultModel ? (
-                                    <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  ) : (
-                                    <span className="text-[10px] font-bold" style={{ color: "var(--text-tertiary)" }}>
-                                      {model.id.charAt(0).toUpperCase()}
-                                    </span>
-                                  )}
-                                </div>
+                                <ModelIcon
+                                  modelName={model.name}
+                                  size={12}
+                                  showBorder={isDefaultModel}
+                                  className="shrink-0"
+                                />
                                 <div className="min-w-0">
                                   <div className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{model.name}</div>
                                   <div className="text-[11px] truncate opacity-50" style={{ color: "var(--text-tertiary)" }}>{model.id}</div>
@@ -942,12 +921,7 @@ export function ModelsSetting() {
                       background: "var(--brand-primary)",
                       color: "#fff",
                     }}
-                    onClick={() => {
-                      const fallbackModel = models.find((model) => model.is_enabled) ?? models[0];
-                      if (fallbackModel) {
-                        void handleSelectDefaultModel(fallbackModel.id);
-                      }
-                    }}
+                    onClick={() => setIsManageModelsDialogOpen(true)}
                   >
                     <HugeiconsIcon icon={ListSettingIcon} size={14} className="mr-1.5" /> 管理
                   </Button>
@@ -968,7 +942,12 @@ export function ModelsSetting() {
             </>
           )}
         </div>
-      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <SidebarLayout sidebar={sidebar} content={content} />
       <AddProviderDialog
         open={isAddProviderDialogOpen}
         onOpenChange={setIsAddProviderDialogOpen}
@@ -1005,6 +984,15 @@ export function ModelsSetting() {
         disabled={!activeProviderId || !editingModel}
         onSubmitModel={handleUpdateModel}
       />
-    </div>
+      <ManageModelsDialog
+        open={isManageModelsDialogOpen}
+        onOpenChange={setIsManageModelsDialogOpen}
+        activeProvider={activeProvider}
+        existingModels={models}
+        apiKey={apiKey}
+        baseUrl={baseUrl}
+        onAddModels={handleAddRemoteModels}
+      />
+    </>
   );
 }

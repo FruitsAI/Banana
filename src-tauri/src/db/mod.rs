@@ -74,6 +74,7 @@ impl Database {
                 thread_id TEXT NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
+                model_id TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(thread_id) REFERENCES threads(id) ON DELETE CASCADE
             );
@@ -89,6 +90,11 @@ impl Database {
 
         // 兼容旧版本：尝试在存在 providers 表的情况下为其添加 provider_type（如果已有则忽略错误）
         let _ = sqlx::query("ALTER TABLE providers ADD COLUMN provider_type TEXT")
+            .execute(&pool)
+            .await;
+
+        // 兼容旧版本：尝试在存在 messages 表的情况下为其添加 model_id
+        let _ = sqlx::query("ALTER TABLE messages ADD COLUMN model_id TEXT")
             .execute(&pool)
             .await;
 
@@ -219,7 +225,7 @@ impl Database {
 
     /// ---- Messages ----
     pub async fn get_messages(&self, thread_id: &str) -> Result<Vec<Message>> {
-        let records = sqlx::query_as::<_, Message>(r#"SELECT id, thread_id, role, content, created_at FROM messages WHERE thread_id = ? ORDER BY created_at ASC"#)
+        let records = sqlx::query_as::<_, Message>(r#"SELECT id, thread_id, role, content, model_id, created_at FROM messages WHERE thread_id = ? ORDER BY created_at ASC"#)
             .bind(thread_id)
         .fetch_all(&self.pool)
         .await?;
@@ -231,21 +237,51 @@ impl Database {
                 thread_id: r.thread_id,
                 role: r.role,
                 content: r.content,
+                model_id: r.model_id,
                 created_at: r.created_at,
             })
             .collect())
     }
 
     pub async fn append_message(&self, msg: &Message) -> Result<()> {
-        sqlx::query(r#"INSERT INTO messages (id, thread_id, role, content) VALUES (?, ?, ?, ?)"#)
+        sqlx::query(r#"INSERT INTO messages (id, thread_id, role, content, model_id) VALUES (?, ?, ?, ?, ?)"#)
             .bind(&msg.id)
             .bind(&msg.thread_id)
             .bind(&msg.role)
             .bind(&msg.content)
+            .bind(&msg.model_id)
             .execute(&self.pool)
             .await?;
 
         self.update_thread_time(&msg.thread_id).await?;
+        Ok(())
+    }
+
+    pub async fn delete_messages_after(&self, thread_id: &str, message_id: &str) -> Result<()> {
+        // 先查出目标消息的时间戳
+        let row = sqlx::query("SELECT created_at FROM messages WHERE id = ?")
+            .bind(message_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        if let Some(r) = row {
+            let timestamp: String = r.get("created_at");
+            // 删除该会话中，创建时间大于等于该时间戳的所有消息
+            sqlx::query("DELETE FROM messages WHERE thread_id = ? AND created_at >= ?")
+                .bind(thread_id)
+                .bind(timestamp)
+                .execute(&self.pool)
+                .await?;
+        }
+        Ok(())
+    }
+
+    pub async fn update_message(&self, id: &str, content: &str) -> Result<()> {
+        sqlx::query("UPDATE messages SET content = ? WHERE id = ?")
+            .bind(content)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 }

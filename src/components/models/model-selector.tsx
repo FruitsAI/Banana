@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Search01Icon,
@@ -11,61 +11,105 @@ import {
   PinLocation01Icon,
 } from "@hugeicons/core-free-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { OpenAiIcon, AnthropicIcon, GeminiIcon, OllamaIcon } from "@/components/icons/provider-icons";
+import { ModelIcon as LobeModelIcon, ProviderIcon } from "@lobehub/icons";
 import { getActiveModelSelection, ensureProvidersReady, setActiveModelSelection } from "@/lib/model-settings";
 import { type Provider, type Model, getModelsByProvider } from "@/lib/db";
+import { cn } from "@/lib/utils";
+import { getProviderIcon } from "@/components/icons/provider-icons";
 
-function ModelIcon({ modelName }: { modelName: string }) {
+interface ModelIconProps {
+  modelName: string;
+  className?: string;
+  size?: number;
+  showBorder?: boolean;
+  showBackground?: boolean;
+}
+
+export function ModelIcon({
+  modelName,
+  className,
+  size = 20,
+  showBorder = true,
+  showBackground = true,
+}: ModelIconProps) {
   const n = modelName.toLowerCase();
-  let Icon = null;
-  let char = '';
-  let color = 'var(--text-primary)';
-  let bg = 'transparent';
 
-  if (n.includes('gpt') || n.includes('openai') || n.includes('o1') || n.includes('o3')) {
-    Icon = OpenAiIcon; color = '#10a37f';
-  } else if (n.includes('claude') || n.includes('anthropic')) {
-    Icon = AnthropicIcon; color = '#d97757';
-  } else if (n.includes('gemini') || n.includes('google')) {
-    Icon = GeminiIcon; color = '#4285f4';
-  } else if (n.includes('ollama')) {
-    Icon = OllamaIcon;
-  } else if (n.includes('qwen') || n.includes('tongyi')) {
-    char = 'Q'; color = '#615ced'; bg = '#615ced1a';
-  } else if (n.includes('glm') || n.includes('zhipu')) {
-    char = 'G'; color = '#3366ff'; bg = '#3366ff1a';
-  } else if (n.includes('kimi') || n.includes('moonshot')) {
-    char = 'K'; color = '#1f2329'; bg = '#1f23291a';
-  } else if (n.includes('minimax') || n.includes('abab')) {
-    char = 'M'; color = '#ff4d4f'; bg = '#ff4d4f1a';
-  } else if (n.includes('llama') || n.includes('meta')) {
-    char = 'L'; color = '#0668E1'; bg = '#0668E11a';
-  } else if (n.includes('mistral')) {
-    char = 'M'; color = '#f36900'; bg = '#f369001a';
-  } else if (n.includes('doubao')) {
-    char = '豆'; color = '#0066ff'; bg = '#0066ff1a';
-  } else if (n.includes('deepseek')) {
-    char = 'D'; color = '#4d6bfe'; bg = '#4d6bfe1a';
-  } else if (n.includes('yi') || n.includes('01.ai') || n.includes('lingyi')) {
-    char = '零'; color = '#0033ff'; bg = '#0033ff1a';
-  } else {
-    // extract last part if path-like (e.g. provider/model)
-    const parts = modelName.split('/');
-    const shortName = parts[parts.length - 1].replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
-    char = shortName.charAt(0).toUpperCase();
-    if (!char) char = modelName.charAt(0).toUpperCase();
-    color = 'var(--text-tertiary)';
+  let brandColor = "var(--glass-border)";
+  let bg = "transparent";
+
+  // 色彩配置：定义品牌主色与背景辅助色
+  if (n.includes("ollama")) {
+    brandColor = "#222222";
+    bg = "#2222221a";
+  } else if (n.includes("nvidia")) {
+    brandColor = "#76B900";
+    bg = "#76B9001a";
+  } else if (n.includes("qwen") || n.includes("tongyi")) {
+    brandColor = "#615ced";
+    bg = "#615ced1a";
+  } else if (n.includes("glm") || n.includes("zhipu") || n.includes("z-ai")) {
+    brandColor = "#345ff0";
+    bg = "#345ff01a";
+  } else if (n.includes("kimi") || n.includes("moonshot")) {
+    brandColor = "#8b5cf6";
+    bg = "#8b5cf61a";
+  } else if (n.includes("minimax") || n.includes("abab")) {
+    brandColor = "#ff4d4f";
+    bg = "#ff4d4f1a";
+  } else if (n.includes("llama") || n.includes("meta")) {
+    brandColor = "#0668E1";
+    bg = "#0668E11a";
+  } else if (n.includes("mistral")) {
+    brandColor = "#f36900";
+    bg = "#f369001a";
+  } else if (n.includes("doubao")) {
+    brandColor = "#0066ff";
+    bg = "#0066ff1a";
+  } else if (n.includes("deepseek")) {
+    brandColor = "#4d6bfe";
+    bg = "#4d6bfe1a";
+  } else if (n.includes("yi") || n.includes("01.ai") || n.includes("lingyi")) {
+    brandColor = "#0033ff";
+    bg = "#0033ff1a";
+  } else if (n.includes("openai")) {
+    brandColor = "#10a37f";
+    bg = "#10a37f1a";
+  } else if (n.includes("claude") || n.includes("anthropic")) {
+    brandColor = "#d97757";
+    bg = "#d977571a";
+  } else if (n.includes("gemini") || n.includes("google")) {
+    brandColor = "#4285f4";
+    bg = "#4285f41a";
   }
 
+  const containerSize = size + 12;
+  const providerKey = getProviderIcon(modelName);
+
   return (
-    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border"
-      style={{ 
-        backgroundColor: bg !== 'transparent' ? bg : "var(--glass-surface)",
-        borderColor: "var(--glass-border)",
-        color: color
+    <div
+      className={cn(
+        "rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden transition-all duration-300",
+        className
+      )}
+      style={{
+        width: containerSize,
+        height: containerSize,
+        backgroundColor: showBackground
+          ? bg !== "transparent"
+            ? bg
+            : "var(--glass-surface)"
+          : "transparent",
+        border: showBorder 
+          ? `2px solid ${brandColor}` 
+          : "1px solid var(--glass-border)",
+        boxShadow: showBorder ? `0 0 0 1px ${brandColor}40` : "none",
       }}
     >
-      {Icon ? <Icon className="w-4 h-4" /> : <span className="text-[13px] font-bold">{char}</span>}
+      {providerKey ? (
+        <ProviderIcon provider={providerKey} size={size} type="color" />
+      ) : (
+        <LobeModelIcon model={modelName} size={size} />
+      )}
     </div>
   );
 }
@@ -113,6 +157,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
     setActiveProviderId(providerId);
     setActiveModelId(modelId);
     await setActiveModelSelection(providerId, modelId);
+    window.dispatchEvent(new CustomEvent("refresh-active-model"));
     setOpen(false);
   };
 
@@ -147,12 +192,13 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
       <PopoverTrigger asChild>
         <button
           disabled={disabled || models.length === 0}
-          className="floating-chip px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+          className="flex items-center justify-center h-8 sm:h-9 px-3 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-200"
           style={{
             background: "var(--brand-primary-light)",
             color: "var(--brand-primary)",
             opacity: disabled || models.length === 0 ? 0.5 : 1,
             pointerEvents: disabled || models.length === 0 ? "none" : "auto",
+            border: "1px solid var(--brand-primary-border)",
           }}
           role="button"
           tabIndex={0}
