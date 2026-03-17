@@ -1,7 +1,7 @@
 pub mod commands;
 pub mod db;
-pub mod domain;
-pub mod services;
+pub(crate) mod domain;
+pub(crate) mod services;
 pub mod error;
 mod mcp;
 
