@@ -37,6 +37,22 @@ export function getErrorMessage(error: unknown, fallbackMessage = "未知错误"
     return message || fallbackMessage;
   }
 
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as { message?: unknown; error?: unknown };
+    if (typeof candidate.message === "string") {
+      const message = candidate.message.trim();
+      if (message) {
+        return message;
+      }
+    }
+    if (typeof candidate.error === "string") {
+      const message = candidate.error.trim();
+      if (message) {
+        return message;
+      }
+    }
+  }
+
   return fallbackMessage;
 }
 
