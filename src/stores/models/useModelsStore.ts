@@ -1,0 +1,54 @@
+import { useCallback } from "react";
+import type { ActiveModelSelection, Model, Provider } from "@/domain/models/types";
+import {
+  deleteModel,
+  getActiveModelSelection,
+  getModelsByProvider,
+  getProviders,
+  setActiveModelSelection,
+  upsertModel,
+  upsertProvider,
+} from "@/services/models";
+
+export function useModelsStore() {
+  const loadProviders = useCallback(async (): Promise<Provider[]> => {
+    return await getProviders();
+  }, []);
+
+  const saveProvider = useCallback(async (provider: Provider): Promise<void> => {
+    await upsertProvider(provider);
+  }, []);
+
+  const loadModelsByProvider = useCallback(async (providerId: string): Promise<Model[]> => {
+    return await getModelsByProvider(providerId);
+  }, []);
+
+  const saveModel = useCallback(async (model: Model): Promise<void> => {
+    await upsertModel(model);
+  }, []);
+
+  const removeModel = useCallback(async (modelId: string): Promise<void> => {
+    await deleteModel(modelId);
+  }, []);
+
+  const loadActiveSelection = useCallback(async (): Promise<ActiveModelSelection> => {
+    return await getActiveModelSelection();
+  }, []);
+
+  const saveActiveSelection = useCallback(
+    async (providerId: string, modelId: string): Promise<void> => {
+      await setActiveModelSelection(providerId, modelId);
+    },
+    [],
+  );
+
+  return {
+    loadProviders,
+    saveProvider,
+    loadModelsByProvider,
+    saveModel,
+    removeModel,
+    loadActiveSelection,
+    saveActiveSelection,
+  };
+}

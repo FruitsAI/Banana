@@ -1,13 +1,13 @@
+import type { Model, Provider } from "@/domain/models/types";
+import { getConfig, setConfig } from "@/lib/db";
 import {
-  type Model,
-  type Provider,
-  getConfig,
+  getActiveModelSelection as getActiveModelSelectionFromService,
   getModelsByProvider,
   getProviders,
-  setConfig,
+  setActiveModelSelection as setActiveModelSelectionFromService,
   upsertModel,
   upsertProvider,
-} from "@/lib/db";
+} from "@/services/models";
 
 interface ProviderSeed {
   id: string;
@@ -192,15 +192,7 @@ export async function getActiveModelSelection(): Promise<{
   activeProviderId: string | null;
   activeModelId: string | null;
 }> {
-  const [activeProviderId, activeModelId] = await Promise.all([
-    getConfig("active_provider_id"),
-    getConfig("active_model_id"),
-  ]);
-
-  return {
-    activeProviderId,
-    activeModelId,
-  };
+  return getActiveModelSelectionFromService();
 }
 
 /**
@@ -209,7 +201,7 @@ export async function getActiveModelSelection(): Promise<{
  * @param modelId - 默认 Model id
  */
 export async function setActiveModelSelection(providerId: string, modelId: string): Promise<void> {
-  await Promise.all([setConfig("active_provider_id", providerId), setConfig("active_model_id", modelId)]);
+  await setActiveModelSelectionFromService(providerId, modelId);
 }
 
 /**

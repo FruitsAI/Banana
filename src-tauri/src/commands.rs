@@ -1,6 +1,7 @@
 use crate::db::{Database, McpServer, Message, Model, Provider, Thread};
 use crate::error::Result;
 use crate::services::chat as chat_service;
+use crate::services::models as models_service;
 use tauri::State;
 
 #[derive(Clone)]
@@ -22,12 +23,12 @@ pub async fn db_set_config(state: State<'_, AppState>, key: String, value: Strin
 /// ---- Providers ----
 #[tauri::command]
 pub async fn db_get_providers(state: State<'_, AppState>) -> Result<Vec<Provider>> {
-    state.db.get_providers().await
+    models_service::get_providers(&state.db).await
 }
 
 #[tauri::command]
 pub async fn db_upsert_provider(state: State<'_, AppState>, provider: Provider) -> Result<()> {
-    state.db.upsert_provider(&provider).await
+    models_service::upsert_provider(&state.db, &provider).await
 }
 
 /// ---- Models ----
@@ -36,17 +37,17 @@ pub async fn db_get_models_by_provider(
     state: State<'_, AppState>,
     provider_id: String,
 ) -> Result<Vec<Model>> {
-    state.db.get_models_by_provider(&provider_id).await
+    models_service::get_models_by_provider(&state.db, &provider_id).await
 }
 
 #[tauri::command]
 pub async fn db_upsert_model(state: State<'_, AppState>, model: Model) -> Result<()> {
-    state.db.upsert_model(&model).await
+    models_service::upsert_model(&state.db, &model).await
 }
 
 #[tauri::command]
 pub async fn db_delete_model(state: State<'_, AppState>, model_id: String) -> Result<()> {
-    state.db.delete_model(&model_id).await
+    models_service::delete_model(&state.db, &model_id).await
 }
 
 /// ---- McpServers ----

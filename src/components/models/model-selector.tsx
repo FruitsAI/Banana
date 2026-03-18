@@ -13,10 +13,11 @@ import {
 } from "@hugeicons/core-free-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ModelIcon as LobeModelIcon, ProviderIcon } from "@lobehub/icons";
-import { getActiveModelSelection, ensureProvidersReady, inferModelCapabilities, setActiveModelSelection } from "@/lib/model-settings";
-import { type Provider, type Model, getModelsByProvider } from "@/lib/db";
+import { ensureProvidersReady, inferModelCapabilities } from "@/lib/model-settings";
+import type { Model, Provider } from "@/domain/models/types";
 import { cn } from "@/lib/utils";
 import { getProviderIcon } from "@/components/icons/provider-icons";
+import { useModelsStore } from "@/stores/models/useModelsStore";
 
 interface ModelIconProps {
   modelName: string;
@@ -116,6 +117,7 @@ export function ModelIcon({
 }
 
 export function ModelSelector({ disabled }: { disabled?: boolean }) {
+  const { loadActiveSelection, loadModelsByProvider, saveActiveSelection } = useModelsStore();
   const [open, setOpen] = useState(false);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [models, setModels] = useState<Model[]>([]);
@@ -132,7 +134,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
         if (ignore) return;
         setProviders(readyProviders);
 
-        const activeSelection = await getActiveModelSelection();
+        const activeSelection = await loadActiveSelection();
         if (ignore) return;
         setActiveProviderId(activeSelection.activeProviderId);
         setActiveModelId(activeSelection.activeModelId);
@@ -140,7 +142,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
         let allModels: Model[] = [];
         for (const p of readyProviders) {
           if (!p.is_enabled) continue;
-          const pModels = await getModelsByProvider(p.id);
+          const pModels = await loadModelsByProvider(p.id);
           allModels = [...allModels, ...pModels.filter((m: Model) => m.is_enabled)];
         }
         if (ignore) return;
@@ -152,12 +154,12 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
 
     loadData();
     return () => { ignore = true; };
-  }, []);
+  }, [loadActiveSelection, loadModelsByProvider]);
 
   const handleSelect = async (providerId: string, modelId: string) => {
     setActiveProviderId(providerId);
     setActiveModelId(modelId);
-    await setActiveModelSelection(providerId, modelId);
+    await saveActiveSelection(providerId, modelId);
     window.dispatchEvent(new CustomEvent("refresh-active-model"));
     setOpen(false);
   };
