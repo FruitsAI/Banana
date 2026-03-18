@@ -10,24 +10,14 @@ import type {
   McpToolArguments,
   McpToolCallResult,
 } from "@/domain/mcp/types";
+import { AppError, normalizeError } from "@/shared/errors";
 
-export class McpServiceError extends Error {
-  readonly operation: string;
-
-  constructor(operation: string, cause: unknown) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    super(`[mcp:${operation}] ${detail}`);
-    this.name = "McpServiceError";
-    this.operation = operation;
-    (this as Error & { cause?: unknown }).cause = cause;
-  }
-}
-
-function wrapError(operation: string, error: unknown): McpServiceError {
-  if (error instanceof McpServiceError) {
-    return error;
-  }
-  return new McpServiceError(operation, error);
+function wrapError(operation: string, error: unknown): AppError {
+  return normalizeError(error, {
+    domain: "mcp",
+    operation,
+    code: "SERVICE_ERROR",
+  });
 }
 
 export async function getMcpServers(): Promise<McpServer[]> {

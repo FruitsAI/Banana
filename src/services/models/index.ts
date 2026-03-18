@@ -9,24 +9,14 @@ import {
   upsertProvider as dbUpsertProvider,
 } from "@/lib/db";
 import type { ActiveModelSelection, Model, Provider } from "@/domain/models/types";
+import { AppError, normalizeError } from "@/shared/errors";
 
-export class ModelsServiceError extends Error {
-  readonly operation: string;
-
-  constructor(operation: string, cause: unknown) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    super(`[models:${operation}] ${detail}`);
-    this.name = "ModelsServiceError";
-    this.operation = operation;
-    (this as Error & { cause?: unknown }).cause = cause;
-  }
-}
-
-function wrapError(operation: string, error: unknown): ModelsServiceError {
-  if (error instanceof ModelsServiceError) {
-    return error;
-  }
-  return new ModelsServiceError(operation, error);
+function wrapError(operation: string, error: unknown): AppError {
+  return normalizeError(error, {
+    domain: "models",
+    operation,
+    code: "SERVICE_ERROR",
+  });
 }
 
 function getProviderModelsSeededKey(providerId: string): string {

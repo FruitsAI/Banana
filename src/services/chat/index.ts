@@ -15,24 +15,14 @@ import {
   type Provider,
 } from "@/lib/db";
 import type { Message, Thread } from "@/domain/chat/types";
+import { AppError, normalizeError } from "@/shared/errors";
 
-export class ChatServiceError extends Error {
-  readonly operation: string;
-
-  constructor(operation: string, cause: unknown) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    super(`[chat:${operation}] ${detail}`);
-    this.name = "ChatServiceError";
-    this.operation = operation;
-    (this as Error & { cause?: unknown }).cause = cause;
-  }
-}
-
-function wrapError(operation: string, error: unknown): ChatServiceError {
-  if (error instanceof ChatServiceError) {
-    return error;
-  }
-  return new ChatServiceError(operation, error);
+function wrapError(operation: string, error: unknown): AppError {
+  return normalizeError(error, {
+    domain: "chat",
+    operation,
+    code: "SERVICE_ERROR",
+  });
 }
 
 export async function getThreads(): Promise<Thread[]> {
