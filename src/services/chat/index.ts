@@ -4,9 +4,15 @@ import {
   deleteMessagesAfter as dbDeleteMessagesAfter,
   deleteThread as dbDeleteThread,
   getMessages as dbGetMessages,
+  getMcpServers as dbGetMcpServers,
+  getModelsByProvider as dbGetModelsByProvider,
+  getProviders as dbGetProviders,
   getThreads as dbGetThreads,
   updateMessage as dbUpdateMessage,
   updateThreadTitle as dbUpdateThreadTitle,
+  type McpServer,
+  type Model,
+  type Provider,
 } from "@/lib/db";
 import type { Message, Thread } from "@/domain/chat/types";
 
@@ -94,5 +100,29 @@ export async function updateMessage(id: string, content: string): Promise<void> 
     await dbUpdateMessage(id, content);
   } catch (error) {
     throw wrapError("updateMessage", error);
+  }
+}
+
+export async function getProvidersForChat(): Promise<Provider[]> {
+  try {
+    return await dbGetProviders();
+  } catch (error) {
+    throw wrapError("getProvidersForChat", error);
+  }
+}
+
+export async function getModelsByProviderForChat(providerId: string): Promise<Model[]> {
+  try {
+    return await dbGetModelsByProvider(providerId);
+  } catch (error) {
+    throw wrapError("getModelsByProviderForChat", error);
+  }
+}
+
+export async function getMcpServersForChat(): Promise<McpServer[]> {
+  try {
+    return await dbGetMcpServers();
+  } catch (error) {
+    throw wrapError("getMcpServersForChat", error);
   }
 }

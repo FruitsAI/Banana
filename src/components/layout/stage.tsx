@@ -28,7 +28,8 @@ import { cn } from "@/lib/utils";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
 import { ModelSelector, ModelIcon } from "@/components/models/model-selector";
 import { IridescentBorder } from "@/components/ui/iridescent-border";
-import { getModelsByProvider, getProviders, type Model } from "@/lib/db";
+import { getModelsByProviderForChat, getProvidersForChat } from "@/services/chat";
+import type { Model } from "@/lib/db";
 
 const QUICK_ACTIONS = [
   { icon: ArtificialIntelligence08Icon, label: "帮我写一段代码" },
@@ -101,9 +102,9 @@ function StageContent() {
   useEffect(() => {
     const loadAllModels = async () => {
       try {
-        const providers = await getProviders();
+        const providers = await getProvidersForChat();
         const modelsResults = await Promise.all(
-          providers.map(p => getModelsByProvider(p.id))
+          providers.map(p => getModelsByProviderForChat(p.id))
         );
         setAllModels(modelsResults.flat());
       } catch (e) {

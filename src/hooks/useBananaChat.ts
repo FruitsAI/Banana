@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { getProviders } from "@/lib/db";
 import { getActiveModelSelection, ensureProvidersReady, ensureProviderModelsReady } from "@/lib/model-settings";
 import { useChatStore } from "@/stores/chat/useChatStore";
 import type { ChatMessage, ToolInvocation } from "@/domain/chat/types";
+import { getMcpServersForChat, getProvidersForChat } from "@/services/chat";
 import { v4 as uuidv4 } from "uuid";
 
 // 核心：模块级内存缓存，用于跨 Hook 实例保活正在生成的会话内容
@@ -104,7 +104,7 @@ export function useBananaChat(threadId: string) {
 
     try {
       const { activeProviderId, activeModelId } = await getActiveModelSelection();
-      const providers = await getProviders();
+      const providers = await getProvidersForChat();
       
       let targetProviderId = activeProviderId;
       let targetModelId = activeModelId;
@@ -129,9 +129,8 @@ export function useBananaChat(threadId: string) {
       if (!apiKey) throw new Error("API Key 未配置");
 
       // --- MCP 工具准备 ---
-      const { getMcpServers } = await import("@/lib/db");
       const { mcpListTools, mcpCallTool } = await import("@/lib/mcp");
-      const allMcpServers = await getMcpServers();
+      const allMcpServers = await getMcpServersForChat();
       const enabledServers = allMcpServers.filter(s => s.is_enabled);
       console.log("[MCP] Enabled servers detected:", enabledServers.length, enabledServers.map(s => s.name));
       
