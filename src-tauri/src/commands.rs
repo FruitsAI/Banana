@@ -63,13 +63,21 @@ pub async fn db_get_mcp_servers(state: State<'_, AppState>) -> Result<Vec<McpSer
 }
 
 #[tauri::command]
-pub async fn db_upsert_mcp_server(state: State<'_, AppState>, server: McpServer) -> Result<()> {
-    mcp_service::upsert_mcp_server(&state.db, &server).await
+pub async fn db_upsert_mcp_server(
+    state: State<'_, AppState>,
+    mcp_state: State<'_, crate::mcp::McpState>,
+    server: McpServer,
+) -> Result<()> {
+    mcp_service::upsert_mcp_server(&state.db, mcp_state.inner(), &server).await
 }
 
 #[tauri::command]
-pub async fn db_delete_mcp_server(state: State<'_, AppState>, server_id: String) -> Result<()> {
-    mcp_service::delete_mcp_server(&state.db, &server_id).await
+pub async fn db_delete_mcp_server(
+    state: State<'_, AppState>,
+    mcp_state: State<'_, crate::mcp::McpState>,
+    server_id: String,
+) -> Result<()> {
+    mcp_service::delete_mcp_server(&state.db, mcp_state.inner(), &server_id).await
 }
 
 /// ---- Threads ----

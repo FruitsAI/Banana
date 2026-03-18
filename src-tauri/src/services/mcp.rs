@@ -1,5 +1,5 @@
 use crate::db::{Database, McpServer};
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
@@ -18,6 +18,9 @@ pub struct McpServerProcess {
     pub stdin: std::process::ChildStdin,
     pub stdout: BufReader<std::process::ChildStdout>,
     pub initialized: bool,
+    pub command: String,
+    pub args: Vec<String>,
+    pub env_vars: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,12 +45,22 @@ pub async fn get_mcp_servers(db: &Database) -> Result<Vec<McpServer>> {
     db.get_mcp_servers().await
 }
 
-pub async fn upsert_mcp_server(db: &Database, server: &McpServer) -> Result<()> {
+pub async fn upsert_mcp_server(db: &Database, state: &McpState, server: &McpServer) -> Result<()> {
+    remove_server_process(state, &server.id).map_err(AppError::ConnectionFailed)?;
     db.upsert_mcp_server(server).await
 }
 
-pub async fn delete_mcp_server(db: &Database, server_id: &str) -> Result<()> {
+pub async fn delete_mcp_server(db: &Database, state: &McpState, server_id: &str) -> Result<()> {
+    remove_server_process(state, server_id).map_err(AppError::ConnectionFailed)?;
     db.delete_mcp_server(server_id).await
+}
+
+pub fn remove_server_process(state: &McpState, server_id: &str) -> McpCommandResult<()> {
+    let mut processes = state.processes.lock().map_err(|e| e.to_string())?;
+    if let Some(mut process) = processes.remove(server_id) {
+        stop_process_instance(&mut process);
+    }
+    Ok(())
 }
 
 pub fn list_tools(
@@ -58,12 +71,23 @@ pub fn list_tools(
     env_vars: Option<&str>,
 ) -> McpCommandResult<serde_json::Value> {
     let mut processes = state.processes.lock().map_err(|e| e.to_string())?;
+    let normalized_env_vars = normalize_env_vars(env_vars);
 
-    let need_spawn = if let Some(proc) = processes.get_mut(server_id) {
-        match proc.child.try_wait() {
-            Ok(None) => false,
-            Ok(Some(_)) => true,
+    let need_spawn = if let Some(mut existing_process) = processes.remove(server_id) {
+        let config_changed = existing_process.command != command
+            || existing_process.args.as_slice() != args
+            || existing_process.env_vars != normalized_env_vars;
+        let process_exited = match existing_process.child.try_wait() {
+            Ok(status) => status.is_some(),
             Err(_) => true,
+        };
+
+        if process_exited || config_changed {
+            stop_process_instance(&mut existing_process);
+            true
+        } else {
+            processes.insert(server_id.to_string(), existing_process);
+            false
         }
     } else {
         true
@@ -76,7 +100,7 @@ pub fn list_tools(
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
 
-        if let Some(env_text) = env_vars {
+        if let Some(env_text) = normalized_env_vars.as_deref() {
             for pair in env_text.split('\n') {
                 let parts: Vec<&str> = pair.splitn(2, '=').collect();
                 if parts.len() == 2 {
@@ -97,6 +121,9 @@ pub fn list_tools(
                 stdin,
                 stdout: reader,
                 initialized: false,
+                command: command.to_string(),
+                args: args.to_vec(),
+                env_vars: normalized_env_vars,
             },
         );
     }
@@ -173,11 +200,11 @@ pub fn call_tool(
 }
 
 pub fn start_server() -> McpCommandResult<()> {
-    Ok(())
+    Err("start_mcp_server is deprecated; use mcp_list_tools/mcp_call_tool flow".to_string())
 }
 
 pub fn send_message() -> McpCommandResult<()> {
-    Ok(())
+    Err("send_mcp_message is deprecated; use mcp_call_tool flow".to_string())
 }
 
 fn send_rpc(stdin: &mut std::process::ChildStdin, req: &JsonRpcRequest) -> McpCommandResult<()> {
@@ -211,5 +238,21 @@ fn read_rpc(
                 return Ok(res);
             }
         }
+    }
+}
+
+fn normalize_env_vars(env_vars: Option<&str>) -> Option<String> {
+    env_vars
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .map(str::to_owned)
+}
+
+fn stop_process_instance(process: &mut McpServerProcess) {
+    let is_running = process.child.try_wait().ok().flatten().is_none();
+
+    if is_running {
+        let _ = process.child.kill();
+        let _ = process.child.wait();
     }
 }

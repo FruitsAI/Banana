@@ -3,6 +3,7 @@ import { getActiveModelSelection, ensureProvidersReady, ensureProviderModelsRead
 import { useChatStore } from "@/stores/chat/useChatStore";
 import type { ChatMessage, ToolInvocation } from "@/domain/chat/types";
 import { getMcpServersForChat, getProvidersForChat } from "@/services/chat";
+import { callMcpTool, listMcpTools } from "@/services/mcp";
 import { v4 as uuidv4 } from "uuid";
 
 // 核心：模块级内存缓存，用于跨 Hook 实例保活正在生成的会话内容
@@ -129,7 +130,6 @@ export function useBananaChat(threadId: string) {
       if (!apiKey) throw new Error("API Key 未配置");
 
       // --- MCP 工具准备 ---
-      const { mcpListTools, mcpCallTool } = await import("@/lib/mcp");
       const allMcpServers = await getMcpServersForChat();
       const enabledServers = allMcpServers.filter(s => s.is_enabled);
       console.log("[MCP] Enabled servers detected:", enabledServers.length, enabledServers.map(s => s.name));
@@ -139,7 +139,7 @@ export function useBananaChat(threadId: string) {
 
       for (const server of enabledServers) {
         try {
-          const { tools } = await mcpListTools(server);
+          const { tools } = await listMcpTools(server);
           tools.forEach((t: Record<string, unknown>) => {
             mcpTools.push(t);
             if (typeof t.name === 'string') {
@@ -295,7 +295,7 @@ export function useBananaChat(threadId: string) {
                   assistantToolInvocations = [...assistantToolInvocations, newCall];
                   updateMessageUI(assistantContent, assistantToolInvocations);
 
-                  const result = await mcpCallTool(serverId, data.toolName, finalArgs);
+                  const result = await callMcpTool(serverId, data.toolName, finalArgs);
                   console.log("[MCP] Tool Result:", result);
                   
                   // 更新该工具为已完成及其结果
