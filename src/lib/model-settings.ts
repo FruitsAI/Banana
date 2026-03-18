@@ -1,9 +1,10 @@
 import type { Model, Provider } from "@/domain/models/types";
-import { getConfig, setConfig } from "@/lib/db";
 import {
   getActiveModelSelection as getActiveModelSelectionFromService,
   getModelsByProvider,
+  getProviderModelsSeededState,
   getProviders,
+  setProviderModelsSeededState,
   setActiveModelSelection as setActiveModelSelectionFromService,
   upsertModel,
   upsertProvider,
@@ -53,10 +54,6 @@ const DEFAULT_MODEL_SEEDS: Record<string, ModelSeed[]> = {
   openrouter: [{ id: "openrouter/auto", name: "openrouter/auto" }],
   ollama: [{ id: "llama3.1:8b", name: "llama3.1:8b" }],
 };
-
-function getProviderModelsSeededKey(providerId: string): string {
-  return `provider_models_seeded_${providerId}`;
-}
 
 /**
  * 获取系统预设 Provider 的默认 Base URL。
@@ -146,24 +143,23 @@ export async function ensureProvidersReady(): Promise<Provider[]> {
  * @returns Promise<Model[]>
  */
 export async function ensureProviderModelsReady(providerId: string): Promise<Model[]> {
-  const seedStateKey = getProviderModelsSeededKey(providerId);
   const currentModels = await getModelsByProvider(providerId);
   if (currentModels.length > 0) {
-    const seededState = await getConfig(seedStateKey);
-    if (seededState !== "1") {
-      await setConfig(seedStateKey, "1");
+    const seededState = await getProviderModelsSeededState(providerId);
+    if (!seededState) {
+      await setProviderModelsSeededState(providerId);
     }
     return currentModels;
   }
 
-  const seededState = await getConfig(seedStateKey);
-  if (seededState === "1") {
+  const seededState = await getProviderModelsSeededState(providerId);
+  if (seededState) {
     return [];
   }
 
   const modelSeeds = DEFAULT_MODEL_SEEDS[providerId] ?? [];
   if (modelSeeds.length === 0) {
-    await setConfig(seedStateKey, "1");
+    await setProviderModelsSeededState(providerId);
     return [];
   }
 
@@ -179,7 +175,7 @@ export async function ensureProviderModelsReady(providerId: string): Promise<Mod
     });
   }
 
-  await setConfig(seedStateKey, "1");
+  await setProviderModelsSeededState(providerId);
 
   return getModelsByProvider(providerId);
 }

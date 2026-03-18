@@ -29,6 +29,10 @@ function wrapError(operation: string, error: unknown): ModelsServiceError {
   return new ModelsServiceError(operation, error);
 }
 
+function getProviderModelsSeededKey(providerId: string): string {
+  return `provider_models_seeded_${providerId}`;
+}
+
 export async function getProviders(): Promise<Provider[]> {
   try {
     return await dbGetProviders();
@@ -100,5 +104,22 @@ export async function setActiveModelSelection(providerId: string, modelId: strin
     ]);
   } catch (error) {
     throw wrapError("setActiveModelSelection", error);
+  }
+}
+
+export async function getProviderModelsSeededState(providerId: string): Promise<boolean> {
+  try {
+    const value = await dbGetConfig(getProviderModelsSeededKey(providerId));
+    return value === "1";
+  } catch (error) {
+    throw wrapError("getProviderModelsSeededState", error);
+  }
+}
+
+export async function setProviderModelsSeededState(providerId: string): Promise<void> {
+  try {
+    await dbSetConfig(getProviderModelsSeededKey(providerId), "1");
+  } catch (error) {
+    throw wrapError("setProviderModelsSeededState", error);
   }
 }
