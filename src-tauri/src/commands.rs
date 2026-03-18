@@ -1,5 +1,6 @@
 use crate::db::{Database, McpServer, Message, Model, Provider, Thread};
 use crate::error::Result;
+use crate::services::chat as chat_service;
 use tauri::State;
 
 #[derive(Clone)]
@@ -67,7 +68,7 @@ pub async fn db_delete_mcp_server(state: State<'_, AppState>, server_id: String)
 /// ---- Threads ----
 #[tauri::command]
 pub async fn db_get_threads(state: State<'_, AppState>) -> Result<Vec<Thread>> {
-    state.db.get_threads().await
+    chat_service::get_threads(&state.db).await
 }
 
 #[tauri::command]
@@ -77,10 +78,7 @@ pub async fn db_create_thread(
     title: String,
     model_id: Option<String>,
 ) -> Result<()> {
-    state
-        .db
-        .create_thread(&id, &title, model_id.as_deref())
-        .await
+    chat_service::create_thread(&state.db, &id, &title, model_id.as_deref()).await
 }
 
 #[tauri::command]
@@ -89,12 +87,12 @@ pub async fn db_update_thread_title(
     id: String,
     title: String,
 ) -> Result<()> {
-    state.db.update_thread_title(&id, &title).await
+    chat_service::update_thread_title(&state.db, &id, &title).await
 }
 
 #[tauri::command]
 pub async fn db_delete_thread(state: State<'_, AppState>, id: String) -> Result<()> {
-    state.db.delete_thread(&id).await
+    chat_service::delete_thread(&state.db, &id).await
 }
 
 /// ---- Messages ----
@@ -103,12 +101,12 @@ pub async fn db_get_messages(
     state: State<'_, AppState>,
     thread_id: String,
 ) -> Result<Vec<Message>> {
-    state.db.get_messages(&thread_id).await
+    chat_service::get_messages(&state.db, &thread_id).await
 }
 
 #[tauri::command]
 pub async fn db_append_message(state: State<'_, AppState>, msg: Message) -> Result<()> {
-    state.db.append_message(&msg).await
+    chat_service::append_message(&state.db, &msg).await
 }
 
 #[tauri::command]
@@ -117,7 +115,7 @@ pub async fn db_delete_messages_after(
     thread_id: String,
     message_id: String,
 ) -> Result<()> {
-    state.db.delete_messages_after(&thread_id, &message_id).await
+    chat_service::delete_messages_after(&state.db, &thread_id, &message_id).await
 }
 
 #[tauri::command]
@@ -126,7 +124,7 @@ pub async fn db_update_message(
     id: String,
     content: String,
 ) -> Result<()> {
-    state.db.update_message(&id, &content).await
+    chat_service::update_message(&state.db, &id, &content).await
 }
 
 // 统一注册 Commands

@@ -1,24 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { appendMessage, getProviders, createThread, getMessages, deleteMessagesAfter, updateMessage } from "@/lib/db";
+import { getProviders } from "@/lib/db";
 import { getActiveModelSelection, ensureProvidersReady, ensureProviderModelsReady } from "@/lib/model-settings";
+import { useChatStore } from "@/stores/chat/useChatStore";
+import type { ChatMessage, ToolInvocation } from "@/domain/chat/types";
 import { v4 as uuidv4 } from "uuid";
-
-export interface ToolInvocation {
-  state: "call" | "result";
-  toolCallId: string;
-  toolName: string;
-  args: Record<string, unknown>;
-  result?: unknown;
-}
-
-export interface ChatMessage {
-  toolInvocations?: ToolInvocation[];
-  id: string;
-  role: "user" | "assistant" | "system" | "tool";
-  content: string;
-  modelId?: string;
-  createdAt?: string; // 保持可选
-}
 
 // 核心：模块级内存缓存，用于跨 Hook 实例保活正在生成的会话内容
 // 解决 threadId 变更（从 default 到 uuid）导致 Hook 卸载、状态丢失的问题
@@ -31,6 +16,13 @@ export function useBananaChat(threadId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const {
+    loadMessages: loadMessagesFromStore,
+    createChatThread,
+    appendChatMessage,
+    truncateMessagesAfter,
+    updateChatMessage,
+  } = useChatStore();
   
   const isProcessingRef = useRef(false);
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -63,7 +55,7 @@ export function useBananaChat(threadId: string) {
     }
 
     try {
-      const data = await getMessages(threadId);
+      const data = await loadMessagesFromStore(threadId);
       const dbMessages = data.map(m => ({
         id: m.id,
         role: m.role as "user" | "assistant" | "system",
@@ -89,7 +81,7 @@ export function useBananaChat(threadId: string) {
     } catch (e) {
       console.error("Failed to load messages", e);
     }
-  }, [threadId]);
+  }, [threadId, loadMessagesFromStore]);
 
   useEffect(() => {
     // 强制初始化：如果该 threadId 已有缓存内容，优先注入
@@ -376,7 +368,7 @@ export function useBananaChat(threadId: string) {
       setIsLoading(false);
 
       if (threadIdToUse && threadIdToUse !== "default-thread") {
-        await appendMessage({
+        await appendChatMessage({
           id: assistantMessageId,
           thread_id: threadIdToUse,
           role: "assistant",
@@ -405,7 +397,7 @@ export function useBananaChat(threadId: string) {
         }, 1000);
       }
     }
-  }, []);
+  }, [appendChatMessage]);
 
   const append = useCallback(
     async (
@@ -441,11 +433,11 @@ export function useBananaChat(threadId: string) {
       if (currentThreadId) {
         const { activeModelId } = await getActiveModelSelection();
         try {
-          await createThread(currentThreadId, "新会话", activeModelId || "default");
+          await createChatThread(currentThreadId, "新会话", activeModelId || "default");
         } catch { /* Likely exists */ }
 
         try {
-          await appendMessage({
+          await appendChatMessage({
             id: newMessage.id,
             thread_id: currentThreadId,
             role: newMessage.role,
@@ -459,7 +451,7 @@ export function useBananaChat(threadId: string) {
       
       await executeChat(latestMessages, currentThreadId, options);
     },
-    [executeChat]
+    [createChatThread, executeChat, appendChatMessage]
   );
 
   const deleteMessage = useCallback(async (id: string) => {
@@ -468,12 +460,12 @@ export function useBananaChat(threadId: string) {
 
   const updateMessageContent = useCallback(async (id: string, content: string) => {
     try {
-      await updateMessage(id, content);
+      await updateChatMessage(id, content);
       setMessages(prev => prev.map(m => m.id === id ? { ...m, content } : m));
     } catch (e) {
       console.error("Failed to update message", e);
     }
-  }, []);
+  }, [updateChatMessage]);
 
   const regenerate = useCallback(async (lastMessageId: string, options?: { isSearch?: boolean; isThink?: boolean }) => {
     isProcessingRef.current = true;
@@ -493,7 +485,7 @@ export function useBananaChat(threadId: string) {
 
     if (targetMsg.role === "assistant") {
       if (currentThreadId && currentThreadId !== "default-thread") {
-        await deleteMessagesAfter(currentThreadId, lastMessageId);
+        await truncateMessagesAfter(currentThreadId, lastMessageId);
       }
       const lastUserMsgIndex = currentMessages.slice(0, msgIndex).reverse().findIndex(m => m.role === "user");
       if (lastUserMsgIndex === -1) {
@@ -505,7 +497,7 @@ export function useBananaChat(threadId: string) {
     } else {
       if (currentThreadId && currentThreadId !== "default-thread" && msgIndex < currentMessages.length - 1) {
         const nextMsgId = currentMessages[msgIndex + 1].id;
-        await deleteMessagesAfter(currentThreadId, nextMsgId);
+        await truncateMessagesAfter(currentThreadId, nextMsgId);
       }
       contextMessages = currentMessages.slice(0, msgIndex + 1);
     }
@@ -515,7 +507,7 @@ export function useBananaChat(threadId: string) {
       pendingMessagesCache[currentThreadId] = contextMessages;
     }
     await executeChat(contextMessages, currentThreadId, options);
-  }, [executeChat]);
+  }, [executeChat, truncateMessagesAfter]);
 
   return { messages, setMessages, isLoading, error, append, reload, loadMessages, deleteMessage, regenerate, updateMessageContent };
 }

@@ -18,7 +18,8 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, KeyboardEvent, useEffect, useRef } from "react";
-import { useBananaChat, type ChatMessage } from "@/hooks/useBananaChat";
+import { useBananaChat } from "@/hooks/useBananaChat";
+import type { ChatMessage } from "@/domain/chat/types";
 import { useToast } from "@/hooks/use-toast";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
