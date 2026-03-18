@@ -44,7 +44,7 @@ Banana 是一个面向开发者与知识工作者的桌面 AI 助手，强调：
 - `domain`：纯类型与领域定义。
 - `services`：副作用和外部调用边界。
 - `stores`：状态编排与 UI 消费接口。
-- `components/hooks`：不直接承载持久化调用细节。
+- `components/hooks`：Chat/Models/MCP 核心业务域不直接承载持久化调用细节；全局配置场景仍有少量 `lib/db` 直连，后续继续收敛。
 
 ### 4.2 后端分层
 - `commands.rs`：命令入口与参数转发。

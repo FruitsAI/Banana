@@ -65,7 +65,7 @@ docs/
 - `domain/*/types.ts`：定义 Chat/Models/MCP 领域类型。
 - `services/*`：封装数据库调用和错误归一（`AppError + normalizeError`）。
 - `stores/*`：组合服务能力并向组件暴露稳定接口。
-- `components/hooks`：只消费 store/service，不直接直连底层 DB invoke。
+- `components/hooks`：Chat/Models/MCP 核心业务域只消费 store/service；全局配置（如动画强度）仍有少量 `lib/db` 直连，后续继续收敛。
 
 ### 后端边界
 - `commands.rs`：仅做参数接收与转发。
@@ -74,7 +74,7 @@ docs/
 - MCP 相关命令通过 `services/mcp.rs` 管理进程生命周期与工具调用。
 
 ### 端到端调用链
-`UI -> store -> service -> lib/db(invoke) -> tauri command -> rust service -> db/sqlite`
+`UI -> store -> service -> lib/* (db/mcp) -> tauri command -> rust service -> db/sqlite`
 
 ## 迁移现状（截至 2026-03-18）
 - Chat 域：已迁移到 `domain/services/stores` 与后端 `services/chat.rs`。
