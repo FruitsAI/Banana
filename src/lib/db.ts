@@ -1,4 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
+import type { Message, Thread } from '@/domain/chat/types';
+
+export type { Message, Thread } from '@/domain/chat/types';
 
 /**
  * 持久化全局配置 (setConfig)
@@ -11,18 +14,6 @@ export async function setConfig(key: string, value: string): Promise<void> {
 
 export async function getConfig(key: string): Promise<string | null> {
   return await invoke('db_get_config', { key });
-}
-
-/**
- * 会话实体 (Thread) 定义与存储
- * @description 会话是整个聊天组织的基础单体，左侧栏列表所对应的每一个项便属于一个 Thread，记录标题与产生日期。
- */
-export interface Thread {
-  id: string;
-  title: string;
-  model_id?: string;
-  created_at: string;
-  updated_at?: string;
 }
 
 export async function getThreads(): Promise<Thread[]> {
@@ -44,18 +35,6 @@ export async function deleteThread(id: string): Promise<void> {
 export async function updateThreadTime(): Promise<void> {
   // Update thread time is handled automatically by rust when saving a message. 
   // Should rarely be needed on frontend directly now, but we'll leave invoke if needed.
-}
-
-/**
- * Messages
- */
-export interface Message {
-  id: string;
-  thread_id: string;
-  role: string;
-  content: string;
-  model_id?: string;
-  created_at: string;
 }
 
 export async function getMessages(threadId: string): Promise<Message[]> {
