@@ -9,6 +9,10 @@ pub async fn upsert_provider(db: &Database, provider: &Provider) -> Result<()> {
     db.upsert_provider(provider).await
 }
 
+pub async fn delete_provider(db: &Database, provider_id: &str) -> Result<()> {
+    db.delete_provider(provider_id).await
+}
+
 pub async fn get_models_by_provider(db: &Database, provider_id: &str) -> Result<Vec<Model>> {
     db.get_models_by_provider(provider_id).await
 }

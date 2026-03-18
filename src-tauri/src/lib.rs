@@ -36,6 +36,7 @@ pub fn run() {
             commands::db_set_config,
             commands::db_get_providers,
             commands::db_upsert_provider,
+            commands::db_delete_provider,
             commands::db_get_models_by_provider,
             commands::db_upsert_model,
             commands::db_delete_model,

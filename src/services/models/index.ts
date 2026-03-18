@@ -1,4 +1,5 @@
 import {
+  deleteProvider as dbDeleteProvider,
   deleteModel as dbDeleteModel,
   getConfig as dbGetConfig,
   getModelsByProvider as dbGetModelsByProvider,
@@ -41,6 +42,14 @@ export async function upsertProvider(provider: Provider): Promise<void> {
     await dbUpsertProvider(provider);
   } catch (error) {
     throw wrapError("upsertProvider", error);
+  }
+}
+
+export async function deleteProvider(providerId: string): Promise<void> {
+  try {
+    await dbDeleteProvider(providerId);
+  } catch (error) {
+    throw wrapError("deleteProvider", error);
   }
 }
 

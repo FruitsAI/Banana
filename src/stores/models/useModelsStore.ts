@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import type { ActiveModelSelection, Model, Provider } from "@/domain/models/types";
 import {
+  deleteProvider,
   deleteModel,
   getActiveModelSelection,
   getModelsByProvider,
@@ -17,6 +18,10 @@ export function useModelsStore() {
 
   const saveProvider = useCallback(async (provider: Provider): Promise<void> => {
     await upsertProvider(provider);
+  }, []);
+
+  const removeProvider = useCallback(async (providerId: string): Promise<void> => {
+    await deleteProvider(providerId);
   }, []);
 
   const loadModelsByProvider = useCallback(async (providerId: string): Promise<Model[]> => {
@@ -45,6 +50,7 @@ export function useModelsStore() {
   return {
     loadProviders,
     saveProvider,
+    removeProvider,
     loadModelsByProvider,
     saveModel,
     removeModel,

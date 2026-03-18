@@ -1,7 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { Message, Thread } from '@/domain/chat/types';
+import type { Model, Provider } from '@/domain/models/types';
 
 export type { Message, Thread } from '@/domain/chat/types';
+export type { Model, Provider } from '@/domain/models/types';
 
 /**
  * 持久化全局配置 (setConfig)
@@ -56,15 +58,6 @@ export async function updateMessage(id: string, content: string): Promise<void> 
 /**
  * AI Provider / Model / MCP
  */
-export interface Provider {
-  id: string;
-  name: string;
-  icon: string;
-  is_enabled: boolean;
-  api_key?: string;
-  base_url?: string;
-  provider_type?: string;
-}
 
 export async function getProviders(): Promise<Provider[]> {
   return await invoke('db_get_providers');
@@ -74,14 +67,8 @@ export async function upsertProvider(p: Provider): Promise<void> {
   await invoke('db_upsert_provider', { provider: p });
 }
 
-export interface Model {
-  id: string;
-  provider_id: string;
-  name: string;
-  is_enabled: boolean;
-  group_name?: string | null;
-  capabilities?: string[];
-  capabilities_source?: "auto" | "manual";
+export async function deleteProvider(providerId: string): Promise<void> {
+  await invoke('db_delete_provider', { providerId });
 }
 
 type ModelPayload = Omit<Model, "capabilities" | "capabilities_source"> & {

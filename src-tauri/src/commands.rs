@@ -31,6 +31,11 @@ pub async fn db_upsert_provider(state: State<'_, AppState>, provider: Provider) 
     models_service::upsert_provider(&state.db, &provider).await
 }
 
+#[tauri::command]
+pub async fn db_delete_provider(state: State<'_, AppState>, provider_id: String) -> Result<()> {
+    models_service::delete_provider(&state.db, &provider_id).await
+}
+
 /// ---- Models ----
 #[tauri::command]
 pub async fn db_get_models_by_provider(
@@ -135,6 +140,7 @@ pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<
         db_set_config,
         db_get_providers,
         db_upsert_provider,
+        db_delete_provider,
         db_get_models_by_provider,
         db_upsert_model,
         db_delete_model,
