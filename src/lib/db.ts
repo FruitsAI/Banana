@@ -1,9 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { Message, Thread } from '@/domain/chat/types';
 import type { Model, Provider } from '@/domain/models/types';
+import type { McpServer } from '@/domain/mcp/types';
 
 export type { Message, Thread } from '@/domain/chat/types';
 export type { Model, Provider } from '@/domain/models/types';
+export type { McpServer } from '@/domain/mcp/types';
 
 /**
  * 持久化全局配置 (setConfig)
@@ -122,17 +124,6 @@ export async function upsertModel(m: Model): Promise<void> {
 
 export async function deleteModel(modelId: string): Promise<void> {
   await invoke('db_delete_model', { modelId });
-}
-
-export interface McpServer {
-  id: string;
-  name: string;
-  description?: string;
-  type: string;
-  command: string;
-  args?: string;
-  env_vars?: string;
-  is_enabled: boolean;
 }
 
 export async function getMcpServers(): Promise<McpServer[]> {

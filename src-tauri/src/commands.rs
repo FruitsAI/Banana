@@ -1,6 +1,7 @@
 use crate::db::{Database, McpServer, Message, Model, Provider, Thread};
 use crate::error::Result;
 use crate::services::chat as chat_service;
+use crate::services::mcp as mcp_service;
 use crate::services::models as models_service;
 use tauri::State;
 
@@ -58,17 +59,17 @@ pub async fn db_delete_model(state: State<'_, AppState>, model_id: String) -> Re
 /// ---- McpServers ----
 #[tauri::command]
 pub async fn db_get_mcp_servers(state: State<'_, AppState>) -> Result<Vec<McpServer>> {
-    state.db.get_mcp_servers().await
+    mcp_service::get_mcp_servers(&state.db).await
 }
 
 #[tauri::command]
 pub async fn db_upsert_mcp_server(state: State<'_, AppState>, server: McpServer) -> Result<()> {
-    state.db.upsert_mcp_server(&server).await
+    mcp_service::upsert_mcp_server(&state.db, &server).await
 }
 
 #[tauri::command]
 pub async fn db_delete_mcp_server(state: State<'_, AppState>, server_id: String) -> Result<()> {
-    state.db.delete_mcp_server(&server_id).await
+    mcp_service::delete_mcp_server(&state.db, &server_id).await
 }
 
 /// ---- Threads ----

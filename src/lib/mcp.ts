@@ -1,6 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type {
+  McpListToolsResult,
+  McpServer,
+  McpToolArguments,
+  McpToolCallResult,
+} from "@/domain/mcp/types";
 
 /**
  * Tauri 到原生 MCP 协议的通信桥梁 (TauriMcpTransport)
@@ -84,22 +90,26 @@ export class TauriMcpTransport implements Transport {
 /**
  * 获取指定 MCP 服务器的所有可用工具
  */
-export async function mcpListTools(server: {
-  id: string;
-  command: string;
-  args?: string;
-  env_vars?: string;
-}): Promise<{ tools: Record<string, unknown>[] }> {
+function parseMcpArgs(rawArgs?: string): string[] {
+  if (!rawArgs) {
+    return [];
+  }
+
   // MCP 参数约定：一行一个参数。这样可以完美支持带有空格的文件路径或特殊参数。
-  const argsArray = server.args 
-    ? server.args.split('\n').map(a => a.trim()).filter(a => a !== "") 
-    : [];
+  return rawArgs.split("\n").map((arg) => arg.trim()).filter((arg) => arg !== "");
+}
+
+export async function mcpListTools(
+  server: Pick<McpServer, "id" | "command" | "args" | "env_vars">,
+): Promise<McpListToolsResult> {
+  // MCP 参数约定：一行一个参数。这样可以完美支持带有空格的文件路径或特殊参数。
+  const argsArray = parseMcpArgs(server.args);
     
-  return await invoke<{ tools: Record<string, unknown>[] }>("mcp_list_tools", {
+  return await invoke<McpListToolsResult>("mcp_list_tools", {
     serverId: server.id,
     command: server.command,
     args: argsArray,
-    envVars: server.env_vars
+    envVars: server.env_vars,
   });
 }
 
@@ -109,11 +119,11 @@ export async function mcpListTools(server: {
 export async function mcpCallTool(
   serverId: string,
   toolName: string,
-  arguments_obj: Record<string, unknown>
-): Promise<Record<string, unknown>> {
-  return await invoke<Record<string, unknown>>("mcp_call_tool", {
+  arguments_obj: McpToolArguments,
+): Promise<McpToolCallResult> {
+  return await invoke<McpToolCallResult>("mcp_call_tool", {
     serverId,
     toolName,
-    arguments: arguments_obj
+    arguments: arguments_obj,
   });
 }

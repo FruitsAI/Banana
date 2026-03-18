@@ -42,6 +42,7 @@ pub fn run() {
             commands::db_delete_model,
             commands::db_get_mcp_servers,
             commands::db_upsert_mcp_server,
+            commands::db_delete_mcp_server,
             commands::db_get_threads,
             commands::db_create_thread,
             commands::db_update_thread_title,
