@@ -190,7 +190,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
     return models.find((m) => m.id === activeModelId && m.provider_id === activeProviderId) || models[0];
   }, [models, activeModelId, activeProviderId]);
 
-  const capabilityConfig: Record<string, { icon: unknown; color: string }> = {
+  const capabilityConfig: Record<string, { icon: typeof ViewIcon; color: string }> = {
     vision: { icon: ViewIcon, color: "var(--success)" },
     reasoning: { icon: AiBrain02Icon, color: "var(--brand-primary)" },
     tools: { icon: Wrench01Icon, color: "var(--warning)" },

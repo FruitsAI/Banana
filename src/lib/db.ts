@@ -75,7 +75,7 @@ export async function deleteProvider(providerId: string): Promise<void> {
 
 type ModelPayload = Omit<Model, "capabilities" | "capabilities_source"> & {
   capabilities?: string | null;
-  capabilities_source?: string | null;
+  capabilities_source?: Model["capabilities_source"] | null;
 };
 
 function parseCapabilities(raw?: string | null): string[] | undefined {

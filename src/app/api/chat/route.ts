@@ -1,6 +1,10 @@
 import { streamText, tool, jsonSchema } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 
+type OpenAICompatOptions = Parameters<typeof createOpenAI>[0] & {
+  compatibility?: "strict" | "compatible";
+};
+
 /**
  * 不同供应商类型对应的 API 路径后缀（仅用于日志）。
  */
@@ -38,12 +42,11 @@ export async function POST(req: Request) {
       hasTools: !!clientTools?.length,
     });
 
-    // @ts-expect-error Disable strict check for compatibility flag on older @ai-sdk/openai versions
     const openai = createOpenAI({
       apiKey,
       baseURL: resolvedBaseURL,
       compatibility: "strict" // forces strict completions path avoiding /v1/responses
-    });
+    } as OpenAICompatOptions);
 
     const modelParams = useCompatible 
       ? openai.chat(modelId || "gpt-4o-mini") 
@@ -91,7 +94,7 @@ When using any tool (like get_current_time), you MUST explicitly provide the 'ti
         sdkTools[t.name] = tool({
           description: t.description,
           parameters: schema,
-        });
+        } as unknown as Parameters<typeof tool>[0]);
       });
     }
 
