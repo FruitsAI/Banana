@@ -10,7 +10,8 @@ import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Delete02Icon } from "@hugeicons/core-free-icons";
 import { v4 as uuidv4 } from "uuid";
-import { getThreads, deleteThread, type Thread } from "@/lib/db";
+import type { Thread } from "@/domain/chat/types";
+import { useChatStore } from "@/stores/chat/useChatStore";
 
 function formatTime(dateStr: string) {
   try {
@@ -139,6 +140,7 @@ function ThreadsSidebarContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeThreadId = searchParams.get("thread");
+  const { loadThreads: loadThreadsFromStore, removeChatThread } = useChatStore();
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -148,7 +150,7 @@ function ThreadsSidebarContent() {
 
   const loadThreads = useCallback(async () => {
     try {
-      const data = await getThreads();
+      const data = await loadThreadsFromStore();
       if (!data) return;
       // Sort descending by created_at or updated_at
       data.sort((a, b) => {
@@ -160,14 +162,14 @@ function ThreadsSidebarContent() {
     } catch (e) {
       console.error("Failed to load threads", e);
     }
-  }, []);
+  }, [loadThreadsFromStore]);
 
   useEffect(() => {
     let ignore = false;
     
     const load = async () => {
       try {
-        const data = await getThreads();
+        const data = await loadThreadsFromStore();
         if (ignore || !data) return;
         data.sort((a, b) => {
           const timeA = new Date(a.updated_at || a.created_at).getTime();
@@ -204,7 +206,7 @@ function ThreadsSidebarContent() {
       window.removeEventListener("refresh-threads", handleRefresh);
       window.removeEventListener("click", handleClickOutside);
     };
-  }, [loadThreads]);
+  }, [loadThreads, loadThreadsFromStore]);
 
   const handleContextMenu = (e: React.MouseEvent, threadId: string) => {
     e.preventDefault();
@@ -213,7 +215,7 @@ function ThreadsSidebarContent() {
 
   const handleDeleteThread = async (id: string) => {
     try {
-      await deleteThread(id);
+      await removeChatThread(id);
       setContextMenu(null);
       await loadThreads();
       

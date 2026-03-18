@@ -53,4 +53,13 @@ impl Database {
 
         Ok(())
     }
+
+    pub async fn delete_provider(&self, provider_id: &str) -> Result<()> {
+        sqlx::query(r#"DELETE FROM providers WHERE id = ?"#)
+            .bind(provider_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
 }

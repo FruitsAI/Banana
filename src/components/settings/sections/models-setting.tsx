@@ -22,22 +22,15 @@ import {
   Search01Icon,
 } from "@hugeicons/core-free-icons";
 import {
-  type Model,
-  type Provider,
-  deleteModel,
-  getModelsByProvider,
-  setConfig,
-  upsertModel,
-  upsertProvider,
-} from "@/lib/db";
-import {
   ensureProviderModelsReady,
   ensureProvidersReady,
   filterProviders,
-  getActiveModelSelection,
   inferModelCapabilities,
-  setActiveModelSelection,
 } from "@/lib/model-settings";
+import type { Model, Provider } from "@/domain/models/types";
+import {
+  useModelsStore,
+} from "@/stores/models/useModelsStore";
 import {
   AddModelDialog,
   type AddModelFormValues,
@@ -108,6 +101,14 @@ function buildUniqueProviderId(name: string, type: ProviderType, existingIds: Se
  * ModelsSetting 组件（保持原版布局，接入真实前后端数据）。
  */
 export function ModelsSetting() {
+  const {
+    loadActiveSelection,
+    loadModelsByProvider,
+    removeModel,
+    saveActiveSelection,
+    saveModel,
+    saveProvider,
+  } = useModelsStore();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const [activeProviderId, setActiveProviderId] = useState("");
@@ -180,7 +181,7 @@ export function ModelsSetting() {
       setLoading(true);
       for (const m of remoteModels) {
         const inferredCapabilities = inferModelCapabilities(activeProvider.id, m.id);
-        await upsertModel({
+        await saveModel({
           provider_id: activeProvider.id,
           id: m.id,
           name: m.name,
@@ -249,7 +250,7 @@ export function ModelsSetting() {
 
       if (providerModels.length === 0) {
         setActiveModelId("");
-        await Promise.all([setConfig("active_provider_id", provider.id), setConfig("active_model_id", "")]);
+        await saveActiveSelection(provider.id, "");
         return;
       }
 
@@ -258,9 +259,9 @@ export function ModelsSetting() {
         : false;
       const nextModelId = canUsePreferred ? preferredModelId! : providerModels[0].id;
       setActiveModelId(nextModelId);
-      await setActiveModelSelection(provider.id, nextModelId);
+      await saveActiveSelection(provider.id, nextModelId);
     },
-    []
+    [saveActiveSelection]
   );
 
   /**
@@ -271,7 +272,7 @@ export function ModelsSetting() {
     try {
       const [readyProviders, activeSelection] = await Promise.all([
         ensureProvidersReady(),
-        getActiveModelSelection(),
+        loadActiveSelection(),
       ]);
       setProviders(readyProviders);
 
@@ -292,7 +293,7 @@ export function ModelsSetting() {
     } finally {
       setLoading(false);
     }
-  }, [loadProviderDetail]);
+  }, [loadActiveSelection, loadProviderDetail]);
 
   useEffect(() => {
     void bootstrap();
@@ -317,7 +318,7 @@ export function ModelsSetting() {
         base_url: baseUrl.trim() || undefined,
       };
       setSaving(true);
-      upsertProvider(updatedProvider)
+      saveProvider(updatedProvider)
         .then(() => {
           setProviders((prev) =>
             prev.map((p) => (p.id === updatedProvider.id ? updatedProvider : p))
@@ -328,7 +329,7 @@ export function ModelsSetting() {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [apiKey, baseUrl, activeProvider]);
+  }, [apiKey, baseUrl, activeProvider, saveProvider]);
 
 
   /**
@@ -347,7 +348,7 @@ export function ModelsSetting() {
         api_key: apiKey.trim() || undefined,
         base_url: baseUrl.trim() || undefined,
       };
-      await upsertProvider(updatedProvider);
+      await saveProvider(updatedProvider);
       setProviders((previousProviders) =>
         previousProviders.map((provider) =>
           provider.id === updatedProvider.id ? updatedProvider : provider
@@ -369,7 +370,7 @@ export function ModelsSetting() {
         ...model,
         is_enabled: checked,
       };
-      await upsertModel(nextModel);
+      await saveModel(nextModel);
       const nextModels = models.map((item) => (item.id === nextModel.id ? nextModel : item));
       setModels(nextModels);
 
@@ -381,10 +382,10 @@ export function ModelsSetting() {
 
         if (fallbackModel) {
           setActiveModelId(fallbackModel.id);
-          await setActiveModelSelection(activeProviderId, fallbackModel.id);
+          await saveActiveSelection(activeProviderId, fallbackModel.id);
         } else {
           setActiveModelId("");
-          await Promise.all([setConfig("active_provider_id", activeProviderId), setConfig("active_model_id", "")]);
+          await saveActiveSelection(activeProviderId, "");
         }
       }
     } catch (error) {
@@ -399,7 +400,7 @@ export function ModelsSetting() {
   async function handleSelectDefaultModel(modelId: string): Promise<void> {
     try {
       setActiveModelId(modelId);
-      await setActiveModelSelection(activeProviderId, modelId);
+      await saveActiveSelection(activeProviderId, modelId);
     } catch (error) {
       console.error("Failed to set default model:", error);
     }
@@ -453,13 +454,13 @@ export function ModelsSetting() {
         capabilities_source: "auto",
       };
 
-      await upsertModel(newModel);
-      const refreshedModels = await getModelsByProvider(activeProviderId);
+      await saveModel(newModel);
+      const refreshedModels = await loadModelsByProvider(activeProviderId);
       setModels(refreshedModels);
 
       if (!activeModelId) {
         setActiveModelId(normalizedModelId);
-        await setActiveModelSelection(activeProviderId, normalizedModelId);
+        await saveActiveSelection(activeProviderId, normalizedModelId);
       }
     } catch (error) {
       console.error("Failed to add model:", error);
@@ -515,16 +516,16 @@ export function ModelsSetting() {
       };
 
       if (normalizedModelId !== editingModel.id) {
-        await deleteModel(editingModel.id);
+        await removeModel(editingModel.id);
       }
-      await upsertModel(nextModel);
+      await saveModel(nextModel);
 
-      const refreshedModels = await getModelsByProvider(activeProviderId);
+      const refreshedModels = await loadModelsByProvider(activeProviderId);
       setModels(refreshedModels);
 
       if (activeModelId === editingModel.id) {
         setActiveModelId(normalizedModelId);
-        await setActiveModelSelection(activeProviderId, normalizedModelId);
+        await saveActiveSelection(activeProviderId, normalizedModelId);
       }
 
       setEditingModel(nextModel);
@@ -551,18 +552,18 @@ export function ModelsSetting() {
     }
 
     try {
-      await deleteModel(model.id);
-      const refreshedModels = await getModelsByProvider(activeProviderId);
+      await removeModel(model.id);
+      const refreshedModels = await loadModelsByProvider(activeProviderId);
       setModels(refreshedModels);
 
       if (activeModelId === model.id) {
         const fallbackModel = refreshedModels.find((item) => item.is_enabled) ?? refreshedModels[0] ?? null;
         if (fallbackModel) {
           setActiveModelId(fallbackModel.id);
-          await setActiveModelSelection(activeProviderId, fallbackModel.id);
+          await saveActiveSelection(activeProviderId, fallbackModel.id);
         } else {
           setActiveModelId("");
-          await Promise.all([setConfig("active_provider_id", activeProviderId), setConfig("active_model_id", "")]);
+          await saveActiveSelection(activeProviderId, "");
         }
       }
 
@@ -595,18 +596,18 @@ export function ModelsSetting() {
     const deletedModelIdSet = new Set(groupModels.map((model) => model.id));
 
     try {
-      await Promise.all(groupModels.map((model) => deleteModel(model.id)));
-      const refreshedModels = await getModelsByProvider(activeProviderId);
+      await Promise.all(groupModels.map((model) => removeModel(model.id)));
+      const refreshedModels = await loadModelsByProvider(activeProviderId);
       setModels(refreshedModels);
 
       if (activeModelId && deletedModelIdSet.has(activeModelId)) {
         const fallbackModel = refreshedModels.find((item) => item.is_enabled) ?? refreshedModels[0] ?? null;
         if (fallbackModel) {
           setActiveModelId(fallbackModel.id);
-          await setActiveModelSelection(activeProviderId, fallbackModel.id);
+          await saveActiveSelection(activeProviderId, fallbackModel.id);
         } else {
           setActiveModelId("");
-          await Promise.all([setConfig("active_provider_id", activeProviderId), setConfig("active_model_id", "")]);
+          await saveActiveSelection(activeProviderId, "");
         }
       }
 
@@ -652,7 +653,7 @@ export function ModelsSetting() {
     };
 
     try {
-      await upsertProvider(newProvider);
+      await saveProvider(newProvider);
       const refreshedProviders = await ensureProvidersReady();
       setProviders(refreshedProviders);
       await loadProviderDetail(providerId, refreshedProviders, null);

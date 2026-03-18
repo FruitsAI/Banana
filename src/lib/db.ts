@@ -1,4 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
+import type { Message, Thread } from '@/domain/chat/types';
+import type { Model, Provider } from '@/domain/models/types';
+import type { McpServer } from '@/domain/mcp/types';
+
+export type { Message, Thread } from '@/domain/chat/types';
+export type { Model, Provider } from '@/domain/models/types';
+export type { McpServer } from '@/domain/mcp/types';
 
 /**
  * 持久化全局配置 (setConfig)
@@ -11,18 +18,6 @@ export async function setConfig(key: string, value: string): Promise<void> {
 
 export async function getConfig(key: string): Promise<string | null> {
   return await invoke('db_get_config', { key });
-}
-
-/**
- * 会话实体 (Thread) 定义与存储
- * @description 会话是整个聊天组织的基础单体，左侧栏列表所对应的每一个项便属于一个 Thread，记录标题与产生日期。
- */
-export interface Thread {
-  id: string;
-  title: string;
-  model_id?: string;
-  created_at: string;
-  updated_at?: string;
 }
 
 export async function getThreads(): Promise<Thread[]> {
@@ -46,18 +41,6 @@ export async function updateThreadTime(): Promise<void> {
   // Should rarely be needed on frontend directly now, but we'll leave invoke if needed.
 }
 
-/**
- * Messages
- */
-export interface Message {
-  id: string;
-  thread_id: string;
-  role: string;
-  content: string;
-  model_id?: string;
-  created_at: string;
-}
-
 export async function getMessages(threadId: string): Promise<Message[]> {
   return await invoke('db_get_messages', { threadId });
 }
@@ -77,15 +60,6 @@ export async function updateMessage(id: string, content: string): Promise<void> 
 /**
  * AI Provider / Model / MCP
  */
-export interface Provider {
-  id: string;
-  name: string;
-  icon: string;
-  is_enabled: boolean;
-  api_key?: string;
-  base_url?: string;
-  provider_type?: string;
-}
 
 export async function getProviders(): Promise<Provider[]> {
   return await invoke('db_get_providers');
@@ -95,19 +69,13 @@ export async function upsertProvider(p: Provider): Promise<void> {
   await invoke('db_upsert_provider', { provider: p });
 }
 
-export interface Model {
-  id: string;
-  provider_id: string;
-  name: string;
-  is_enabled: boolean;
-  group_name?: string | null;
-  capabilities?: string[];
-  capabilities_source?: "auto" | "manual";
+export async function deleteProvider(providerId: string): Promise<void> {
+  await invoke('db_delete_provider', { providerId });
 }
 
 type ModelPayload = Omit<Model, "capabilities" | "capabilities_source"> & {
   capabilities?: string | null;
-  capabilities_source?: string | null;
+  capabilities_source?: Model["capabilities_source"] | null;
 };
 
 function parseCapabilities(raw?: string | null): string[] | undefined {
@@ -156,17 +124,6 @@ export async function upsertModel(m: Model): Promise<void> {
 
 export async function deleteModel(modelId: string): Promise<void> {
   await invoke('db_delete_model', { modelId });
-}
-
-export interface McpServer {
-  id: string;
-  name: string;
-  description?: string;
-  type: string;
-  command: string;
-  args?: string;
-  env_vars?: string;
-  is_enabled: boolean;
 }
 
 export async function getMcpServers(): Promise<McpServer[]> {

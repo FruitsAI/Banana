@@ -18,7 +18,8 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, KeyboardEvent, useEffect, useRef } from "react";
-import { useBananaChat, type ChatMessage } from "@/hooks/useBananaChat";
+import { useBananaChat } from "@/hooks/useBananaChat";
+import type { ChatMessage } from "@/domain/chat/types";
 import { useToast } from "@/hooks/use-toast";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -27,7 +28,8 @@ import { cn } from "@/lib/utils";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
 import { ModelSelector, ModelIcon } from "@/components/models/model-selector";
 import { IridescentBorder } from "@/components/ui/iridescent-border";
-import { getModelsByProvider, getProviders, type Model } from "@/lib/db";
+import { getModelsByProviderForChat, getProvidersForChat } from "@/services/chat";
+import type { Model } from "@/lib/db";
 
 const QUICK_ACTIONS = [
   { icon: ArtificialIntelligence08Icon, label: "帮我写一段代码" },
@@ -100,9 +102,9 @@ function StageContent() {
   useEffect(() => {
     const loadAllModels = async () => {
       try {
-        const providers = await getProviders();
+        const providers = await getProvidersForChat();
         const modelsResults = await Promise.all(
-          providers.map(p => getModelsByProvider(p.id))
+          providers.map(p => getModelsByProviderForChat(p.id))
         );
         setAllModels(modelsResults.flat());
       } catch (e) {

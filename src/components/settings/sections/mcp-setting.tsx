@@ -1,12 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { 
-  getMcpServers, 
-  upsertMcpServer, 
-  deleteMcpServer, 
-  McpServer 
-} from "@/lib/db";
+import type { McpServer } from "@/domain/mcp/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -27,6 +22,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
+import { useMcpStore } from "@/stores/mcp/useMcpStore";
 
 /**
  * McpSetting 组件 (MCP 服务器设置)
@@ -47,6 +43,7 @@ const MCP_STAGES: McpProviderTab[] = [
 ];
 
 export function McpSetting() {
+  const { loadServers: loadServersFromStore, removeServer, saveServer } = useMcpStore();
   const toast = useToast();
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +59,7 @@ export function McpSetting() {
       setLoading(true);
       // 添加人为延迟以确保动画可见
       const [data] = await Promise.all([
-        getMcpServers(),
+        loadServersFromStore(),
         new Promise(resolve => setTimeout(resolve, 600))
       ]);
       setServers(data);
@@ -72,7 +69,7 @@ export function McpSetting() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [loadServersFromStore, toast]);
 
   useEffect(() => {
     loadServers();
@@ -81,7 +78,7 @@ export function McpSetting() {
   const handleToggleEnable = async (server: McpServer, enabled: boolean) => {
     try {
       const updated = { ...server, is_enabled: enabled };
-      await upsertMcpServer(updated);
+      await saveServer(updated);
       setServers(prev => prev.map(s => s.id === server.id ? updated : s));
     } catch (error) {
       console.error("Failed to toggle MCP server:", error);
@@ -122,7 +119,7 @@ export function McpSetting() {
         type: editingServer.type ?? "stdio"
       } as McpServer;
       
-      await upsertMcpServer(serverToSave);
+      await saveServer(serverToSave);
       await loadServers();
       setViewMode("list");
       toast.success("保存成功");
@@ -138,7 +135,7 @@ export function McpSetting() {
     if (!confirm("确定要删除此 MCP 服务器吗？")) return;
     
     try {
-      await deleteMcpServer(id);
+      await removeServer(id);
       setServers(prev => prev.filter(s => s.id !== id));
       if (editingServer.id === id) setViewMode("list");
       toast.success("删除成功");

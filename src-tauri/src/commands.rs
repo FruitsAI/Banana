@@ -1,5 +1,8 @@
 use crate::db::{Database, McpServer, Message, Model, Provider, Thread};
 use crate::error::Result;
+use crate::services::chat as chat_service;
+use crate::services::mcp as mcp_service;
+use crate::services::models as models_service;
 use tauri::State;
 
 #[derive(Clone)]
@@ -21,12 +24,17 @@ pub async fn db_set_config(state: State<'_, AppState>, key: String, value: Strin
 /// ---- Providers ----
 #[tauri::command]
 pub async fn db_get_providers(state: State<'_, AppState>) -> Result<Vec<Provider>> {
-    state.db.get_providers().await
+    models_service::get_providers(&state.db).await
 }
 
 #[tauri::command]
 pub async fn db_upsert_provider(state: State<'_, AppState>, provider: Provider) -> Result<()> {
-    state.db.upsert_provider(&provider).await
+    models_service::upsert_provider(&state.db, &provider).await
+}
+
+#[tauri::command]
+pub async fn db_delete_provider(state: State<'_, AppState>, provider_id: String) -> Result<()> {
+    models_service::delete_provider(&state.db, &provider_id).await
 }
 
 /// ---- Models ----
@@ -35,39 +43,47 @@ pub async fn db_get_models_by_provider(
     state: State<'_, AppState>,
     provider_id: String,
 ) -> Result<Vec<Model>> {
-    state.db.get_models_by_provider(&provider_id).await
+    models_service::get_models_by_provider(&state.db, &provider_id).await
 }
 
 #[tauri::command]
 pub async fn db_upsert_model(state: State<'_, AppState>, model: Model) -> Result<()> {
-    state.db.upsert_model(&model).await
+    models_service::upsert_model(&state.db, &model).await
 }
 
 #[tauri::command]
 pub async fn db_delete_model(state: State<'_, AppState>, model_id: String) -> Result<()> {
-    state.db.delete_model(&model_id).await
+    models_service::delete_model(&state.db, &model_id).await
 }
 
 /// ---- McpServers ----
 #[tauri::command]
 pub async fn db_get_mcp_servers(state: State<'_, AppState>) -> Result<Vec<McpServer>> {
-    state.db.get_mcp_servers().await
+    mcp_service::get_mcp_servers(&state.db).await
 }
 
 #[tauri::command]
-pub async fn db_upsert_mcp_server(state: State<'_, AppState>, server: McpServer) -> Result<()> {
-    state.db.upsert_mcp_server(&server).await
+pub async fn db_upsert_mcp_server(
+    state: State<'_, AppState>,
+    mcp_state: State<'_, crate::mcp::McpState>,
+    server: McpServer,
+) -> Result<()> {
+    mcp_service::upsert_mcp_server(&state.db, mcp_state.inner(), &server).await
 }
 
 #[tauri::command]
-pub async fn db_delete_mcp_server(state: State<'_, AppState>, server_id: String) -> Result<()> {
-    state.db.delete_mcp_server(&server_id).await
+pub async fn db_delete_mcp_server(
+    state: State<'_, AppState>,
+    mcp_state: State<'_, crate::mcp::McpState>,
+    server_id: String,
+) -> Result<()> {
+    mcp_service::delete_mcp_server(&state.db, mcp_state.inner(), &server_id).await
 }
 
 /// ---- Threads ----
 #[tauri::command]
 pub async fn db_get_threads(state: State<'_, AppState>) -> Result<Vec<Thread>> {
-    state.db.get_threads().await
+    chat_service::get_threads(&state.db).await
 }
 
 #[tauri::command]
@@ -77,10 +93,7 @@ pub async fn db_create_thread(
     title: String,
     model_id: Option<String>,
 ) -> Result<()> {
-    state
-        .db
-        .create_thread(&id, &title, model_id.as_deref())
-        .await
+    chat_service::create_thread(&state.db, &id, &title, model_id.as_deref()).await
 }
 
 #[tauri::command]
@@ -89,12 +102,12 @@ pub async fn db_update_thread_title(
     id: String,
     title: String,
 ) -> Result<()> {
-    state.db.update_thread_title(&id, &title).await
+    chat_service::update_thread_title(&state.db, &id, &title).await
 }
 
 #[tauri::command]
 pub async fn db_delete_thread(state: State<'_, AppState>, id: String) -> Result<()> {
-    state.db.delete_thread(&id).await
+    chat_service::delete_thread(&state.db, &id).await
 }
 
 /// ---- Messages ----
@@ -103,12 +116,12 @@ pub async fn db_get_messages(
     state: State<'_, AppState>,
     thread_id: String,
 ) -> Result<Vec<Message>> {
-    state.db.get_messages(&thread_id).await
+    chat_service::get_messages(&state.db, &thread_id).await
 }
 
 #[tauri::command]
 pub async fn db_append_message(state: State<'_, AppState>, msg: Message) -> Result<()> {
-    state.db.append_message(&msg).await
+    chat_service::append_message(&state.db, &msg).await
 }
 
 #[tauri::command]
@@ -117,7 +130,7 @@ pub async fn db_delete_messages_after(
     thread_id: String,
     message_id: String,
 ) -> Result<()> {
-    state.db.delete_messages_after(&thread_id, &message_id).await
+    chat_service::delete_messages_after(&state.db, &thread_id, &message_id).await
 }
 
 #[tauri::command]
@@ -126,7 +139,7 @@ pub async fn db_update_message(
     id: String,
     content: String,
 ) -> Result<()> {
-    state.db.update_message(&id, &content).await
+    chat_service::update_message(&state.db, &id, &content).await
 }
 
 // 统一注册 Commands
@@ -136,6 +149,7 @@ pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<
         db_set_config,
         db_get_providers,
         db_upsert_provider,
+        db_delete_provider,
         db_get_models_by_provider,
         db_upsert_model,
         db_delete_model,
