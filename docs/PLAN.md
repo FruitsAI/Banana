@@ -1,68 +1,45 @@
-# FruitsAI Banana 开发计划（现状版）
+# FruitsAI Banana 开发计划（2026-03-18）
 
-> 更新时间：2026-03-09
-> 说明：本计划以当前仓库代码为准，不再沿用早期“全部已完成”的勾选状态。
+> 范围：基于当前分支已落地实现刷新 roadmap；用于 Task 6 之后的执行对齐。
 
----
+## 1. 当前阶段总览
 
-## 阶段 A：基础底座与 UI 骨架
+### 阶段 A：架构重构（Task 1-6）
+状态：基本完成
 
-### 状态：已完成
+- Task 1：前后端模块脚手架完成（`domain/services/stores`、Rust `services` 模块）。
+- Task 2：Chat 域迁移完成（前端 service/store + 后端 `services/chat.rs`）。
+- Task 3：Models/Providers 域迁移完成（前端 service/store + 后端 `services/models.rs`）。
+- Task 4：MCP 域迁移完成（前端 service/store + 后端 `services/mcp.rs` 路由）。
+- Task 5：共享错误归一完成（`src/shared/errors.ts` + 三域 service 对齐）。
+- Task 6：文档刷新（本次提交）。
 
-1. 前端/桌面工程搭建
-- Next.js + TypeScript + Tailwind + Tauri 2 已集成。
+### 阶段 B：质量与发布准备（Task 7+）
+状态：待执行
 
-2. 核心布局
-- RootLayout、Titlebar、Rail、Stage、Settings 路由已落地。
+- 冒烟检查结果固化（`cargo build`、`npm run lint`）。
+- 建立最小自动化校验链路（lint/build/test）。
+- 发布前回归清单与失败分级策略。
 
-3. 本地数据库底座
-- Rust 侧 SQLite 初始化与核心表创建已实现。
+## 2. 已落地架构基线
 
----
+### 前端
+- 分层：`domain -> services -> stores -> components/hooks`。
+- 三个核心域（Chat/Models/MCP）均已按分层迁移。
+- 错误处理已统一为共享 `AppError` 语义。
 
-## 阶段 B：模型与对话主链路
+### 后端（Tauri/Rust）
+- 分层：`commands -> services -> db`。
+- `commands.rs` 已作为薄层，核心逻辑进入 `services/chat.rs`、`services/models.rs`、`services/mcp.rs`。
+- MCP 命令入口（`src-tauri/src/mcp.rs`）已以服务层为主通路。
 
-### 状态：部分完成
+## 3. 下一步执行顺序
+1. 执行 Task 7 冒烟验证并记录结果。  
+2. 补齐关键路径测试与 CI。  
+3. 对 MCP 运行时稳定性做专项回归（进程重建、错误传播、资源回收）。
+4. 结合真实使用流程优化会话与设置交互。
 
-1. 已完成
-- Provider/Model 配置页面可读写数据库。
-- 聊天流式响应已接通（Vercel AI SDK）。
-- 消息可写入本地 `messages` 表。
-
-2. 待完善
-- 聊天模型选择仍硬编码，未使用 `active_model_id`。
-- 线程管理尚未形成完整闭环（sidebar 仍是 mock）。
-
----
-
-## 阶段 C：MCP 能力
-
-### 状态：基础能力完成，管理能力未闭环
-
-1. 已完成
-- MCP 子进程启动、stdin 写入、stdout/stderr 事件转发。
-- 前端 MCP Transport + MCP Client 工具发现与调用。
-
-2. 待完善
-- 设置页对 `mcp_servers` 的完整 CRUD。
-- 多 MCP 实例并存、日志可视化与生命周期管理增强。
-
----
-
-## 阶段 D：质量保障与发布准备
-
-### 状态：未完成
-
-1. 需要补齐
-- 前端测试、Rust 单测、端到端冒烟。
-- CI 流程（lint/build/check/test）统一。
-- 发布前回归检查清单。
-
----
-
-## 近期优先级（建议顺序）
-
-1. 打通 threads/messages 在 UI 层的真实读取与切换。
-2. 聊天调用切到配置中的默认模型。
-3. 完成 MCP 服务器管理页与 `mcp_servers` 数据闭环。
-4. 建立最小自动化验证链路。
+## 4. 风险与关注点
+- 自动化测试覆盖仍不足，当前主要依赖手工验证与构建检查。
+- MCP 进程管理属于高风险路径，后续改动需优先做回归验证。
+- 历史模块仍可能存在旧调用入口，需在 Task 7+ 持续收敛。
