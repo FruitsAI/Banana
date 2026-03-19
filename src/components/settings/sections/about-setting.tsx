@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ZapIcon, Layers01Icon, CpuIcon, CodeIcon, LinkSquare02Icon } from "@hugeicons/core-free-icons";
 
@@ -44,17 +45,19 @@ export function AboutSetting() {
         >
           {/* App Logo - 悬浮时通过弹性物理动画（spring 类型）引入轻微放大效果，增强元素的互动感和触碰反馈 */}
           <motion.div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center mb-4 overflow-hidden"
+            className="w-20 h-20 rounded-2xl flex items-center justify-center mb-4 overflow-hidden relative"
             style={{
               boxShadow: '0 4px 16px var(--brand-primary-light)',
             }}
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
           >
-            <img
+            <Image
               src="/logo.png"
               alt="Banana Logo"
-              className="w-full h-full object-cover"
+              fill
+              sizes="80px"
+              className="object-cover"
             />
           </motion.div>
 
