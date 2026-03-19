@@ -5,6 +5,8 @@ import {
   summarizeMessageText,
 } from "@/domain/chat/ui-message";
 import {
+  appendPersistedMessage,
+  deleteMessagesAfter,
   getPersistedMessages,
   type PersistedMessageRecord,
 } from "@/lib/db";
@@ -53,10 +55,43 @@ export async function loadPersistedMessages(threadId: string): Promise<BananaUIM
 }
 
 export async function replacePersistedMessages(
-  _threadId: string,
-  _messages: BananaUIMessage[],
+  threadId: string,
+  messages: BananaUIMessage[],
 ): Promise<void> {
-  throw new Error(
-    "replacePersistedMessages is temporarily unsupported until transactional backend support is available",
-  );
+  const existing = await getPersistedMessages(threadId);
+
+  if (existing.length > 0) {
+    await deleteMessagesAfter(threadId, existing[0].id);
+  }
+
+  try {
+    for (const message of messages) {
+      await appendPersistedMessage(toStoredMessageRecord(threadId, message));
+    }
+  } catch (error) {
+    // Best-effort rollback until backend-side transactions are available.
+    if (existing.length > 0) {
+      try {
+        const partial = await getPersistedMessages(threadId);
+        if (partial.length > 0) {
+          await deleteMessagesAfter(threadId, partial[0].id);
+        }
+
+        for (const row of existing) {
+          await appendPersistedMessage({
+            id: row.id,
+            thread_id: row.thread_id,
+            role: row.role,
+            content: row.content,
+            model_id: row.model_id,
+            ui_message_json: row.ui_message_json ?? null,
+          });
+        }
+      } catch {
+        // Ignore rollback failure here and surface original replacement error.
+      }
+    }
+
+    throw error;
+  }
 }

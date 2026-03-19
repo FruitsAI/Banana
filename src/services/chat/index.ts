@@ -17,10 +17,10 @@ import {
 import type { Message, Thread } from "@/domain/chat/types";
 import { AppError, normalizeError } from "@/shared/errors";
 import {
-  fromStoredMessageRecord,
-  loadPersistedMessages,
-  replacePersistedMessages,
-  toStoredMessageRecord,
+  fromStoredMessageRecord as fromStoredMessageRecordInternal,
+  loadPersistedMessages as loadPersistedMessagesInternal,
+  replacePersistedMessages as replacePersistedMessagesInternal,
+  toStoredMessageRecord as toStoredMessageRecordInternal,
 } from "./persistence";
 
 function wrapError(operation: string, error: unknown): AppError {
@@ -123,42 +123,42 @@ export async function getMcpServersForChat(): Promise<McpServer[]> {
   }
 }
 
-export function toStoredMessageRecordForChat(
-  ...args: Parameters<typeof toStoredMessageRecord>
-): ReturnType<typeof toStoredMessageRecord> {
+export function toStoredMessageRecord(
+  ...args: Parameters<typeof toStoredMessageRecordInternal>
+): ReturnType<typeof toStoredMessageRecordInternal> {
   try {
-    return toStoredMessageRecord(...args);
+    return toStoredMessageRecordInternal(...args);
   } catch (error) {
-    throw wrapError("toStoredMessageRecordForChat", error);
+    throw wrapError("toStoredMessageRecord", error);
   }
 }
 
-export function fromStoredMessageRecordForChat(
-  ...args: Parameters<typeof fromStoredMessageRecord>
-): ReturnType<typeof fromStoredMessageRecord> {
+export function fromStoredMessageRecord(
+  ...args: Parameters<typeof fromStoredMessageRecordInternal>
+): ReturnType<typeof fromStoredMessageRecordInternal> {
   try {
-    return fromStoredMessageRecord(...args);
+    return fromStoredMessageRecordInternal(...args);
   } catch (error) {
-    throw wrapError("fromStoredMessageRecordForChat", error);
+    throw wrapError("fromStoredMessageRecord", error);
   }
 }
 
-export async function loadPersistedMessagesForChat(
-  ...args: Parameters<typeof loadPersistedMessages>
-): ReturnType<typeof loadPersistedMessages> {
+export async function loadPersistedMessages(
+  ...args: Parameters<typeof loadPersistedMessagesInternal>
+): ReturnType<typeof loadPersistedMessagesInternal> {
   try {
-    return await loadPersistedMessages(...args);
+    return await loadPersistedMessagesInternal(...args);
   } catch (error) {
-    throw wrapError("loadPersistedMessagesForChat", error);
+    throw wrapError("loadPersistedMessages", error);
   }
 }
 
-export async function replacePersistedMessagesForChat(
-  ...args: Parameters<typeof replacePersistedMessages>
-): ReturnType<typeof replacePersistedMessages> {
+export async function replacePersistedMessages(
+  ...args: Parameters<typeof replacePersistedMessagesInternal>
+): ReturnType<typeof replacePersistedMessagesInternal> {
   try {
-    return await replacePersistedMessages(...args);
+    return await replacePersistedMessagesInternal(...args);
   } catch (error) {
-    throw wrapError("replacePersistedMessagesForChat", error);
+    throw wrapError("replacePersistedMessages", error);
   }
 }
