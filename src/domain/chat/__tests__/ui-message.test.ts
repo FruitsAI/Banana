@@ -33,4 +33,22 @@ describe("chat ui message normalization", () => {
     expect(result.metadata?.threadId).toBe("thread-1");
     expect(summarizeMessageText(result)).toBe("streamed answer");
   });
+
+  it("falls back to legacy content when serialized parts are malformed", () => {
+    const result = coerceStoredMessageToUIMessage({
+      id: "msg-assistant-2",
+      role: "assistant",
+      content: "legacy fallback text",
+      ui_message_json: JSON.stringify({
+        id: "msg-assistant-2",
+        role: "assistant",
+        parts: [null],
+        metadata: { modelId: "gpt-4o-mini", threadId: "thread-1" },
+      }),
+    });
+
+    expect(result.parts).toEqual([{ type: "text", text: "legacy fallback text" }]);
+    expect(result.metadata).toBeUndefined();
+    expect(summarizeMessageText(result)).toBe("legacy fallback text");
+  });
 });

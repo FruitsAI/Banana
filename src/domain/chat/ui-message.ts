@@ -57,16 +57,36 @@ function coerceMetadata(value: unknown): BananaMessageMetadata | undefined {
   };
 }
 
+function isTextPart(value: unknown): value is TextPart {
+  return isObject(value) && value.type === "text" && typeof value.text === "string";
+}
+
+function isMessagePart(value: unknown): value is MessagePart {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  if (value.type === "text") {
+    return isTextPart(value);
+  }
+
+  return true;
+}
+
+function hasValidMessageParts(value: unknown): value is MessagePart[] {
+  return Array.isArray(value) && value.every(isMessagePart);
+}
+
 export function coerceStoredMessageToUIMessage(message: StoredChatMessageRow): BananaUIMessage {
   if (typeof message.ui_message_json === "string" && message.ui_message_json.trim().length > 0) {
     try {
       const parsed: unknown = JSON.parse(message.ui_message_json);
 
-      if (isObject(parsed) && isChatRole(parsed.role) && Array.isArray(parsed.parts)) {
+      if (isObject(parsed) && isChatRole(parsed.role) && hasValidMessageParts(parsed.parts)) {
         return {
           id: typeof parsed.id === "string" ? parsed.id : message.id,
           role: parsed.role,
-          parts: parsed.parts as MessagePart[],
+          parts: parsed.parts,
           metadata: coerceMetadata(parsed.metadata),
         };
       }
