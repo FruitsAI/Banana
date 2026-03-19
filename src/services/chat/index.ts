@@ -21,6 +21,15 @@ import {
   loadPersistedMessages as loadPersistedMessagesInternal,
   toStoredMessageRecord as toStoredMessageRecordInternal,
 } from "./persistence";
+import {
+  createRuntimeToolMap as createRuntimeToolMapInternal,
+  normalizeToolFailure as normalizeToolFailureInternal,
+  normalizeToolSuccess as normalizeToolSuccessInternal,
+} from "./mcp-tools";
+import {
+  buildChatRequestBody as buildChatRequestBodyInternal,
+  createChatRuntime as createChatRuntimeInternal,
+} from "./runtime";
 
 function wrapError(operation: string, error: unknown): AppError {
   return normalizeError(error, {
@@ -149,5 +158,55 @@ export async function loadPersistedMessages(
     return await loadPersistedMessagesInternal(...args);
   } catch (error) {
     throw wrapError("loadPersistedMessages", error);
+  }
+}
+
+export async function createRuntimeToolMap(
+  ...args: Parameters<typeof createRuntimeToolMapInternal>
+): ReturnType<typeof createRuntimeToolMapInternal> {
+  try {
+    return await createRuntimeToolMapInternal(...args);
+  } catch (error) {
+    throw wrapError("createRuntimeToolMap", error);
+  }
+}
+
+export function normalizeToolSuccess(
+  ...args: Parameters<typeof normalizeToolSuccessInternal>
+): ReturnType<typeof normalizeToolSuccessInternal> {
+  try {
+    return normalizeToolSuccessInternal(...args);
+  } catch (error) {
+    throw wrapError("normalizeToolSuccess", error);
+  }
+}
+
+export function normalizeToolFailure(
+  ...args: Parameters<typeof normalizeToolFailureInternal>
+): ReturnType<typeof normalizeToolFailureInternal> {
+  try {
+    return normalizeToolFailureInternal(...args);
+  } catch (error) {
+    throw wrapError("normalizeToolFailure", error);
+  }
+}
+
+export function buildChatRequestBody(
+  ...args: Parameters<typeof buildChatRequestBodyInternal>
+): ReturnType<typeof buildChatRequestBodyInternal> {
+  try {
+    return buildChatRequestBodyInternal(...args);
+  } catch (error) {
+    throw wrapError("buildChatRequestBody", error);
+  }
+}
+
+export function createChatRuntime(
+  ...args: Parameters<typeof createChatRuntimeInternal>
+): ReturnType<typeof createChatRuntimeInternal> {
+  try {
+    return createChatRuntimeInternal(...args);
+  } catch (error) {
+    throw wrapError("createChatRuntime", error);
   }
 }
