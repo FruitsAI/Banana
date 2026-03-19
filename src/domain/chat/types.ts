@@ -37,3 +37,9 @@ export type {
   BananaUIMessage,
   StoredChatMessageRow,
 } from "./ui-message";
+
+export type {
+  BananaChatStatus,
+  ChatSessionEvent,
+  ChatSessionState,
+} from "./session";
