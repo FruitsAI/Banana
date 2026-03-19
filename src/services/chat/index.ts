@@ -16,6 +16,12 @@ import {
 } from "@/lib/db";
 import type { Message, Thread } from "@/domain/chat/types";
 import { AppError, normalizeError } from "@/shared/errors";
+export {
+  fromStoredMessageRecord,
+  loadPersistedMessages,
+  replacePersistedMessages,
+  toStoredMessageRecord,
+} from "./persistence";
 
 function wrapError(operation: string, error: unknown): AppError {
   return normalizeError(error, {
