@@ -1,5 +1,5 @@
 import { DefaultChatTransport, readUIMessageStream, type UIMessage } from "ai";
-import type { BananaChatStatus } from "@/domain/chat/types";
+import type { BananaChatStatus, BananaMessageMetadata } from "@/domain/chat/types";
 import { AppError, normalizeError } from "@/shared/errors";
 import type { RuntimeToolDescriptor } from "./mcp-tools";
 
@@ -30,7 +30,7 @@ interface CreateChatRuntimeOptions extends ChatRuntimeCallbacks {
   fetchImpl?: FetchLike;
 }
 
-export type RuntimeTransportMessage = UIMessage;
+export type RuntimeTransportMessage = UIMessage<Partial<BananaMessageMetadata>>;
 
 function wrapError(operation: string, error: unknown): AppError {
   return normalizeError(error, {
@@ -42,11 +42,7 @@ function wrapError(operation: string, error: unknown): AppError {
 
 function getThreadId(message: RuntimeTransportMessage): string | undefined {
   const metadata = message.metadata;
-  if (typeof metadata !== "object" || metadata === null) {
-    return undefined;
-  }
-
-  const threadId = (metadata as { threadId?: unknown }).threadId;
+  const threadId = metadata?.threadId;
   return typeof threadId === "string" && threadId.trim().length > 0 ? threadId : undefined;
 }
 
