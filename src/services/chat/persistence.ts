@@ -69,6 +69,9 @@ export async function replacePersistedMessages(
       await appendPersistedMessage(toStoredMessageRecord(threadId, message));
     }
   } catch (error) {
+    const replacementErrorMessage =
+      error instanceof Error ? error.message : String(error);
+
     // Best-effort rollback until backend-side transactions are available.
     if (existing.length > 0) {
       try {
@@ -87,8 +90,12 @@ export async function replacePersistedMessages(
             ui_message_json: row.ui_message_json ?? null,
           });
         }
-      } catch {
-        // Ignore rollback failure here and surface original replacement error.
+      } catch (rollbackError) {
+        const rollbackErrorMessage =
+          rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+        throw new Error(
+          `replacePersistedMessages failed and rollback also failed; thread may be inconsistent. replacementError=${replacementErrorMessage}; rollbackError=${rollbackErrorMessage}`,
+        );
       }
     }
 

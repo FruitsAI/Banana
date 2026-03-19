@@ -117,6 +117,39 @@ describe("chat persistence", () => {
     });
   });
 
+  it("surfaces inconsistency risk when replacement and rollback both fail", async () => {
+    mockGetPersistedMessages
+      .mockResolvedValueOnce([
+        {
+          id: "old-1",
+          thread_id: "thread-1",
+          role: "assistant",
+          content: "previous answer",
+          model_id: "gpt-4o-mini",
+          ui_message_json: "{\"id\":\"old-1\"}",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "partial-1",
+          thread_id: "thread-1",
+          role: "assistant",
+          content: "partial answer",
+          model_id: undefined,
+          ui_message_json: null,
+        },
+      ]);
+    mockDeleteMessagesAfter
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("rollback cleanup failed"));
+    mockAppendPersistedMessage.mockRejectedValueOnce(new Error("append failed"));
+
+    const run = replacePersistedMessages("thread-1", [createToolAssistantMessage()]);
+    await expect(run).rejects.toThrow("thread may be inconsistent");
+    await expect(run).rejects.toThrow("replacementError=append failed");
+    await expect(run).rejects.toThrow("rollbackError=rollback cleanup failed");
+  });
+
   it("loads persisted rows through legacy-aware normalization", async () => {
     mockGetPersistedMessages.mockResolvedValueOnce([
       {

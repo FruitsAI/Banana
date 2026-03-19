@@ -19,7 +19,6 @@ import { AppError, normalizeError } from "@/shared/errors";
 import {
   fromStoredMessageRecord as fromStoredMessageRecordInternal,
   loadPersistedMessages as loadPersistedMessagesInternal,
-  replacePersistedMessages as replacePersistedMessagesInternal,
   toStoredMessageRecord as toStoredMessageRecordInternal,
 } from "./persistence";
 
@@ -150,15 +149,5 @@ export async function loadPersistedMessages(
     return await loadPersistedMessagesInternal(...args);
   } catch (error) {
     throw wrapError("loadPersistedMessages", error);
-  }
-}
-
-export async function replacePersistedMessages(
-  ...args: Parameters<typeof replacePersistedMessagesInternal>
-): ReturnType<typeof replacePersistedMessagesInternal> {
-  try {
-    return await replacePersistedMessagesInternal(...args);
-  } catch (error) {
-    throw wrapError("replacePersistedMessages", error);
   }
 }
