@@ -23,10 +23,12 @@ pub async fn delete_thread(db: &Database, id: &str) -> Result<()> {
 }
 
 pub async fn get_messages(db: &Database, thread_id: &str) -> Result<Vec<Message>> {
+    // Message rows now include canonical payloads via `ui_message_json` in addition to plain text.
     db.get_messages(thread_id).await
 }
 
 pub async fn append_message(db: &Database, msg: &Message) -> Result<()> {
+    // Persist the full Message struct as-is so optional fields (e.g. `ui_message_json`) round-trip.
     db.append_message(msg).await
 }
 

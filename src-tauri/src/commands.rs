@@ -116,11 +116,13 @@ pub async fn db_get_messages(
     state: State<'_, AppState>,
     thread_id: String,
 ) -> Result<Vec<Message>> {
+    // Returned rows include optional `ui_message_json` for canonical UI message hydration.
     chat_service::get_messages(&state.db, &thread_id).await
 }
 
 #[tauri::command]
 pub async fn db_append_message(state: State<'_, AppState>, msg: Message) -> Result<()> {
+    // Pass through the full payload; `Message` now carries optional `ui_message_json`.
     chat_service::append_message(&state.db, &msg).await
 }
 
