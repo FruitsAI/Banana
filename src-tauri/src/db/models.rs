@@ -56,5 +56,6 @@ pub struct Message {
     pub role: String,
     pub content: String,
     pub model_id: Option<String>,
+    pub ui_message_json: Option<String>,
     pub created_at: String,
 }

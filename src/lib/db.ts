@@ -63,7 +63,7 @@ export async function updateMessage(id: string, content: string): Promise<void> 
 }
 
 export async function getPersistedMessages(threadId: string): Promise<PersistedMessageRecord[]> {
-  const rows = await invoke<Array<Message & { ui_message_json?: string | null }>>('db_get_messages', { threadId });
+  const rows = await invoke<PersistedMessageRecord[]>('db_get_messages', { threadId });
   return rows.map((row) => ({
     ...row,
     ui_message_json: row.ui_message_json ?? null,

@@ -45,6 +45,11 @@ describe("chat persistence", () => {
     expect(record.ui_message_json).toContain("\"toolName\"");
   });
 
+  it("keeps ui_message_json on stored records", () => {
+    const record = toStoredMessageRecord("thread-1", createToolAssistantMessage());
+    expect(record.ui_message_json).toBeTruthy();
+  });
+
   it("hydrates legacy rows without ui_message_json", () => {
     const message = fromStoredMessageRecord(createLegacyRow());
 

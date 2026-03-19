@@ -77,6 +77,7 @@ impl Database {
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 model_id TEXT,
+                ui_message_json TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(thread_id) REFERENCES threads(id) ON DELETE CASCADE
             );
@@ -103,6 +104,9 @@ impl Database {
 
         // 兼容旧版本：尝试在存在 messages 表的情况下为其添加 model_id
         let _ = sqlx::query("ALTER TABLE messages ADD COLUMN model_id TEXT")
+            .execute(&pool)
+            .await;
+        let _ = sqlx::query("ALTER TABLE messages ADD COLUMN ui_message_json TEXT")
             .execute(&pool)
             .await;
 
@@ -241,7 +245,7 @@ impl Database {
 
     /// ---- Messages ----
     pub async fn get_messages(&self, thread_id: &str) -> Result<Vec<Message>> {
-        let records = sqlx::query_as::<_, Message>(r#"SELECT id, thread_id, role, content, model_id, created_at FROM messages WHERE thread_id = ? ORDER BY created_at ASC"#)
+        let records = sqlx::query_as::<_, Message>(r#"SELECT id, thread_id, role, content, model_id, ui_message_json, created_at FROM messages WHERE thread_id = ? ORDER BY created_at ASC"#)
             .bind(thread_id)
         .fetch_all(&self.pool)
         .await?;
@@ -254,18 +258,20 @@ impl Database {
                 role: r.role,
                 content: r.content,
                 model_id: r.model_id,
+                ui_message_json: r.ui_message_json,
                 created_at: r.created_at,
             })
             .collect())
     }
 
     pub async fn append_message(&self, msg: &Message) -> Result<()> {
-        sqlx::query(r#"INSERT INTO messages (id, thread_id, role, content, model_id) VALUES (?, ?, ?, ?, ?)"#)
+        sqlx::query(r#"INSERT INTO messages (id, thread_id, role, content, model_id, ui_message_json) VALUES (?, ?, ?, ?, ?, ?)"#)
             .bind(&msg.id)
             .bind(&msg.thread_id)
             .bind(&msg.role)
             .bind(&msg.content)
             .bind(&msg.model_id)
+            .bind(&msg.ui_message_json)
             .execute(&self.pool)
             .await?;
 
