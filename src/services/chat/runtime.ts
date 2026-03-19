@@ -1,9 +1,10 @@
-import type { BananaChatStatus, BananaUIMessage } from "@/domain/chat/types";
-import { AppError, getErrorMessage, normalizeError } from "@/shared/errors";
+import { DefaultChatTransport, readUIMessageStream, type UIMessage } from "ai";
+import type { BananaChatStatus } from "@/domain/chat/types";
+import { AppError, normalizeError } from "@/shared/errors";
 import type { RuntimeToolDescriptor } from "./mcp-tools";
 
 export interface ChatRuntimeRequest {
-  messages: BananaUIMessage[];
+  messages: RuntimeTransportMessage[];
   apiKey: string;
   baseURL?: string;
   modelId: string;
@@ -14,13 +15,13 @@ export interface ChatRuntimeRequest {
 }
 
 export interface ChatRuntimeCallbacks {
-  onMessagesUpdate(messages: BananaUIMessage[]): void;
+  onMessagesUpdate(messages: RuntimeTransportMessage[]): void;
   onStatusChange(status: BananaChatStatus): void;
   onError(error: Error): void;
 }
 
 export interface ChatRuntime {
-  send(request: ChatRuntimeRequest): Promise<Response>;
+  send(request: ChatRuntimeRequest): Promise<RuntimeTransportMessage[]>;
 }
 
 type FetchLike = typeof fetch;
@@ -28,6 +29,8 @@ type FetchLike = typeof fetch;
 interface CreateChatRuntimeOptions extends ChatRuntimeCallbacks {
   fetchImpl?: FetchLike;
 }
+
+export type RuntimeTransportMessage = UIMessage;
 
 function wrapError(operation: string, error: unknown): AppError {
   return normalizeError(error, {
@@ -37,17 +40,29 @@ function wrapError(operation: string, error: unknown): AppError {
   });
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
-  try {
-    const data = (await response.clone().json()) as { error?: unknown };
-    if (typeof data.error === "string" && data.error.trim().length > 0) {
-      return data.error;
-    }
-  } catch {
-    // Fall through to the default HTTP error message.
+function getThreadId(message: RuntimeTransportMessage): string | undefined {
+  const metadata = message.metadata;
+  if (typeof metadata !== "object" || metadata === null) {
+    return undefined;
   }
 
-  return `API 错误 ${response.status}`;
+  const threadId = (metadata as { threadId?: unknown }).threadId;
+  return typeof threadId === "string" && threadId.trim().length > 0 ? threadId : undefined;
+}
+
+function resolveChatId(messages: RuntimeTransportMessage[]): string {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const threadId = getThreadId(messages[index]);
+    if (threadId) {
+      return threadId;
+    }
+  }
+
+  return "default-thread";
+}
+
+function resolveMessageId(messages: RuntimeTransportMessage[]): string | undefined {
+  return messages[messages.length - 1]?.id;
 }
 
 export function buildChatRequestBody(request: ChatRuntimeRequest) {
@@ -64,19 +79,39 @@ export function buildChatRequestBody(request: ChatRuntimeRequest) {
 }
 
 export function createChatRuntime(options: CreateChatRuntimeOptions): ChatRuntime {
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const transport = new DefaultChatTransport<RuntimeTransportMessage>({
+    api: "/api/chat",
+    fetch: options.fetchImpl,
+    prepareSendMessagesRequest({ api, body, messages, credentials, trigger, messageId }) {
+      const request = buildChatRequestBody(body as ChatRuntimeRequest);
+
+      return {
+        api,
+        headers: { "Content-Type": "application/json" },
+        credentials,
+        body: {
+          ...request,
+          messages,
+          trigger,
+          messageId,
+        },
+      };
+    },
+  });
 
   return {
-    async send(request: ChatRuntimeRequest): Promise<Response> {
-      options.onMessagesUpdate(request.messages);
+    async send(request: ChatRuntimeRequest): Promise<RuntimeTransportMessage[]> {
       options.onStatusChange("submitting");
 
-      let response: Response;
+      let stream;
       try {
-        response = await fetchImpl("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildChatRequestBody(request)),
+        stream = await transport.sendMessages({
+          trigger: "submit-message",
+          chatId: resolveChatId(request.messages),
+          messageId: resolveMessageId(request.messages),
+          messages: request.messages,
+          abortSignal: undefined,
+          body: request,
         });
       } catch (error) {
         const wrappedError = wrapError("createChatRuntime.send", error);
@@ -85,28 +120,25 @@ export function createChatRuntime(options: CreateChatRuntimeOptions): ChatRuntim
         throw wrappedError;
       }
 
-      if (!response.ok) {
-        const wrappedError = wrapError(
-          "createChatRuntime.send",
-          new Error(await readErrorMessage(response)),
-        );
+      options.onStatusChange("streaming");
+      let latestMessages = request.messages;
+
+      try {
+        for await (const assistantMessage of readUIMessageStream<RuntimeTransportMessage>({
+          stream,
+        })) {
+          latestMessages = [...request.messages, assistantMessage];
+          options.onMessagesUpdate(latestMessages);
+        }
+      } catch (error) {
+        const wrappedError = wrapError("createChatRuntime.send", error);
         options.onStatusChange("error");
         options.onError(wrappedError);
         throw wrappedError;
       }
 
-      options.onStatusChange("streaming");
-      return response;
+      options.onStatusChange("ready");
+      return latestMessages;
     },
   };
-}
-
-export function createRuntimeError(message: string): AppError {
-  return wrapError("createRuntimeError", new Error(message));
-}
-
-export function normalizeRuntimeError(error: unknown): Error {
-  return error instanceof Error
-    ? error
-    : createRuntimeError(getErrorMessage(error));
 }

@@ -36,6 +36,10 @@ interface ListedToolCandidate extends RuntimeToolDescriptor {
 interface RuntimeToolMapDependencies {
   callTool?: typeof callMcpTool;
   listTools?: typeof listMcpTools;
+  onDiscoveryError?: (event: {
+    serverId: string;
+    error: Error;
+  }) => void;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -44,6 +48,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isListedToolCandidate(value: unknown): value is ListedToolCandidate {
   return isObject(value) && typeof value.name === "string";
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(getErrorMessage(error));
 }
 
 export function normalizeToolSuccess(data: McpToolCallResult): RuntimeToolSuccess {
@@ -69,6 +77,7 @@ export async function createRuntimeToolMap(
 ): Promise<RuntimeToolMap> {
   const listTools = dependencies.listTools ?? listMcpTools;
   const callTool = dependencies.callTool ?? callMcpTool;
+  const onDiscoveryError = dependencies.onDiscoveryError;
   const runtimeTools: RuntimeToolMap = {};
 
   for (const server of servers) {
@@ -79,7 +88,11 @@ export async function createRuntimeToolMap(
     let result;
     try {
       result = await listTools(server);
-    } catch {
+    } catch (error) {
+      onDiscoveryError?.({
+        serverId: server.id,
+        error: toError(error),
+      });
       continue;
     }
 
