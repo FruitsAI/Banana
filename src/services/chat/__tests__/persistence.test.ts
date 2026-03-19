@@ -117,6 +117,35 @@ describe("chat persistence", () => {
     });
   });
 
+  it("cleans up partial new writes when replacement fails on an initially empty thread", async () => {
+    const firstNew = createToolAssistantMessage();
+    const secondNew = { ...createToolAssistantMessage(), id: "msg-assistant-2" };
+
+    mockGetPersistedMessages
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "partial-new-1",
+          thread_id: "thread-1",
+          role: "assistant",
+          content: "partial answer",
+          model_id: undefined,
+          ui_message_json: null,
+        },
+      ]);
+    mockDeleteMessagesAfter.mockResolvedValue(undefined);
+    mockAppendPersistedMessage
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("append failed"));
+
+    await expect(
+      replacePersistedMessages("thread-1", [firstNew, secondNew]),
+    ).rejects.toThrow("append failed");
+
+    expect(mockDeleteMessagesAfter).toHaveBeenCalledTimes(1);
+    expect(mockDeleteMessagesAfter).toHaveBeenCalledWith("thread-1", "partial-new-1");
+  });
+
   it("surfaces inconsistency risk when replacement and rollback both fail", async () => {
     mockGetPersistedMessages
       .mockResolvedValueOnce([

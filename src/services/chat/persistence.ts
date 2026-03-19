@@ -73,13 +73,13 @@ export async function replacePersistedMessages(
       error instanceof Error ? error.message : String(error);
 
     // Best-effort rollback until backend-side transactions are available.
-    if (existing.length > 0) {
-      try {
-        const partial = await getPersistedMessages(threadId);
-        if (partial.length > 0) {
-          await deleteMessagesAfter(threadId, partial[0].id);
-        }
+    try {
+      const partial = await getPersistedMessages(threadId);
+      if (partial.length > 0) {
+        await deleteMessagesAfter(threadId, partial[0].id);
+      }
 
+      if (existing.length > 0) {
         for (const row of existing) {
           await appendPersistedMessage({
             id: row.id,
@@ -90,13 +90,13 @@ export async function replacePersistedMessages(
             ui_message_json: row.ui_message_json ?? null,
           });
         }
-      } catch (rollbackError) {
-        const rollbackErrorMessage =
-          rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
-        throw new Error(
-          `replacePersistedMessages failed and rollback also failed; thread may be inconsistent. replacementError=${replacementErrorMessage}; rollbackError=${rollbackErrorMessage}`,
-        );
       }
+    } catch (rollbackError) {
+      const rollbackErrorMessage =
+        rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+      throw new Error(
+        `replacePersistedMessages failed and rollback also failed; thread may be inconsistent. replacementError=${replacementErrorMessage}; rollbackError=${rollbackErrorMessage}`,
+      );
     }
 
     throw error;
