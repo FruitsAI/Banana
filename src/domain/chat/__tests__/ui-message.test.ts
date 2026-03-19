@@ -15,4 +15,22 @@ describe("chat ui message normalization", () => {
     const result = summarizeMessageText(createToolAssistantMessage());
     expect(result).toContain("final answer");
   });
+
+  it("preserves banana metadata when normalizing serialized ui messages", () => {
+    const result = coerceStoredMessageToUIMessage({
+      id: "msg-assistant-1",
+      role: "assistant",
+      content: "fallback",
+      ui_message_json: JSON.stringify({
+        id: "msg-assistant-1",
+        role: "assistant",
+        parts: [{ type: "text", text: "streamed answer" }],
+        metadata: { modelId: "gpt-4o-mini", threadId: "thread-1" },
+      }),
+    });
+
+    expect(result.metadata?.modelId).toBe("gpt-4o-mini");
+    expect(result.metadata?.threadId).toBe("thread-1");
+    expect(summarizeMessageText(result)).toBe("streamed answer");
+  });
 });

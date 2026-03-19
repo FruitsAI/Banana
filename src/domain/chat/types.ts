@@ -31,3 +31,9 @@ export interface ChatMessage {
   modelId?: string;
   createdAt?: string;
 }
+
+export type {
+  BananaMessageMetadata,
+  BananaUIMessage,
+  StoredChatMessageRow,
+} from "./ui-message";
