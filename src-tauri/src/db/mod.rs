@@ -15,6 +15,17 @@ pub struct Database {
     pub pool: Pool<Sqlite>,
 }
 
+fn is_duplicate_column_error(error: &sqlx::Error, column_name: &str) -> bool {
+    match error {
+        sqlx::Error::Database(db_error) => {
+            let message = db_error.message().to_ascii_lowercase();
+            message.contains("duplicate column name")
+                && message.contains(&column_name.to_ascii_lowercase())
+        }
+        _ => false,
+    }
+}
+
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
         let options = SqliteConnectOptions::from_str(database_url)
@@ -106,9 +117,14 @@ impl Database {
         let _ = sqlx::query("ALTER TABLE messages ADD COLUMN model_id TEXT")
             .execute(&pool)
             .await;
-        let _ = sqlx::query("ALTER TABLE messages ADD COLUMN ui_message_json TEXT")
+        if let Err(error) = sqlx::query("ALTER TABLE messages ADD COLUMN ui_message_json TEXT")
             .execute(&pool)
-            .await;
+            .await
+        {
+            if !is_duplicate_column_error(&error, "ui_message_json") {
+                return Err(error.into());
+            }
+        }
 
         Ok(Self { pool })
     }
@@ -304,6 +320,49 @@ impl Database {
             .bind(id)
             .execute(&self.pool)
             .await?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Database;
+    use super::Message;
+    use crate::error::Result;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[tokio::test]
+    async fn message_ui_payload_round_trips_through_db_layer() -> Result<()> {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        let db_file_name = format!("banana-roundtrip-{unique}.db");
+        let db_url = format!("sqlite:{db_file_name}");
+
+        let _ = std::fs::remove_file(&db_file_name);
+
+        let db = Database::new(&db_url).await?;
+        db.create_thread("thread-roundtrip", "Roundtrip", None).await?;
+
+        let inserted = Message {
+            id: "msg-roundtrip".to_string(),
+            thread_id: "thread-roundtrip".to_string(),
+            role: "assistant".to_string(),
+            content: "summary".to_string(),
+            model_id: Some("gpt-4o-mini".to_string()),
+            ui_message_json: Some(r#"{"id":"msg-roundtrip","parts":[{"type":"text","text":"full payload"}]}"#.to_string()),
+            created_at: "".to_string(),
+        };
+
+        db.append_message(&inserted).await?;
+        let loaded = db.get_messages("thread-roundtrip").await?;
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].ui_message_json, inserted.ui_message_json);
+
+        drop(db);
+        let _ = std::fs::remove_file(&db_file_name);
+
         Ok(())
     }
 }
