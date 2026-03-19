@@ -5,6 +5,7 @@ import {
 } from "@/domain/chat/__tests__/fixtures";
 import {
   fromStoredMessageRecord,
+  replacePersistedMessages,
   toStoredMessageRecord,
 } from "@/services/chat/persistence";
 
@@ -21,5 +22,11 @@ describe("chat persistence", () => {
 
     expect(message.role).toBe("user");
     expect(message.parts[0]).toEqual({ type: "text", text: "hello banana" });
+  });
+
+  it("rejects destructive replacement until transactional backend support exists", async () => {
+    await expect(
+      replacePersistedMessages("thread-1", [createToolAssistantMessage()]),
+    ).rejects.toThrow("replacePersistedMessages is temporarily unsupported");
   });
 });

@@ -1,4 +1,6 @@
-export function createLegacyRow() {
+import type { BananaUIMessage, StoredChatMessageRow } from "@/domain/chat/types";
+
+export function createLegacyRow(): StoredChatMessageRow {
   return {
     id: "msg-user-1",
     role: "user",
@@ -6,7 +8,7 @@ export function createLegacyRow() {
   };
 }
 
-export function createToolAssistantMessage() {
+export function createToolAssistantMessage(): BananaUIMessage {
   return {
     id: "msg-assistant-1",
     role: "assistant",

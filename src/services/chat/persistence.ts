@@ -5,8 +5,6 @@ import {
   summarizeMessageText,
 } from "@/domain/chat/ui-message";
 import {
-  appendPersistedMessage,
-  deleteMessagesAfter,
   getPersistedMessages,
   type PersistedMessageRecord,
 } from "@/lib/db";
@@ -35,7 +33,9 @@ export function toStoredMessageRecord(
 }
 
 export function fromStoredMessageRecord(
-  row: Pick<PersistedMessageRecord, "id" | "role" | "content" | "ui_message_json">,
+  row: Pick<PersistedMessageRecord, "id" | "role" | "ui_message_json"> & {
+    content?: string;
+  },
 ): BananaUIMessage {
   const normalized: StoredChatMessageRow = {
     id: row.id,
@@ -53,15 +53,10 @@ export async function loadPersistedMessages(threadId: string): Promise<BananaUIM
 }
 
 export async function replacePersistedMessages(
-  threadId: string,
-  messages: BananaUIMessage[],
+  _threadId: string,
+  _messages: BananaUIMessage[],
 ): Promise<void> {
-  const existing = await getPersistedMessages(threadId);
-  if (existing.length > 0) {
-    await deleteMessagesAfter(threadId, existing[0].id);
-  }
-
-  for (const message of messages) {
-    await appendPersistedMessage(toStoredMessageRecord(threadId, message));
-  }
+  throw new Error(
+    "replacePersistedMessages is temporarily unsupported until transactional backend support is available",
+  );
 }

@@ -16,7 +16,7 @@ import {
 } from "@/lib/db";
 import type { Message, Thread } from "@/domain/chat/types";
 import { AppError, normalizeError } from "@/shared/errors";
-export {
+import {
   fromStoredMessageRecord,
   loadPersistedMessages,
   replacePersistedMessages,
@@ -120,5 +120,45 @@ export async function getMcpServersForChat(): Promise<McpServer[]> {
     return await dbGetMcpServers();
   } catch (error) {
     throw wrapError("getMcpServersForChat", error);
+  }
+}
+
+export function toStoredMessageRecordForChat(
+  ...args: Parameters<typeof toStoredMessageRecord>
+): ReturnType<typeof toStoredMessageRecord> {
+  try {
+    return toStoredMessageRecord(...args);
+  } catch (error) {
+    throw wrapError("toStoredMessageRecordForChat", error);
+  }
+}
+
+export function fromStoredMessageRecordForChat(
+  ...args: Parameters<typeof fromStoredMessageRecord>
+): ReturnType<typeof fromStoredMessageRecord> {
+  try {
+    return fromStoredMessageRecord(...args);
+  } catch (error) {
+    throw wrapError("fromStoredMessageRecordForChat", error);
+  }
+}
+
+export async function loadPersistedMessagesForChat(
+  ...args: Parameters<typeof loadPersistedMessages>
+): ReturnType<typeof loadPersistedMessages> {
+  try {
+    return await loadPersistedMessages(...args);
+  } catch (error) {
+    throw wrapError("loadPersistedMessagesForChat", error);
+  }
+}
+
+export async function replacePersistedMessagesForChat(
+  ...args: Parameters<typeof replacePersistedMessages>
+): ReturnType<typeof replacePersistedMessages> {
+  try {
+    return await replacePersistedMessages(...args);
+  } catch (error) {
+    throw wrapError("replacePersistedMessagesForChat", error);
   }
 }
