@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { Message, Thread } from "@/domain/chat/types";
+import type { BananaUIMessage, Message, Thread } from "@/domain/chat/types";
 import {
   appendMessage,
   createThread,
@@ -7,9 +7,11 @@ import {
   deleteThread,
   getMessages,
   getThreads,
+  loadPersistedMessages,
   updateMessage,
   updateThreadTitle,
 } from "@/services/chat";
+import { replacePersistedMessages } from "@/services/chat/persistence";
 
 export function useChatStore() {
   const loadThreads = useCallback(async (): Promise<Thread[]> => {
@@ -47,6 +49,17 @@ export function useChatStore() {
     await updateMessage(id, content);
   }, []);
 
+  const loadCanonicalMessages = useCallback(async (threadId: string): Promise<BananaUIMessage[]> => {
+    return await loadPersistedMessages(threadId);
+  }, []);
+
+  const replaceCanonicalMessages = useCallback(
+    async (threadId: string, messages: BananaUIMessage[]): Promise<void> => {
+      await replacePersistedMessages(threadId, messages);
+    },
+    [],
+  );
+
   return {
     loadThreads,
     createChatThread,
@@ -56,5 +69,7 @@ export function useChatStore() {
     appendChatMessage,
     truncateMessagesAfter,
     updateChatMessage,
+    loadCanonicalMessages,
+    replaceCanonicalMessages,
   };
 }
