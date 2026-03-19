@@ -38,13 +38,17 @@ Banana 是一个面向开发者与知识工作者的桌面 AI 助手，强调：
 - 前端服务层统一使用 `AppError` 与 `normalizeError`（`src/shared/errors.ts`）。
 - toast 消费对齐到 message 语义，避免多套错误结构并存。
 
+### 3.5 全局配置（Config）
+- 全局配置读写已通过 `domain/config -> services/config -> stores/config` 路径统一封装。
+- 动效强度（animation intensity）已迁移至配置 store/service，不再在组件层直连 `lib/db`。
+
 ## 4. 架构与边界要求（当前执行标准）
 
 ### 4.1 前端分层
 - `domain`：纯类型与领域定义。
 - `services`：副作用和外部调用边界。
 - `stores`：状态编排与 UI 消费接口。
-- `components/hooks`：Chat/Models/MCP 核心业务域不直接承载持久化调用细节；全局配置场景仍有少量 `lib/db` 直连，后续继续收敛。
+- `components/hooks`：核心业务与全局配置均不直接承载持久化调用细节，统一通过 store/service 访问。
 
 ### 4.2 后端分层
 - `commands.rs`：命令入口与参数转发。
@@ -57,7 +61,6 @@ Banana 是一个面向开发者与知识工作者的桌面 AI 助手，强调：
 - MCP 市场分发能力（当前仅保留基础入口与结构）。
 
 ## 5. 下一阶段需求（Roadmap 输入）
-- 完成 Task 7 冒烟验证基线（cargo build / lint 结果沉淀）。
 - 补齐自动化测试（前端、Rust、关键 E2E 路径）。
 - 继续收敛 MCP 生命周期与可观测性（日志、异常追踪、重试策略）。
 - 优化会话创建与历史管理体验（围绕真实用户流程而非模板交互）。

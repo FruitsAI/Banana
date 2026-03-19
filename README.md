@@ -41,7 +41,7 @@ npm run tauri build
 src/
   app/                     # Next.js 路由与页面
   components/              # UI 组件与设置页
-  domain/                  # 纯领域类型（chat/models/mcp）
+  domain/                  # 纯领域类型（chat/models/mcp/config）
   services/                # 前端副作用层（调用 db/invoke、错误归一）
   stores/                  # 状态编排层（面向组件消费）
   lib/                     # 底层适配（Tauri invoke、MCP transport 等）
@@ -62,10 +62,10 @@ docs/
 ## 当前架构摘要
 
 ### 前端边界
-- `domain/*/types.ts`：定义 Chat/Models/MCP 领域类型。
+- `domain/*/types.ts`：定义 Chat/Models/MCP/Config 领域类型。
 - `services/*`：封装数据库调用和错误归一（`AppError + normalizeError`）。
 - `stores/*`：组合服务能力并向组件暴露稳定接口。
-- `components/hooks`：Chat/Models/MCP 核心业务域只消费 store/service；全局配置（如动画强度）仍有少量 `lib/db` 直连，后续继续收敛。
+- `components/hooks`：核心业务与全局配置均通过 store/service 访问，不直接直连 `lib/db`。
 
 ### 后端边界
 - `commands.rs`：仅做参数接收与转发。
@@ -80,6 +80,7 @@ docs/
 - Chat 域：已迁移到 `domain/services/stores` 与后端 `services/chat.rs`。
 - Models/Providers 域：已迁移到 `domain/services/stores` 与后端 `services/models.rs`。
 - MCP 域：已迁移到 `domain/services/stores` 与后端 `services/mcp.rs`，命令层已路由至服务层。
+- Config 域：全局配置（如动画强度）已迁移到 `domain/services/stores`。
 - 错误处理：前端 service 统一使用 `src/shared/errors.ts` 做归一。
 
 ## 相关文档

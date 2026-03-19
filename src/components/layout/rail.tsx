@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   AiChat02Icon,
@@ -21,12 +21,11 @@ const navItems = [
 // 通过 layoutId="activeIndicator" 在所有按钮间共享指示条动画（Magic Move）。
 
 interface RailButtonProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  icon?: any;
+  icon?: ComponentProps<typeof HugeiconsIcon>["icon"];
   label: string;
   isActive?: boolean;
   onClick: () => void;
-  children?: React.ReactNode; // 用于自定义图标内容（如主题切换按钮）
+  children?: ReactNode; // 用于自定义图标内容（如主题切换按钮）
 }
 
 function RailButton({ icon, label, isActive = false, onClick, children }: RailButtonProps) {

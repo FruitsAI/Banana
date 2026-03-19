@@ -17,6 +17,7 @@ import {
   Loading01Icon,
 } from "@hugeicons/core-free-icons";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Suspense, useState, KeyboardEvent, useEffect, useRef } from "react";
 import { useBananaChat } from "@/hooks/useBananaChat";
 import type { ChatMessage } from "@/domain/chat/types";
@@ -29,7 +30,7 @@ import { useAnimationIntensity } from "@/components/animation-intensity-provider
 import { ModelSelector, ModelIcon } from "@/components/models/model-selector";
 import { IridescentBorder } from "@/components/ui/iridescent-border";
 import { getModelsByProviderForChat, getProvidersForChat } from "@/services/chat";
-import type { Model } from "@/lib/db";
+import type { Model } from "@/domain/models/types";
 
 const QUICK_ACTIONS = [
   { icon: ArtificialIntelligence08Icon, label: "帮我写一段代码" },
@@ -182,10 +183,12 @@ function StageContent() {
               }}
             >
               <IridescentBorder opacity={0.6} animated={true} />
-              <img
+              <Image
                 src="/logo.png"
                 alt="Banana Logo"
-                className="w-full h-full object-cover relative z-10"
+                fill
+                sizes="112px"
+                className="object-cover relative z-10"
               />
             </motion.div>
 
@@ -303,7 +306,7 @@ function StageContent() {
                         <span className="text-[10px] opacity-80 font-mono" style={{ color: "var(--text-secondary)" }}>{formatMessageTime(msg.createdAt)}</span>
                       </div>
                       <div className="w-10 h-10 rounded-full flex items-center justify-center border overflow-hidden" style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}>
-                        <img src="/logo.png" alt="User" className="w-6 h-6 object-contain" />
+                        <Image src="/logo.png" alt="User" width={24} height={24} className="w-6 h-6 object-contain" />
                       </div>
                     </>
                   ) : (
@@ -435,11 +438,27 @@ function StageContent() {
                                    {tool.state === 'call' ? (
                                       <HugeiconsIcon icon={Loading01Icon} size={14} className="animate-spin opacity-60" style={{ color: "var(--brand-primary)" }} />
                                    ) : (
-                                      <div className="flex items-center gap-1 opacity-80" 
-                                           style={{ color: (tool.result as any)?.isError ? "var(--semantic-error, #ef4444)" : "var(--semantic-success, #10b981)" }}>
-                                        <span className="text-[10px]">{(tool.result as any)?.isError ? "调用失败" : "已完成"}</span>
-                                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
-                                      </div>
+                                      (() => {
+                                        const toolResult =
+                                          typeof tool.result === "object" && tool.result !== null
+                                            ? (tool.result as { isError?: unknown })
+                                            : null;
+                                        const isToolError = Boolean(toolResult?.isError);
+
+                                        return (
+                                          <div
+                                            className="flex items-center gap-1 opacity-80"
+                                            style={{
+                                              color: isToolError
+                                                ? "var(--semantic-error, #ef4444)"
+                                                : "var(--semantic-success, #10b981)",
+                                            }}
+                                          >
+                                            <span className="text-[10px]">{isToolError ? "调用失败" : "已完成"}</span>
+                                            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
+                                          </div>
+                                        );
+                                      })()
                                    )}
                                 </div>
                               </div>

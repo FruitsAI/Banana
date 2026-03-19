@@ -154,12 +154,12 @@ export function useBananaChat(threadId: string) {
       console.log("[MCP] Total aggregated tools:", mcpTools.length);
 
       // Map messages taking care of tool metadata for history if needed
-      const coreMessages: any[] = [];
+      const coreMessages: unknown[] = [];
       for (let i = 0; i < currentMessages.length; i++) {
         const m = currentMessages[i];
         if (m.role === "assistant" && m.toolInvocations && m.toolInvocations.length > 0) {
           // 构造 Assistant 消息 Parts
-          const parts: any[] = [];
+          const parts: Array<Record<string, unknown>> = [];
           if (m.content) parts.push({ type: "text", text: m.content });
           
           m.toolInvocations.forEach(t => {
@@ -191,7 +191,7 @@ export function useBananaChat(threadId: string) {
       }
 
       // 发起请求外壳
-      const runChat = async (msgs: any[]) => {
+      const runChat = async (msgs: unknown[]) => {
         return await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -333,7 +333,7 @@ export function useBananaChat(threadId: string) {
         
         if (stepTools.length > 0) {
            // 准备将本轮生成的 Assistant Message 追加进 coreMessages (使用 Parts 数组格式)
-           const parts: any[] = [];
+           const parts: Array<Record<string, unknown>> = [];
            if (stepContent) parts.push({ type: "text", text: stepContent });
            
            stepTools.forEach(t => {
