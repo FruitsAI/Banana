@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { getActiveModelSelection, ensureProvidersReady, ensureProviderModelsReady } from "@/lib/model-settings";
 import { useChatStore } from "@/stores/chat/useChatStore";
 import type { ChatMessage, ToolInvocation } from "@/domain/chat/types";
+import { deriveThreadTitle } from "@/domain/chat/thread-title";
 import { getMcpServersForChat, getProvidersForChat } from "@/services/chat";
 import { callMcpTool, listMcpTools } from "@/services/mcp";
 import { v4 as uuidv4 } from "uuid";
@@ -21,6 +22,7 @@ export function useBananaChat(threadId: string) {
     loadMessages: loadMessagesFromStore,
     createChatThread,
     appendChatMessage,
+    renameChatThread,
     truncateMessagesAfter,
     updateChatMessage,
   } = useChatStore();
@@ -431,9 +433,24 @@ export function useBananaChat(threadId: string) {
 
       if (currentThreadId) {
         const { activeModelId } = await getActiveModelSelection();
+        const isFirstUserMessage =
+          newMessage.role === "user" &&
+          latestMessages.filter((message) => message.role === "user").length === 1;
+        const derivedThreadTitle = isFirstUserMessage
+          ? deriveThreadTitle(newMessage.content)
+          : "新会话";
+
         try {
-          await createChatThread(currentThreadId, "新会话", activeModelId || "default");
+          await createChatThread(currentThreadId, derivedThreadTitle, activeModelId || "default");
         } catch { /* Likely exists */ }
+
+        if (isFirstUserMessage) {
+          try {
+            await renameChatThread(currentThreadId, derivedThreadTitle);
+          } catch {
+            // Ignore title update failures and continue the chat flow.
+          }
+        }
 
         try {
           await appendChatMessage({
@@ -450,7 +467,7 @@ export function useBananaChat(threadId: string) {
       
       await executeChat(latestMessages, currentThreadId, options);
     },
-    [createChatThread, executeChat, appendChatMessage]
+    [appendChatMessage, createChatThread, executeChat, renameChatThread]
   );
 
   const deleteMessage = useCallback(async (id: string) => {

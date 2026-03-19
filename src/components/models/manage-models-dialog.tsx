@@ -68,10 +68,16 @@ export function ManageModelsDialog({
     () => new Set(existingModels.map((m) => m.id.toLowerCase())),
     [existingModels]
   );
+  const missingApiKey = open && Boolean(activeProvider) && !apiKey.trim();
 
   // 拉取远程模型列表
   useEffect(() => {
-    if (!open || !activeProvider || !apiKey) return;
+    if (!open || !activeProvider || !apiKey.trim()) {
+      setIsLoading(false);
+      setErrorMessage(null);
+      setRemoteModels([]);
+      return;
+    }
 
     const fetchModels = async () => {
       setIsLoading(true);
@@ -220,10 +226,31 @@ export function ManageModelsDialog({
                 </motion.div>
                 <p className="text-sm">正在同步云端模型库...</p>
               </div>
+            ) : missingApiKey ? (
+              <div className="h-full flex flex-col items-center justify-center space-y-3 text-center">
+                <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                  请先配置 API Key 后再同步模型库
+                </p>
+                <p className="max-w-sm text-xs" style={{ color: "var(--text-tertiary)" }}>
+                  当前 Provider 还没有可用凭据，模型市场无法向远端拉取模型列表。
+                </p>
+                <Button size="sm" onClick={() => onOpenChange(false)}>
+                  确定
+                </Button>
+              </div>
             ) : errorMessage ? (
               <div className="h-full flex flex-col items-center justify-center space-y-3">
                 <p className="text-sm text-[var(--danger)]">{errorMessage}</p>
                 <Button size="sm" onClick={() => onOpenChange(false)}>确定</Button>
+              </div>
+            ) : groupedModels.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center space-y-3 text-center">
+                <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                  当前没有可添加的模型
+                </p>
+                <p className="max-w-sm text-xs" style={{ color: "var(--text-tertiary)" }}>
+                  远端未返回模型列表，或者当前筛选条件下没有匹配项。
+                </p>
               </div>
             ) : (
               groupedModels.map(([group, models]) => (

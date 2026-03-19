@@ -44,8 +44,8 @@ const DEFAULT_MODEL_SEEDS: Record<string, ModelSeed[]> = {
     { id: "gpt-4.1-mini", name: "gpt-4.1-mini" },
   ],
   anthropic: [
-    { id: "claude-3-5-sonnet", name: "claude-3-5-sonnet" },
-    { id: "claude-3-5-haiku", name: "claude-3-5-haiku" },
+    { id: "claude-sonnet-4-5", name: "claude-sonnet-4-5" },
+    { id: "claude-haiku-4-5", name: "claude-haiku-4-5" },
   ],
   gemini: [
     { id: "gemini-2.0-flash", name: "gemini-2.0-flash" },

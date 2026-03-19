@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ZapIcon, Layers01Icon, CpuIcon, CodeIcon, LinkSquare02Icon } from "@hugeicons/core-free-icons";
 
@@ -19,6 +20,20 @@ export function AboutSetting() {
     { name: "Vercel AI SDK", icon: CpuIcon, desc: "AI 流式响应" },
     { name: "TypeScript", icon: CodeIcon, desc: "类型安全" },
   ];
+  const externalLinks = [
+    { label: "官方网站", value: "banana.willxue.com", href: "https://banana.willxue.com" },
+    { label: "GitHub", value: "github.com/FruitsAI/Banana", href: "https://github.com/FruitsAI/Banana" },
+    { label: "文档", value: "docs.banana.willxue.com", href: "https://docs.banana.willxue.com" },
+  ];
+
+  async function handleOpenExternalLink(href: string): Promise<void> {
+    try {
+      await openUrl(href);
+    } catch (error) {
+      console.error("Failed to open external link:", error);
+      window.open(href, "_blank", "noopener,noreferrer");
+    }
+  }
 
   return (
     <div className="p-6">
@@ -150,17 +165,17 @@ export function AboutSetting() {
           transition={{ duration: 0.3, delay: 0.2 }}
         >
           {/* 将静态外链数据映射为纵向布局里可悬浮交互的独立入口按钮 */}
-          {[
-            { label: '官方网站', value: 'banana.willxue.com' },
-            { label: 'GitHub', value: 'github.com/FruitsAI/Banana' },
-            { label: '文档', value: 'docs.banana.willxue.com' },
-          ].map((link, index, arr) => (
+          {externalLinks.map((link, index, arr) => (
             <motion.button
               key={link.label}
+              type="button"
               className="w-full flex items-center justify-between p-4 text-left group"
               // 通过检测当前 item 是否是列表最后一项，灵活地控制是否渲染底部内分割线（Divider）
               style={{
                 borderBottom: index < arr.length - 1 ? '1px solid var(--divider)' : 'none',
+              }}
+              onClick={() => {
+                void handleOpenExternalLink(link.href);
               }}
               whileHover={{ background: 'var(--glass-hover)' }}
               transition={{ duration: 0.15 }}

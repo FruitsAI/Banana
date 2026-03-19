@@ -1,7 +1,7 @@
 "use client";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon, AiMagicIcon, Search01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { SearchInput } from "@/components/ui/search-input";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
@@ -424,29 +424,6 @@ function ThreadsSidebarContent() {
             <div className="text-xs text-text-tertiary">尝试换个关键词搜索</div>
           </motion.div>
         )}
-      </div>
-
-      <div className="p-2.5 sm:p-3 border-t" style={{ borderColor: "var(--divider)" }}>
-        <motion.button
-          className="sidebar-glow-btn stage-action-button w-full flex items-center justify-center sm:justify-start gap-2 px-2.5 sm:px-3 py-2 rounded-xl transition-all duration-200"
-          style={{
-            background: "transparent",
-            color: "var(--text-secondary)",
-          }}
-          whileHover={
-            motionReduced
-              ? undefined
-              : {
-                  background: "var(--glass-subtle)",
-                  color: "var(--text-primary)",
-                  x: motionDistance(2),
-                }
-          }
-          whileTap={motionReduced ? undefined : { scale: motionScale(0.99) }}
-        >
-          <HugeiconsIcon icon={AiMagicIcon} size={16} className="flex-shrink-0" style={{ color: "var(--accent-purple)" }} />
-          <span className="text-xs sm:text-sm hidden sm:inline">快捷指令</span>
-        </motion.button>
       </div>
 
       {/* Context Menu - 使用 Portal 挂载到 body 以避免容器剪裁 */}

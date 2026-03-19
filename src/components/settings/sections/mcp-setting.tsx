@@ -10,7 +10,6 @@ import { NavItem } from "@/components/ui/nav-item";
 import { SidebarLayout } from "@/components/ui/sidebar-layout";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Search01Icon,
   Refresh01Icon,
   Delete01Icon,
   Settings01Icon,
@@ -151,6 +150,7 @@ export function McpSetting() {
   
   // 当前编辑的服务器状态
   const [editingServer, setEditingServer] = useState<Partial<McpServer>>({});
+  const isUnsupportedSseType = editingServer.type === "sse";
 
   const loadServers = useCallback(async () => {
     try {
@@ -202,6 +202,11 @@ export function McpSetting() {
   const handleSave = async () => {
     if (!editingServer.name || !editingServer.command) {
       toast.error("请填入名称和命令");
+      return;
+    }
+
+    if (editingServer.type === "sse") {
+      toast.error("当前版本暂不支持 SSE 类型，请改用 stdio");
       return;
     }
 
@@ -281,7 +286,6 @@ export function McpSetting() {
               <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
                 MCP 服务器
               </h2>
-              <HugeiconsIcon icon={Search01Icon} size={16} className="cursor-pointer" style={{ color: "var(--text-tertiary)" }} />
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -543,14 +547,6 @@ export function McpSetting() {
             <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
               {editingServer.name || "新建服务器"}
             </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs border px-3 rounded-lg"
-              style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}
-            >
-              日志
-            </Button>
             <button
               type="button"
               aria-label={`删除 MCP 服务器 ${editingServer.name || "当前服务器"}`}
@@ -599,6 +595,19 @@ export function McpSetting() {
 
         {/* Form Fields */}
         <div className="space-y-6">
+          {isUnsupportedSseType ? (
+            <div
+              className="rounded-2xl border px-4 py-3 text-sm"
+              style={{
+                background: "var(--warning-light)",
+                borderColor: "var(--warning)",
+                color: "var(--warning)",
+              }}
+            >
+              当前版本仅支持 `stdio` 类型的 MCP 服务器。请将类型切换为 `stdio` 后再保存。
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <Label className="text-[13px] font-medium" style={{ color: "var(--text-secondary)" }}>
               <span style={{ color: "var(--danger)" }} className="mr-1">*</span>名称
@@ -633,7 +642,11 @@ export function McpSetting() {
                 style={{ color: "var(--text-primary)" }}
               >
                 <option value="stdio">标准输入 / 输出 (stdio)</option>
-                <option value="sse">SSE</option>
+                {isUnsupportedSseType ? (
+                  <option value="sse" disabled>
+                    SSE（暂不支持）
+                  </option>
+                ) : null}
               </select>
               <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-tertiary)", opacity: 0.5 }}><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -685,11 +698,15 @@ export function McpSetting() {
             />
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            <Label className="text-[13px] font-medium flex items-center gap-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
-              长时间运行模式 <span style={{ color: "var(--text-tertiary)" }} className="cursor-help opacity-50">ⓘ</span> :
-            </Label>
-            <Switch />
+          <div
+            className="rounded-2xl border px-4 py-3 text-sm"
+            style={{
+              background: "var(--glass-subtle)",
+              borderColor: "var(--glass-border)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Banana 会自动复用同一 MCP 进程并在配置变化时重启，因此这里不再额外暴露“长时间运行模式”开关。
           </div>
         </div>
       </div>

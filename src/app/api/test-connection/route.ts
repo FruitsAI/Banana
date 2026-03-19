@@ -1,5 +1,9 @@
 import { generateText } from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
+
+const DEFAULT_OPENAI_MODEL_ID = "gpt-4o-mini";
+const DEFAULT_ANTHROPIC_MODEL_ID = "claude-haiku-4-5";
 
 /**
  * API 连接性测试路由
@@ -18,18 +22,32 @@ export async function POST(req: Request) {
 
     const resolvedType = providerType ?? "openai";
     const resolvedBaseURL = baseURL || "https://api.openai.com/v1";
-    
-    // 只有 openai-response 类型才使用特定 client，其余走兼容模式
+    const isAnthropic = resolvedType === "anthropic";
+
+    // 只有 openai-response 类型才使用 Responses API，其余 OpenAI 兼容供应商走 chat/completions。
     const useCompatible = resolvedType !== "openai-response";
 
-    const openai = createOpenAI({
-      apiKey,
-      baseURL: resolvedBaseURL,
-    });
+    const modelParams = isAnthropic
+      ? (() => {
+          const anthropic = createAnthropic({
+            apiKey,
+            baseURL: resolvedBaseURL,
+          });
+          const anthropicModelId = (
+            modelId || DEFAULT_ANTHROPIC_MODEL_ID
+          ) as Parameters<typeof anthropic.chat>[0];
+          return anthropic.chat(anthropicModelId);
+        })()
+      : (() => {
+          const openai = createOpenAI({
+            apiKey,
+            baseURL: resolvedBaseURL,
+          });
 
-    const modelParams = useCompatible 
-      ? openai.chat(modelId || "gpt-4o-mini") 
-      : openai(modelId || "gpt-4o-mini");
+          return useCompatible
+            ? openai.chat(modelId || DEFAULT_OPENAI_MODEL_ID)
+            : openai(modelId || DEFAULT_OPENAI_MODEL_ID);
+        })();
 
     const request = {
       model: modelParams,

@@ -1,5 +1,5 @@
 use crate::services::mcp as mcp_service;
-use tauri::{AppHandle, State};
+use tauri::State;
 
 pub use mcp_service::McpState;
 
@@ -22,19 +22,4 @@ pub fn mcp_call_tool(
     arguments: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     mcp_service::call_tool(state.inner(), &server_id, &tool_name, arguments)
-}
-
-#[tauri::command]
-pub fn start_mcp_server(
-    _app: AppHandle,
-    _state: State<'_, McpState>,
-    _command: String,
-    _args: Vec<String>,
-) -> Result<(), String> {
-    mcp_service::start_server()
-}
-
-#[tauri::command]
-pub fn send_mcp_message(_state: State<'_, McpState>, _message: String) -> Result<(), String> {
-    mcp_service::send_message()
 }

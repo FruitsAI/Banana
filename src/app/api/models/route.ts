@@ -4,6 +4,7 @@ interface ProviderModel {
   id: string;
   created?: number;
   owned_by?: string;
+  display_name?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -20,23 +21,34 @@ function isProviderModel(value: unknown): value is ProviderModel {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { apiKey, baseURL } = await req.json();
+    const { apiKey, baseURL, providerType } = await req.json();
 
     if (!apiKey) {
       return NextResponse.json({ error: "API Key is required" }, { status: 400 });
     }
+
+    const resolvedProviderType = providerType ?? "openai";
 
     // 格式化 Base URL
     let url = baseURL || "https://api.openai.com/v1";
     if (!url.endsWith("/")) url += "/";
     url += "models";
 
+    const headers: HeadersInit =
+      resolvedProviderType === "anthropic"
+        ? {
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+          }
+        : {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          };
+
     const response = await fetch(url, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -63,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     const formattedModels = rawModels.map((m) => ({
       id: m.id,
-      name: m.id, // 默认 ID 作为 Name，前端可进一步匹配
+      name: m.display_name || m.id,
       created: m.created,
       owned_by: m.owned_by,
     }));

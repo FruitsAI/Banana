@@ -199,14 +199,6 @@ pub fn call_tool(
     Ok(res.result.unwrap_or(serde_json::json!({})))
 }
 
-pub fn start_server() -> McpCommandResult<()> {
-    Err("start_mcp_server is deprecated; use mcp_list_tools/mcp_call_tool flow".to_string())
-}
-
-pub fn send_message() -> McpCommandResult<()> {
-    Err("send_mcp_message is deprecated; use mcp_call_tool flow".to_string())
-}
-
 fn send_rpc(stdin: &mut std::process::ChildStdin, req: &JsonRpcRequest) -> McpCommandResult<()> {
     let json = serde_json::to_string(req).map_err(|e| e.to_string())?;
     writeln!(stdin, "{json}").map_err(|e| format!("发送消息失败: {e}"))?;

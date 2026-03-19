@@ -1,4 +1,5 @@
 import { streamText, tool, jsonSchema } from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 
 type OpenAICompatOptions = Parameters<typeof createOpenAI>[0] & {
@@ -19,6 +20,9 @@ type JsonSchemaWithCompat = ReturnType<typeof jsonSchema> & {
   schema?: unknown;
   jsonSchema?: unknown;
 };
+
+const DEFAULT_OPENAI_MODEL_ID = "gpt-4o-mini";
+const DEFAULT_ANTHROPIC_MODEL_ID = "claude-haiku-4-5";
 
 function hasUIMessageStreamResponse(value: unknown): value is StreamResponseLike {
   return (
@@ -44,6 +48,10 @@ function shouldUseCompatibleMode(providerType: string): boolean {
   return providerType !== "openai-response";
 }
 
+function isAnthropicProvider(providerType: string): boolean {
+  return providerType === "anthropic";
+}
+
 export async function POST(req: Request) {
   try {
     const { messages, apiKey, baseURL, modelId, providerType, isSearch, isThink, tools: clientTools } = await req.json();
@@ -58,23 +66,39 @@ export async function POST(req: Request) {
     const resolvedType = providerType ?? "openai";
     const resolvedBaseURL = baseURL || "https://api.openai.com/v1";
     const useCompatible = shouldUseCompatibleMode(resolvedType);
+    const fallbackModelId = isAnthropicProvider(resolvedType)
+      ? DEFAULT_ANTHROPIC_MODEL_ID
+      : DEFAULT_OPENAI_MODEL_ID;
 
     console.log("[API /chat] \ud83d\ude80 收到请求:", {
-      modelId: modelId || "gpt-4o-mini",
+      modelId: modelId || fallbackModelId,
       isSearch,
       isThink,
       hasTools: !!clientTools?.length,
     });
 
-    const openai = createOpenAI({
-      apiKey,
-      baseURL: resolvedBaseURL,
-      compatibility: "strict" // forces strict completions path avoiding /v1/responses
-    } as OpenAICompatOptions);
+    const modelParams = isAnthropicProvider(resolvedType)
+      ? (() => {
+          const anthropic = createAnthropic({
+            apiKey,
+            baseURL: resolvedBaseURL,
+          });
+          const anthropicModelId = (
+            modelId || fallbackModelId
+          ) as Parameters<typeof anthropic.chat>[0];
+          return anthropic.chat(anthropicModelId);
+        })()
+      : (() => {
+          const openai = createOpenAI({
+            apiKey,
+            baseURL: resolvedBaseURL,
+            compatibility: "strict", // forces strict completions path avoiding /v1/responses
+          } as OpenAICompatOptions);
 
-    const modelParams = useCompatible 
-      ? openai.chat(modelId || "gpt-4o-mini") 
-      : openai(modelId || "gpt-4o-mini");
+          return useCompatible
+            ? openai.chat(modelId || fallbackModelId)
+            : openai(modelId || fallbackModelId);
+        })();
 
     // 构造增强的消息列表: System 提示词必须放在对话的最前面，绝对不能放在用户提问的后面！
     const finalMessages = [...messages];
