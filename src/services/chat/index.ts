@@ -1,21 +1,31 @@
 import {
-  appendMessage as dbAppendMessage,
   createThread as dbCreateThread,
-  deleteMessagesAfter as dbDeleteMessagesAfter,
   deleteThread as dbDeleteThread,
-  getMessages as dbGetMessages,
   getMcpServers as dbGetMcpServers,
   getModelsByProvider as dbGetModelsByProvider,
   getProviders as dbGetProviders,
   getThreads as dbGetThreads,
-  updateMessage as dbUpdateMessage,
   updateThreadTitle as dbUpdateThreadTitle,
   type McpServer,
   type Model,
   type Provider,
 } from "@/lib/db";
-import type { Message, Thread } from "@/domain/chat/types";
+import type { Thread } from "@/domain/chat/types";
 import { AppError, normalizeError } from "@/shared/errors";
+import {
+  fromStoredMessageRecord as fromStoredMessageRecordInternal,
+  loadPersistedMessages as loadPersistedMessagesInternal,
+  toStoredMessageRecord as toStoredMessageRecordInternal,
+} from "./persistence";
+import {
+  createRuntimeToolMap as createRuntimeToolMapInternal,
+  normalizeToolFailure as normalizeToolFailureInternal,
+  normalizeToolSuccess as normalizeToolSuccessInternal,
+} from "./mcp-tools";
+import {
+  buildChatRequestBody as buildChatRequestBodyInternal,
+  createChatRuntime as createChatRuntimeInternal,
+} from "./runtime";
 
 function wrapError(operation: string, error: unknown): AppError {
   return normalizeError(error, {
@@ -61,38 +71,6 @@ export async function deleteThread(id: string): Promise<void> {
   }
 }
 
-export async function getMessages(threadId: string): Promise<Message[]> {
-  try {
-    return await dbGetMessages(threadId);
-  } catch (error) {
-    throw wrapError("getMessages", error);
-  }
-}
-
-export async function appendMessage(msg: Omit<Message, "created_at">): Promise<void> {
-  try {
-    await dbAppendMessage(msg);
-  } catch (error) {
-    throw wrapError("appendMessage", error);
-  }
-}
-
-export async function deleteMessagesAfter(threadId: string, messageId: string): Promise<void> {
-  try {
-    await dbDeleteMessagesAfter(threadId, messageId);
-  } catch (error) {
-    throw wrapError("deleteMessagesAfter", error);
-  }
-}
-
-export async function updateMessage(id: string, content: string): Promise<void> {
-  try {
-    await dbUpdateMessage(id, content);
-  } catch (error) {
-    throw wrapError("updateMessage", error);
-  }
-}
-
 export async function getProvidersForChat(): Promise<Provider[]> {
   try {
     return await dbGetProviders();
@@ -114,5 +92,85 @@ export async function getMcpServersForChat(): Promise<McpServer[]> {
     return await dbGetMcpServers();
   } catch (error) {
     throw wrapError("getMcpServersForChat", error);
+  }
+}
+
+export function toStoredMessageRecord(
+  ...args: Parameters<typeof toStoredMessageRecordInternal>
+): ReturnType<typeof toStoredMessageRecordInternal> {
+  try {
+    return toStoredMessageRecordInternal(...args);
+  } catch (error) {
+    throw wrapError("toStoredMessageRecord", error);
+  }
+}
+
+export function fromStoredMessageRecord(
+  ...args: Parameters<typeof fromStoredMessageRecordInternal>
+): ReturnType<typeof fromStoredMessageRecordInternal> {
+  try {
+    return fromStoredMessageRecordInternal(...args);
+  } catch (error) {
+    throw wrapError("fromStoredMessageRecord", error);
+  }
+}
+
+export async function loadPersistedMessages(
+  ...args: Parameters<typeof loadPersistedMessagesInternal>
+): ReturnType<typeof loadPersistedMessagesInternal> {
+  try {
+    return await loadPersistedMessagesInternal(...args);
+  } catch (error) {
+    throw wrapError("loadPersistedMessages", error);
+  }
+}
+
+export async function createRuntimeToolMap(
+  ...args: Parameters<typeof createRuntimeToolMapInternal>
+): ReturnType<typeof createRuntimeToolMapInternal> {
+  try {
+    return await createRuntimeToolMapInternal(...args);
+  } catch (error) {
+    throw wrapError("createRuntimeToolMap", error);
+  }
+}
+
+export function normalizeToolSuccess(
+  ...args: Parameters<typeof normalizeToolSuccessInternal>
+): ReturnType<typeof normalizeToolSuccessInternal> {
+  try {
+    return normalizeToolSuccessInternal(...args);
+  } catch (error) {
+    throw wrapError("normalizeToolSuccess", error);
+  }
+}
+
+export function normalizeToolFailure(
+  ...args: Parameters<typeof normalizeToolFailureInternal>
+): ReturnType<typeof normalizeToolFailureInternal> {
+  try {
+    return normalizeToolFailureInternal(...args);
+  } catch (error) {
+    throw wrapError("normalizeToolFailure", error);
+  }
+}
+
+export function buildChatRequestBody(
+  ...args: Parameters<typeof buildChatRequestBodyInternal>
+): ReturnType<typeof buildChatRequestBodyInternal> {
+  try {
+    return buildChatRequestBodyInternal(...args);
+  } catch (error) {
+    throw wrapError("buildChatRequestBody", error);
+  }
+}
+
+export function createChatRuntime(
+  ...args: Parameters<typeof createChatRuntimeInternal>
+): ReturnType<typeof createChatRuntimeInternal> {
+  try {
+    return createChatRuntimeInternal(...args);
+  } catch (error) {
+    throw wrapError("createChatRuntime", error);
   }
 }

@@ -43,6 +43,14 @@ function getDayCategory(dateStr: string) {
   return "earlier";
 }
 
+function sortThreadsByActivity(threads: Thread[]): Thread[] {
+  return [...threads].sort((a, b) => {
+    const timeA = new Date(a.updated_at || a.created_at).getTime();
+    const timeB = new Date(b.updated_at || b.created_at).getTime();
+    return timeB - timeA;
+  });
+}
+
 function ThreadItemComponent({ thread, index, selected, onClick, onContextMenu }: { thread: Thread; index: number; selected: boolean; onClick: () => void; onContextMenu: (e: React.MouseEvent, threadId: string) => void }) {
   const shouldReduceMotion = useReducedMotion();
   const { factors, intensity } = useAnimationIntensity();
@@ -147,42 +155,25 @@ function ThreadsSidebarContent() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; threadId: string } | null>(null);
   const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(false);
+  const loadRequestIdRef = useRef(0);
 
   const loadThreads = useCallback(async () => {
+    const requestId = loadRequestIdRef.current + 1;
+    loadRequestIdRef.current = requestId;
+
     try {
       const data = await loadThreadsFromStore();
-      if (!data) return;
-      // Sort descending by created_at or updated_at
-      data.sort((a, b) => {
-        const timeA = new Date(a.updated_at || a.created_at).getTime();
-        const timeB = new Date(b.updated_at || b.created_at).getTime();
-        return timeB - timeA;
-      });
-      setThreads(data);
+      if (!data || !isMountedRef.current || requestId !== loadRequestIdRef.current) return;
+      setThreads(sortThreadsByActivity(data));
     } catch (e) {
       console.error("Failed to load threads", e);
     }
   }, [loadThreadsFromStore]);
 
   useEffect(() => {
-    let ignore = false;
-    
-    const load = async () => {
-      try {
-        const data = await loadThreadsFromStore();
-        if (ignore || !data) return;
-        data.sort((a, b) => {
-          const timeA = new Date(a.updated_at || a.created_at).getTime();
-          const timeB = new Date(b.updated_at || b.created_at).getTime();
-          return timeB - timeA;
-        });
-        setThreads(data);
-      } catch (e) {
-        console.error("Failed to load threads", e);
-      }
-    };
-
-    load();
+    isMountedRef.current = true;
+    void loadThreads();
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
@@ -202,11 +193,11 @@ function ThreadsSidebarContent() {
     window.addEventListener("click", handleClickOutside);
 
     return () => {
-      ignore = true;
+      isMountedRef.current = false;
       window.removeEventListener("refresh-threads", handleRefresh);
       window.removeEventListener("click", handleClickOutside);
     };
-  }, [loadThreads, loadThreadsFromStore]);
+  }, [loadThreads]);
 
   const handleContextMenu = (e: React.MouseEvent, threadId: string) => {
     e.preventDefault();

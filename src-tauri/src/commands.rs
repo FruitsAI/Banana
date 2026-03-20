@@ -116,11 +116,13 @@ pub async fn db_get_messages(
     state: State<'_, AppState>,
     thread_id: String,
 ) -> Result<Vec<Message>> {
+    // Returned rows include optional `ui_message_json` for canonical UI message hydration.
     chat_service::get_messages(&state.db, &thread_id).await
 }
 
 #[tauri::command]
 pub async fn db_append_message(state: State<'_, AppState>, msg: Message) -> Result<()> {
+    // Pass through the full payload; `Message` now carries optional `ui_message_json`.
     chat_service::append_message(&state.db, &msg).await
 }
 
@@ -131,15 +133,6 @@ pub async fn db_delete_messages_after(
     message_id: String,
 ) -> Result<()> {
     chat_service::delete_messages_after(&state.db, &thread_id, &message_id).await
-}
-
-#[tauri::command]
-pub async fn db_update_message(
-    state: State<'_, AppState>,
-    id: String,
-    content: String,
-) -> Result<()> {
-    chat_service::update_message(&state.db, &id, &content).await
 }
 
 // 统一注册 Commands
@@ -163,6 +156,5 @@ pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<
         db_get_messages,
         db_append_message,
         db_delete_messages_after,
-        db_update_message,
     ])
 }

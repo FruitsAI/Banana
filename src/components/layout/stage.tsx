@@ -53,6 +53,15 @@ const formatMessageTime = (dateStr?: string) => {
   }
 };
 
+const isToolInvocationError = (result: unknown): boolean => {
+  if (!result || typeof result !== "object") {
+    return false;
+  }
+
+  const candidate = result as { error?: unknown; isError?: unknown };
+  return candidate.isError === true || candidate.error !== undefined;
+};
+
 function StageContent() {
   const searchParams = useSearchParams();
   const threadId = searchParams.get("thread") || "default-thread";
@@ -74,11 +83,17 @@ function StageContent() {
   };
 
   const handleSaveEdit = async (id: string) => {
-    if (!editingContent.trim()) return;
-    await updateMessageContent(id, editingContent);
+    const nextContent = editingContent.trim();
+    if (!nextContent) return;
+
+    // Close the editor immediately so the rerun streams in the normal bubble view.
     setEditingMessageId(null);
+    setEditingContent("");
+
+    // Adapter edits + reruns in one call, so avoid a second regenerate trigger here.
+    await updateMessageContent(id, nextContent, { isSearch: isSearchEnabled, isThink: isThinkingEnabled });
     // 保存后自动触发重新生成，并透传当前状态
-    await regenerate(id, { isSearch: isSearchEnabled, isThink: isThinkingEnabled });
+    // regenerate is handled by updateMessageContent for user edits.
   };
 
   const handleCancelEdit = () => {
@@ -306,7 +321,13 @@ function StageContent() {
                         <span className="text-[10px] opacity-80 font-mono" style={{ color: "var(--text-secondary)" }}>{formatMessageTime(msg.createdAt)}</span>
                       </div>
                       <div className="w-10 h-10 rounded-full flex items-center justify-center border overflow-hidden" style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}>
-                        <Image src="/logo.png" alt="User" width={24} height={24} className="w-6 h-6 object-contain" />
+                        <Image
+                          src="/logo.png"
+                          alt="User"
+                          width={24}
+                          height={24}
+                          className="w-6 h-6 object-contain"
+                        />
                       </div>
                     </>
                   ) : (
@@ -429,6 +450,10 @@ function StageContent() {
                         {msg.toolInvocations && msg.toolInvocations.length > 0 && (
                           <div className="flex flex-col gap-2 mb-3">
                             {msg.toolInvocations.map((tool, idx) => (
+                              (() => {
+                                const toolFailed = isToolInvocationError(tool.result);
+
+                                return (
                               <div key={idx} className="flex items-center justify-between text-xs px-3 py-2 rounded-xl border transition-all duration-300" style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}>
                                 <div className="flex items-center gap-2 font-mono text-xs opacity-80" style={{ color: "var(--text-primary)" }}>
                                   <HugeiconsIcon icon={Wrench01Icon} size={14} />
@@ -438,30 +463,16 @@ function StageContent() {
                                    {tool.state === 'call' ? (
                                       <HugeiconsIcon icon={Loading01Icon} size={14} className="animate-spin opacity-60" style={{ color: "var(--brand-primary)" }} />
                                    ) : (
-                                      (() => {
-                                        const toolResult =
-                                          typeof tool.result === "object" && tool.result !== null
-                                            ? (tool.result as { isError?: unknown })
-                                            : null;
-                                        const isToolError = Boolean(toolResult?.isError);
-
-                                        return (
-                                          <div
-                                            className="flex items-center gap-1 opacity-80"
-                                            style={{
-                                              color: isToolError
-                                                ? "var(--semantic-error, #ef4444)"
-                                                : "var(--semantic-success, #10b981)",
-                                            }}
-                                          >
-                                            <span className="text-[10px]">{isToolError ? "调用失败" : "已完成"}</span>
-                                            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
-                                          </div>
-                                        );
-                                      })()
+                                      <div className="flex items-center gap-1 opacity-80" 
+                                           style={{ color: toolFailed ? "var(--semantic-error, #ef4444)" : "var(--semantic-success, #10b981)" }}>
+                                        <span className="text-[10px]">{toolFailed ? "调用失败" : "已完成"}</span>
+                                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
+                                      </div>
                                    )}
                                 </div>
                               </div>
+                                );
+                              })()
                             ))}
                           </div>
                         )}

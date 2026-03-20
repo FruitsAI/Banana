@@ -7,6 +7,11 @@ export type { Message, Thread } from '@/domain/chat/types';
 export type { Model, Provider } from '@/domain/models/types';
 export type { McpServer } from '@/domain/mcp/types';
 
+export type PersistedMessageRecord = Omit<Message, "created_at"> & {
+  created_at?: string;
+  ui_message_json?: string | null;
+};
+
 /**
  * 持久化全局配置 (setConfig)
  * @description 存储全局级别的 Key-Value 配置映射，比如：API Key、Base URL 以及 MCP 服务的各类启动参数。
@@ -36,25 +41,22 @@ export async function deleteThread(id: string): Promise<void> {
   await invoke('db_delete_thread', { id });
 }
 
-export async function updateThreadTime(): Promise<void> {
-  // Update thread time is handled automatically by rust when saving a message. 
-  // Should rarely be needed on frontend directly now, but we'll leave invoke if needed.
-}
-
-export async function getMessages(threadId: string): Promise<Message[]> {
-  return await invoke('db_get_messages', { threadId });
-}
-
-export async function appendMessage(msg: Omit<Message, 'created_at'>): Promise<void> {
-  await invoke('db_append_message', { msg: { ...msg, created_at: new Date().toISOString() } });
-}
-
 export async function deleteMessagesAfter(threadId: string, messageId: string): Promise<void> {
   await invoke('db_delete_messages_after', { threadId, messageId });
 }
 
-export async function updateMessage(id: string, content: string): Promise<void> {
-  await invoke('db_update_message', { id, content });
+export async function getPersistedMessages(threadId: string): Promise<PersistedMessageRecord[]> {
+  const rows = await invoke<PersistedMessageRecord[]>('db_get_messages', { threadId });
+  return rows.map((row) => ({
+    ...row,
+    ui_message_json: row.ui_message_json ?? null,
+  }));
+}
+
+export async function appendPersistedMessage(
+  msg: Omit<PersistedMessageRecord, 'created_at'>
+): Promise<void> {
+  await invoke('db_append_message', { msg: { ...msg, created_at: new Date().toISOString() } });
 }
 
 /**
