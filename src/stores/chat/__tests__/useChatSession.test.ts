@@ -183,7 +183,13 @@ describe("useChatSession", () => {
     });
 
     expect(result.current.messages).toEqual([
-      createUserMessage("msg-user-1", "hello banana"),
+      expect.objectContaining({
+        ...createUserMessage("msg-user-1", "hello banana"),
+        metadata: expect.objectContaining({
+          threadId: "thread-1",
+          createdAt: expect.any(String),
+        }),
+      }),
     ]);
   });
 
@@ -204,8 +210,14 @@ describe("useChatSession", () => {
     expect(result.current.status).toBe("ready");
     expect(result.current.messages).toHaveLength(2);
     expect(result.current.messages[0].role).toBe("user");
+    expect(result.current.messages[0].metadata?.createdAt).toBeTypeOf("string");
     expect(result.current.messages[1]).toEqual(
-      createAssistantMessage("msg-assistant-1", "assistant reply"),
+      expect.objectContaining({
+        ...createAssistantMessage("msg-assistant-1", "assistant reply"),
+        metadata: expect.objectContaining({
+          createdAt: expect.any(String),
+        }),
+      }),
     );
     expect(dispatchEventSpy.mock.calls.map(([event]) => event.type)).toContain("refresh-threads");
   });
@@ -237,11 +249,12 @@ describe("useChatSession", () => {
       await result.current.regenerate("msg-assistant-2");
     });
 
-    expect(sendMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: hydratedMessages.slice(0, 3),
-      }),
-    );
+    const replayMessages = sendMock.mock.calls[0]?.[0]?.messages as BananaUIMessage[];
+    expect(replayMessages.map((message) => message.id)).toEqual([
+      "msg-user-1",
+      "msg-assistant-1",
+      "msg-user-2",
+    ]);
   });
 
   it("editUserMessage truncates later messages and reruns from the edited point", async () => {
@@ -696,7 +709,13 @@ describe("useChatSession", () => {
     });
 
     expect(result.current.messages).toEqual([
-      createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+      expect.objectContaining({
+        ...createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+        metadata: expect.objectContaining({
+          threadId: "thread-2",
+          createdAt: expect.any(String),
+        }),
+      }),
     ]);
 
     threadOne.resolve([createUserMessage("msg-user-thread-1", "thread one", "thread-1")]);
@@ -706,7 +725,13 @@ describe("useChatSession", () => {
     });
 
     expect(result.current.messages).toEqual([
-      createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+      expect.objectContaining({
+        ...createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+        metadata: expect.objectContaining({
+          threadId: "thread-2",
+          createdAt: expect.any(String),
+        }),
+      }),
     ]);
     expect(result.current.error).toBeUndefined();
   });
@@ -745,7 +770,13 @@ describe("useChatSession", () => {
 
     expect(result.current.status).toBe("ready");
     expect(result.current.messages).toEqual([
-      createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+      expect.objectContaining({
+        ...createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+        metadata: expect.objectContaining({
+          threadId: "thread-2",
+          createdAt: expect.any(String),
+        }),
+      }),
     ]);
     expect(result.current.error).toBeUndefined();
   });

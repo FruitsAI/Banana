@@ -178,19 +178,30 @@ function normalizeMessages(
   threadId: string,
   messages: RuntimeTransportMessage[] | BananaUIMessage[],
   context?: Partial<ResolvedChatContext>,
+  previousMessages: BananaUIMessage[] = [],
 ): BananaUIMessage[] {
+  const previousMessagesById = new Map(previousMessages.map((message) => [message.id, message]));
+
   return messages.map((message) => ({
     ...message,
-    metadata: message.metadata
-      ? {
-          ...message.metadata,
-          threadId: message.metadata.threadId ?? threadId,
-        }
-      : {
-          threadId,
-          modelId: context?.modelId,
-          providerId: context?.providerId,
-        },
+    metadata: {
+      threadId: message.metadata?.threadId ?? previousMessagesById.get(message.id)?.metadata?.threadId ?? threadId,
+      modelId: message.metadata?.modelId ?? previousMessagesById.get(message.id)?.metadata?.modelId ?? context?.modelId,
+      providerId:
+        message.metadata?.providerId ??
+        previousMessagesById.get(message.id)?.metadata?.providerId ??
+        context?.providerId,
+      createdAt:
+        message.metadata?.createdAt ??
+        previousMessagesById.get(message.id)?.metadata?.createdAt ??
+        new Date().toISOString(),
+      searchEnabled:
+        message.metadata?.searchEnabled ??
+        previousMessagesById.get(message.id)?.metadata?.searchEnabled,
+      thinkEnabled:
+        message.metadata?.thinkEnabled ??
+        previousMessagesById.get(message.id)?.metadata?.thinkEnabled,
+    },
   }));
 }
 
@@ -365,7 +376,7 @@ export function useChatSession(threadId: string) {
         dispatch({
           type: "HYDRATE_SUCCESS",
           threadId: nextThreadId,
-          messages: normalizeMessages(nextThreadId, messages),
+          messages: normalizeMessages(nextThreadId, messages, undefined, stateRef.current.messages),
         });
       } catch (error) {
         if (loadRequestIdRef.current !== requestId) {
@@ -438,6 +449,13 @@ export function useChatSession(threadId: string) {
       const context = contextOverride ?? (await resolveChatContext());
       ensureTurnActive(turn);
 
+      let currentMessages = normalizeMessages(
+        threadId,
+        seedMessages,
+        context,
+        stateRef.current.messages,
+      );
+
       const servers = await getMcpServersForChat();
       ensureTurnActive(turn);
 
@@ -446,9 +464,10 @@ export function useChatSession(threadId: string) {
 
       const runtime = createChatRuntime({
         onMessagesUpdate(messages) {
+          currentMessages = normalizeMessages(threadId, messages, context, currentMessages);
           dispatchIfActive(turn, {
             type: "MESSAGES_UPDATED",
-            messages: normalizeMessages(threadId, messages, context),
+            messages: currentMessages,
           });
         },
         onStatusChange(status) {
@@ -465,7 +484,6 @@ export function useChatSession(threadId: string) {
         inputSchema: tool.inputSchema,
       }));
 
-      let currentMessages = normalizeMessages(threadId, seedMessages, context);
       let round = 0;
 
       while (round < MAX_TOOL_ROUNDS) {
@@ -485,7 +503,7 @@ export function useChatSession(threadId: string) {
 
         ensureTurnActive(turn);
 
-        currentMessages = normalizeMessages(threadId, responseMessages, context);
+        currentMessages = normalizeMessages(threadId, responseMessages, context, currentMessages);
         const pendingTools = findPendingToolExecutions(currentMessages);
         dispatchIfActive(turn, { type: "MESSAGES_UPDATED", messages: currentMessages });
 
@@ -561,6 +579,7 @@ export function useChatSession(threadId: string) {
             threadId,
             modelId: context.modelId,
             providerId: context.providerId,
+            createdAt: new Date().toISOString(),
             searchEnabled: options?.isSearch,
             thinkEnabled: options?.isThink,
           },

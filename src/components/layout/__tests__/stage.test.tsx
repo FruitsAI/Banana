@@ -166,4 +166,35 @@ describe("Stage", () => {
       resolveUpdate();
     });
   });
+
+  it("shows failed MCP tool results with an error state instead of a success badge", () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [
+        {
+          id: "msg-assistant-1",
+          role: "assistant",
+          content: "tool failed",
+          toolInvocations: [
+            {
+              state: "result",
+              toolCallId: "tool-call-1",
+              toolName: "get_current_time",
+              args: { timezone: "Asia/Shanghai" },
+              result: { error: "tool timed out" },
+            },
+          ],
+        },
+      ],
+      append: vi.fn(),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    expect(screen.getByText("调用失败")).toBeInTheDocument();
+    expect(screen.queryByText("已完成")).not.toBeInTheDocument();
+  });
 });

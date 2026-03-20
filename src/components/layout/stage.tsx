@@ -52,6 +52,15 @@ const formatMessageTime = (dateStr?: string) => {
   }
 };
 
+const isToolInvocationError = (result: unknown): boolean => {
+  if (!result || typeof result !== "object") {
+    return false;
+  }
+
+  const candidate = result as { error?: unknown; isError?: unknown };
+  return candidate.isError === true || candidate.error !== undefined;
+};
+
 function StageContent() {
   const searchParams = useSearchParams();
   const threadId = searchParams.get("thread") || "default-thread";
@@ -432,6 +441,10 @@ function StageContent() {
                         {msg.toolInvocations && msg.toolInvocations.length > 0 && (
                           <div className="flex flex-col gap-2 mb-3">
                             {msg.toolInvocations.map((tool, idx) => (
+                              (() => {
+                                const toolFailed = isToolInvocationError(tool.result);
+
+                                return (
                               <div key={idx} className="flex items-center justify-between text-xs px-3 py-2 rounded-xl border transition-all duration-300" style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}>
                                 <div className="flex items-center gap-2 font-mono text-xs opacity-80" style={{ color: "var(--text-primary)" }}>
                                   <HugeiconsIcon icon={Wrench01Icon} size={14} />
@@ -442,13 +455,15 @@ function StageContent() {
                                       <HugeiconsIcon icon={Loading01Icon} size={14} className="animate-spin opacity-60" style={{ color: "var(--brand-primary)" }} />
                                    ) : (
                                       <div className="flex items-center gap-1 opacity-80" 
-                                           style={{ color: (tool.result as any)?.isError ? "var(--semantic-error, #ef4444)" : "var(--semantic-success, #10b981)" }}>
-                                        <span className="text-[10px]">{(tool.result as any)?.isError ? "调用失败" : "已完成"}</span>
+                                           style={{ color: toolFailed ? "var(--semantic-error, #ef4444)" : "var(--semantic-success, #10b981)" }}>
+                                        <span className="text-[10px]">{toolFailed ? "调用失败" : "已完成"}</span>
                                         <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
                                       </div>
                                    )}
                                 </div>
                               </div>
+                                );
+                              })()
                             ))}
                           </div>
                         )}

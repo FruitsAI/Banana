@@ -51,10 +51,22 @@ describe("chat persistence", () => {
   });
 
   it("hydrates legacy rows without ui_message_json", () => {
-    const message = fromStoredMessageRecord(createLegacyRow());
+    const message = fromStoredMessageRecord({
+      ...createLegacyRow(),
+      thread_id: "thread-1",
+      created_at: "2026-03-20T12:00:00.000Z",
+    });
 
     expect(message.role).toBe("user");
     expect(message.parts[0]).toEqual({ type: "text", text: "hello banana" });
+    expect(message.metadata).toEqual({
+      threadId: "thread-1",
+      createdAt: "2026-03-20T12:00:00.000Z",
+      modelId: undefined,
+      providerId: undefined,
+      searchEnabled: undefined,
+      thinkEnabled: undefined,
+    });
   });
 
   it("replaces persisted messages by clearing existing records then appending new ones", async () => {

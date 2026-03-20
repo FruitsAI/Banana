@@ -35,7 +35,7 @@ export function toStoredMessageRecord(
 }
 
 export function fromStoredMessageRecord(
-  row: Pick<PersistedMessageRecord, "id" | "role" | "ui_message_json"> & {
+  row: Pick<PersistedMessageRecord, "id" | "role" | "thread_id" | "ui_message_json" | "created_at"> & {
     content?: string;
   },
 ): BananaUIMessage {
@@ -46,7 +46,19 @@ export function fromStoredMessageRecord(
     ui_message_json: row.ui_message_json,
   };
 
-  return coerceStoredMessageToUIMessage(normalized);
+  const message = coerceStoredMessageToUIMessage(normalized);
+
+  return {
+    ...message,
+    metadata: {
+      threadId: message.metadata?.threadId ?? row.thread_id,
+      modelId: message.metadata?.modelId,
+      providerId: message.metadata?.providerId,
+      createdAt: message.metadata?.createdAt ?? row.created_at,
+      searchEnabled: message.metadata?.searchEnabled,
+      thinkEnabled: message.metadata?.thinkEnabled,
+    },
+  };
 }
 
 export async function loadPersistedMessages(threadId: string): Promise<BananaUIMessage[]> {
