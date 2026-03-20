@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BananaUIMessage, ChatMessage } from "@/domain/chat/types";
 import { useBananaChat } from "@/hooks/useBananaChat";
@@ -163,6 +163,28 @@ describe("useBananaChat", () => {
     expect(defaultSession.sendMessage).not.toHaveBeenCalled();
     expect(replaceStateSpy).toHaveBeenCalled();
     expect(window.location.search).toContain("thread=thread-generated");
+  });
+
+  it("returns to default-thread when the route really clears the thread param", async () => {
+    const defaultSession = createSession();
+    const activeSession = createSession();
+    mockUseChatSession.mockImplementation((activeThreadId: string) => {
+      return activeThreadId === "default-thread" ? defaultSession : activeSession;
+    });
+
+    window.history.replaceState(null, "", "/?thread=thread-1");
+    const { rerender } = renderHook(({ threadId }: { threadId: string }) => useBananaChat(threadId), {
+      initialProps: { threadId: "thread-1" },
+    });
+
+    expect(mockUseChatSession).toHaveBeenLastCalledWith("thread-1");
+
+    window.history.replaceState(null, "", "/");
+    rerender({ threadId: "default-thread" });
+
+    await waitFor(() => {
+      expect(mockUseChatSession).toHaveBeenLastCalledWith("default-thread");
+    });
   });
 
   it("regenerate routes user messages through editUserMessage with existing content", async () => {

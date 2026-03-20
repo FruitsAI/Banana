@@ -78,12 +78,17 @@ export function useBananaChat(threadId: string) {
   const [activeThreadId, setActiveThreadId] = useState(threadId);
 
   useEffect(() => {
-    // Preserve thread switching, but don't overwrite the promoted id when searchParams
-    // lag behind `history.replaceState` after first-send from default-thread.
-    if (threadId !== "default-thread" || activeThreadId === "default-thread") {
-      setActiveThreadId(threadId);
-    }
-  }, [activeThreadId, threadId]);
+    const resolvedThreadId =
+      threadId === "default-thread"
+        ? new URL(window.location.href).searchParams.get("thread") ?? "default-thread"
+        : threadId;
+
+    // Prefer the actual location so first-send promotion survives searchParams lag,
+    // but real navigations back to the blank composer still reset correctly.
+    setActiveThreadId((currentThreadId) =>
+      currentThreadId === resolvedThreadId ? currentThreadId : resolvedThreadId,
+    );
+  }, [threadId]);
 
   const session = useChatSession(activeThreadId);
   const sessionRef = useRef(session);
