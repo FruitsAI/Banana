@@ -74,10 +74,11 @@ function StageContent() {
 
   const handleSaveEdit = async (id: string) => {
     if (!editingContent.trim()) return;
-    await updateMessageContent(id, editingContent);
+    // Adapter edits + reruns in one call, so avoid a second regenerate trigger here.
+    await updateMessageContent(id, editingContent, { isSearch: isSearchEnabled, isThink: isThinkingEnabled });
     setEditingMessageId(null);
     // 保存后自动触发重新生成，并透传当前状态
-    await regenerate(id, { isSearch: isSearchEnabled, isThink: isThinkingEnabled });
+    // regenerate is handled by updateMessageContent for user edits.
   };
 
   const handleCancelEdit = () => {
