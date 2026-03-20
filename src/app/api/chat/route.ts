@@ -43,11 +43,7 @@ function isLegacyRole(value: unknown): value is LegacyRole {
 }
 
 function isClientToolDescriptor(value: unknown): value is ClientToolDescriptor {
-  return (
-    isObject(value) &&
-    typeof value.name === "string" &&
-    "inputSchema" in value
-  );
+  return isObject(value) && typeof value.name === "string" && "inputSchema" in value;
 }
 
 function isUIMessageLike(value: unknown): value is UIMessage {

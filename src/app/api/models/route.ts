@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
+interface ProviderModel {
+  id: string;
+  created?: number;
+  owned_by?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isProviderModel(value: unknown): value is ProviderModel {
+  return isRecord(value) && typeof value.id === "string";
+}
+
 /**
  * 获取提供商支持的模型列表
  * @description 支持标准的 OpenAI /v1/models 协议，并针对不同提供商进行适配。
  */
 export async function POST(req: NextRequest) {
   try {
-    const { apiKey, baseURL, providerType } = await req.json();
+    const { apiKey, baseURL } = await req.json();
 
     if (!apiKey) {
       return NextResponse.json({ error: "API Key is required" }, { status: 400 });
@@ -37,17 +51,17 @@ export async function POST(req: NextRequest) {
     
     // 统一处理模型数据格式
     // 标准 OpenAI 返回是 { data: [{ id: "...", ... }] }
-    let rawModels = [];
+    let rawModels: ProviderModel[] = [];
     if (Array.isArray(data)) {
-      rawModels = data;
-    } else if (data && Array.isArray(data.data)) {
-      rawModels = data.data;
-    } else if (data && typeof data === 'object') {
+      rawModels = data.filter(isProviderModel);
+    } else if (isRecord(data) && Array.isArray(data.data)) {
+      rawModels = data.data.filter(isProviderModel);
+    } else if (isRecord(data)) {
       // 某些非标准接口可能直接返回对象数组
-      rawModels = Object.values(data).filter(v => typeof v === 'object' && (v as any).id);
+      rawModels = Object.values(data).filter(isProviderModel);
     }
 
-    const formattedModels = rawModels.map((m: any) => ({
+    const formattedModels = rawModels.map((m) => ({
       id: m.id,
       name: m.id, // 默认 ID 作为 Name，前端可进一步匹配
       created: m.created,

@@ -1,13 +1,13 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { motion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
 
 interface NavItemProps {
   /** HugeIcons 图标组件 */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  icon: any;
+  icon: ComponentProps<typeof HugeiconsIcon>["icon"];
   /** 显示文本 */
   label: string;
   /** 是否处于激活状态 */

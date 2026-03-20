@@ -1,6 +1,5 @@
 "use client";
 
-import { HugeiconsIcon } from "@hugeicons/react";
 import { CloudIcon, McpServerIcon, BadgeInfoIcon, PaintBoardIcon } from "@hugeicons/core-free-icons";
 import { NavItem } from "@/components/ui/nav-item";
 import type { SettingsTab } from "./settings-container";
