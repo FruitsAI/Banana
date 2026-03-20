@@ -95,6 +95,14 @@ function createAbortError(): Error {
   return error;
 }
 
+function notifyThreadsChanged(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent("refresh-threads"));
+}
+
 function enqueueCanonicalPersistence<T>(
   threadId: string,
   write: () => Promise<T>,
@@ -335,6 +343,7 @@ export function useChatSession(threadId: string) {
       await enqueueCanonicalPersistence(threadId, async () => {
         ensureTurnActive(turn);
         await replaceCanonicalMessages(threadId, messages);
+        notifyThreadsChanged();
         ensureTurnActive(turn);
       });
       ensureTurnActive(turn);

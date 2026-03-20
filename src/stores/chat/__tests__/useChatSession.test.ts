@@ -196,6 +196,7 @@ describe("useChatSession", () => {
   });
 
   it("sendMessage persists the user turn and streams the assistant reply", async () => {
+    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
     const { result } = renderHook(() => useChatSession("thread-1"));
 
     await waitFor(() => {
@@ -214,6 +215,7 @@ describe("useChatSession", () => {
     expect(result.current.messages[1]).toEqual(
       createAssistantMessage("msg-assistant-1", "assistant reply"),
     );
+    expect(dispatchEventSpy.mock.calls.map(([event]) => event.type)).toContain("refresh-threads");
   });
 
   it("regenerate replays from the preserved boundary", async () => {
