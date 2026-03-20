@@ -283,6 +283,10 @@ export function useChatSession(threadId: string) {
 
   const handleTurnFailure = useCallback(
     (turn: ActiveTurn, error: unknown): void => {
+      if (activeTurnRef.current?.id !== turn.id) {
+        return;
+      }
+
       if (isAbortError(error) || turn.controller.signal.aborted) {
         if (activeTurnRef.current?.id === turn.id) {
           activeTurnRef.current = null;
@@ -297,6 +301,15 @@ export function useChatSession(threadId: string) {
       });
     },
     [],
+  );
+
+  const persistIfActive = useCallback(
+    async (turn: ActiveTurn, messages: BananaUIMessage[]): Promise<void> => {
+      ensureTurnActive(turn);
+      await replaceCanonicalMessages(threadId, messages);
+      ensureTurnActive(turn);
+    },
+    [ensureTurnActive, replaceCanonicalMessages, threadId],
   );
 
   const loadThread = useCallback(
@@ -435,8 +448,7 @@ export function useChatSession(threadId: string) {
           });
         }
 
-        await replaceCanonicalMessages(threadId, currentMessages);
-        ensureTurnActive(turn);
+        await persistIfActive(turn, currentMessages);
 
         if (pendingTools.length === 0) {
           dispatchIfActive(turn, { type: "STATUS_CHANGED", status: "ready" });
@@ -469,8 +481,7 @@ export function useChatSession(threadId: string) {
 
         currentMessages = applyToolOutputs(currentMessages, toolOutputs);
         dispatchIfActive(turn, { type: "MESSAGES_UPDATED", messages: currentMessages });
-        await replaceCanonicalMessages(threadId, currentMessages);
-        ensureTurnActive(turn);
+        await persistIfActive(turn, currentMessages);
         round += 1;
       }
 
@@ -481,7 +492,7 @@ export function useChatSession(threadId: string) {
       dispatchIfActive,
       ensureTurnActive,
       isTurnActive,
-      replaceCanonicalMessages,
+      persistIfActive,
       resolveChatContext,
       threadId,
     ],
@@ -521,8 +532,7 @@ export function useChatSession(threadId: string) {
           messages: nextMessages,
         });
 
-        await replaceCanonicalMessages(threadId, nextMessages);
-        ensureTurnActive(turn);
+        await persistIfActive(turn, nextMessages);
 
         await runAssistantTurn(nextMessages, turn, options, context);
       } catch (error) {
@@ -538,7 +548,7 @@ export function useChatSession(threadId: string) {
       dispatchIfActive,
       ensureTurnActive,
       handleTurnFailure,
-      replaceCanonicalMessages,
+      persistIfActive,
       resolveChatContext,
       runAssistantTurn,
       threadId,
@@ -559,8 +569,7 @@ export function useChatSession(threadId: string) {
 
       try {
         dispatchIfActive(turn, { type: "MESSAGES_UPDATED", messages: boundaryMessages });
-        await replaceCanonicalMessages(threadId, boundaryMessages);
-        ensureTurnActive(turn);
+        await persistIfActive(turn, boundaryMessages);
         await runAssistantTurn(boundaryMessages, turn, options);
       } catch (error) {
         handleTurnFailure(turn, error);
@@ -574,7 +583,7 @@ export function useChatSession(threadId: string) {
       dispatchIfActive,
       ensureTurnActive,
       handleTurnFailure,
-      replaceCanonicalMessages,
+      persistIfActive,
       runAssistantTurn,
       threadId,
     ],
@@ -600,8 +609,7 @@ export function useChatSession(threadId: string) {
 
       try {
         dispatchIfActive(turn, { type: "MESSAGES_UPDATED", messages: nextMessages });
-        await replaceCanonicalMessages(threadId, nextMessages);
-        ensureTurnActive(turn);
+        await persistIfActive(turn, nextMessages);
         await runAssistantTurn(nextMessages, turn, options);
       } catch (error) {
         handleTurnFailure(turn, error);
@@ -615,7 +623,7 @@ export function useChatSession(threadId: string) {
       dispatchIfActive,
       ensureTurnActive,
       handleTurnFailure,
-      replaceCanonicalMessages,
+      persistIfActive,
       runAssistantTurn,
       threadId,
     ],

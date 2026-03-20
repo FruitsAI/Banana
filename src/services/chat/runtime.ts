@@ -45,6 +45,28 @@ function isAbortError(error: unknown): error is Error {
   return error instanceof Error && error.name === "AbortError";
 }
 
+function toAbortError(reason?: unknown): Error {
+  if (reason instanceof Error) {
+    if (reason.name === "AbortError") {
+      return reason;
+    }
+
+    const abortError = new Error(reason.message || "The operation was aborted.");
+    abortError.name = "AbortError";
+    return abortError;
+  }
+
+  if (typeof reason === "string" && reason.trim().length > 0) {
+    const abortError = new Error(reason);
+    abortError.name = "AbortError";
+    return abortError;
+  }
+
+  const abortError = new Error("The operation was aborted.");
+  abortError.name = "AbortError";
+  return abortError;
+}
+
 function getThreadId(message: RuntimeTransportMessage): string | undefined {
   const metadata = message.metadata;
   const threadId = metadata?.threadId;
@@ -115,8 +137,11 @@ export function createChatRuntime(options: CreateChatRuntimeOptions): ChatRuntim
           body: request,
         });
       } catch (error) {
+        if (request.abortSignal?.aborted) {
+          throw toAbortError(request.abortSignal.reason ?? error);
+        }
         if (isAbortError(error)) {
-          throw error;
+          throw toAbortError(error);
         }
         const wrappedError = wrapError("createChatRuntime.send", error);
         options.onStatusChange("error");
@@ -132,14 +157,17 @@ export function createChatRuntime(options: CreateChatRuntimeOptions): ChatRuntim
           stream,
         })) {
           if (request.abortSignal?.aborted) {
-            throw request.abortSignal.reason ?? Object.assign(new Error("Aborted"), { name: "AbortError" });
+            throw toAbortError(request.abortSignal.reason);
           }
           latestMessages = [...request.messages, assistantMessage];
           options.onMessagesUpdate(latestMessages);
         }
       } catch (error) {
+        if (request.abortSignal?.aborted) {
+          throw toAbortError(request.abortSignal.reason ?? error);
+        }
         if (isAbortError(error)) {
-          throw error;
+          throw toAbortError(error);
         }
         const wrappedError = wrapError("createChatRuntime.send", error);
         options.onStatusChange("error");

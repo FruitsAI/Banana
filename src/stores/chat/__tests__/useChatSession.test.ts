@@ -388,6 +388,164 @@ describe("useChatSession", () => {
     expect(mockReplacePersistedMessages).toHaveBeenCalledTimes(1);
   });
 
+  it("does not let an aborted stale turn reset the replacement turn status", async () => {
+    let sendCount = 0;
+    let releaseFirstTurn:
+      | (() => void)
+      | undefined;
+    let resolveSecondTurn:
+      | (() => void)
+      | undefined;
+
+    mockCreateChatRuntime.mockImplementation(({ onMessagesUpdate, onStatusChange }) => ({
+      send: vi.fn(
+        ({ messages, abortSignal }: { messages: BananaUIMessage[]; abortSignal?: AbortSignal }) =>
+          new Promise<BananaUIMessage[]>((resolve, reject) => {
+            sendCount += 1;
+
+            if (sendCount === 1) {
+              releaseFirstTurn = () => {
+                if (abortSignal?.aborted) {
+                  const abortError = new Error("aborted");
+                  abortError.name = "AbortError";
+                  reject(abortError);
+                  return;
+                }
+
+                resolve(messages);
+              };
+              return;
+            }
+
+            onStatusChange("streaming");
+            resolveSecondTurn = () => {
+              const assistant = createAssistantMessage("msg-assistant-second", "second reply");
+              const nextMessages = [...messages, assistant];
+              onMessagesUpdate(nextMessages);
+              onStatusChange("ready");
+              resolve(nextMessages);
+            };
+          }),
+      ),
+    }));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    let firstPending: Promise<void> | undefined;
+    act(() => {
+      firstPending = result.current.sendMessage("first");
+    });
+
+    await waitFor(() => {
+      expect(releaseFirstTurn).toBeTypeOf("function");
+    });
+
+    let secondPending: Promise<void> | undefined;
+    act(() => {
+      secondPending = result.current.sendMessage("second");
+    });
+
+    await waitFor(() => {
+      expect(resolveSecondTurn).toBeTypeOf("function");
+    });
+
+    expect(result.current.status).toBe("streaming");
+
+    await act(async () => {
+      releaseFirstTurn?.();
+      await firstPending;
+    });
+
+    expect(result.current.status).toBe("streaming");
+
+    await act(async () => {
+      resolveSecondTurn?.();
+      await secondPending;
+    });
+
+    expect(result.current.status).toBe("ready");
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("does not start a new persistence write after stop lands between runtime resolution and snapshot persistence", async () => {
+    let stopSession: (() => void) | undefined;
+
+    mockCreateChatRuntime.mockImplementation(({ onMessagesUpdate, onStatusChange }) => ({
+      send: vi.fn(
+        ({ messages }: { messages: BananaUIMessage[] }) =>
+          ({
+            then(resolve: (value: BananaUIMessage[]) => void) {
+              const assistant = createAssistantMessage("msg-assistant-race", "race reply");
+              const nextMessages = [...messages, assistant];
+              onMessagesUpdate(nextMessages);
+              onStatusChange("streaming");
+              stopSession?.();
+              resolve(nextMessages);
+            },
+          }) as PromiseLike<BananaUIMessage[]>,
+      ),
+    }));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+    stopSession = result.current.stop;
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    await act(async () => {
+      await result.current.sendMessage("hello banana");
+    });
+
+    expect(mockReplacePersistedMessages).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("ready");
+    expect(result.current.messages).toHaveLength(2);
+  });
+
+  it("does not start the post-runtime persistence write when stop lands after runtime resolves but before persistence begins", async () => {
+    let stopSession: (() => void) | undefined;
+    let stopTriggered = false;
+
+    mockCreateChatRuntime.mockImplementation(() => ({
+      send: vi.fn(async ({ messages }: { messages: BananaUIMessage[] }) => {
+        const assistant: BananaUIMessage = {
+          id: "msg-assistant-gated",
+          role: "assistant",
+          parts: [{ type: "text", text: "gated reply" }],
+          get metadata() {
+            if (!stopTriggered) {
+              stopTriggered = true;
+              stopSession?.();
+            }
+
+            return { threadId: "thread-1" };
+          },
+        };
+
+        return [...messages, assistant];
+      }),
+    }));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+    stopSession = result.current.stop;
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    await act(async () => {
+      await result.current.sendMessage("hello banana");
+    });
+
+    expect(mockReplacePersistedMessages).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("ready");
+    expect(result.current.error).toBeUndefined();
+  });
+
   it("filters tool-role messages before crossing the runtime transport boundary", async () => {
     mockLoadPersistedMessages.mockResolvedValueOnce([
       createUserMessage("msg-user-1", "hello"),

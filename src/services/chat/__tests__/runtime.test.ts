@@ -425,6 +425,47 @@ describe("chat runtime", () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
+  it("treats non-Error abort reasons as cancellation instead of runtime errors", async () => {
+    const sendMessages = vi.fn(async ({ abortSignal }: { abortSignal?: AbortSignal }) => {
+      if (abortSignal?.aborted) {
+        throw abortSignal.reason;
+      }
+
+      return new ReadableStream();
+    });
+    mockDefaultChatTransport.mockImplementation(function () {
+      return { sendMessages };
+    });
+
+    const controller = new AbortController();
+    controller.abort("user-stopped");
+
+    const onMessagesUpdate = vi.fn();
+    const onStatusChange = vi.fn();
+    const onError = vi.fn();
+    const runtime = createChatRuntime({
+      onMessagesUpdate,
+      onStatusChange,
+      onError,
+      fetchImpl: mockFetch,
+    });
+
+    await expect(
+      runtime.send({
+        messages: sampleMessages,
+        apiKey: "test-key",
+        modelId: "gpt-4o-mini",
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toMatchObject({
+      name: "AbortError",
+    });
+
+    expect(onStatusChange).toHaveBeenCalledWith("submitting");
+    expect(onStatusChange).not.toHaveBeenCalledWith("error");
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   it("keeps the request body builder stable", () => {
     const body = buildChatRequestBody({
       messages: sampleMessages,
