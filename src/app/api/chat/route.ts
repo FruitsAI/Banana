@@ -5,6 +5,30 @@ type OpenAICompatOptions = Parameters<typeof createOpenAI>[0] & {
   compatibility?: "strict" | "compatible";
 };
 
+interface ClientToolDefinition {
+  name: string;
+  description?: string;
+  inputSchema: unknown;
+}
+
+interface StreamResponseLike {
+  toUIMessageStreamResponse: () => Response;
+}
+
+type JsonSchemaWithCompat = ReturnType<typeof jsonSchema> & {
+  schema?: unknown;
+  jsonSchema?: unknown;
+};
+
+function hasUIMessageStreamResponse(value: unknown): value is StreamResponseLike {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "toUIMessageStreamResponse" in value &&
+    typeof (value as StreamResponseLike).toUIMessageStreamResponse === "function"
+  );
+}
+
 /**
  * 不同供应商类型对应的 API 路径后缀（仅用于日志）。
  */
@@ -82,14 +106,16 @@ When using any tool (like get_current_time), you MUST explicitly provide the 'ti
     }
 
     // 转换客户端工具定义为 AI SDK 格式
-    const sdkTools: Record<string, any> = {};
+    const sdkTools: Record<string, unknown> = {};
     if (clientTools && Array.isArray(clientTools)) {
-      clientTools.forEach((t: { name: string; description?: string; inputSchema: any }) => {
-        const schema = jsonSchema(t.inputSchema);
+      (clientTools as ClientToolDefinition[]).forEach((t) => {
+        const schema = jsonSchema(
+          t.inputSchema as Parameters<typeof jsonSchema>[0]
+        ) as JsonSchemaWithCompat;
         // @ai-sdk/openai older versions expect a `.schema` property on the parameters object
         // jsonSchema() from ai returns an object with `{ type: "object", jsonSchema: {...}, validate: ... }`
         // We shim the `.schema` property to bypass the `schema is not a function` error
-        (schema as any).schema = (schema as any).jsonSchema;
+        schema.schema = schema.jsonSchema;
         
         sdkTools[t.name] = tool({
           description: t.description,
@@ -98,21 +124,26 @@ When using any tool (like get_current_time), you MUST explicitly provide the 'ti
       });
     }
 
-    let result;
+    let result: Awaited<ReturnType<typeof streamText>>;
     try {
       result = await streamText({
         model: modelParams,
         messages: finalMessages,
-        tools: sdkTools as any,
+        tools: sdkTools as Parameters<typeof streamText>[0]["tools"],
       });
-    } catch (e: any) {
-      console.error("[API /chat] streamText ERROR:", e.message, e.stack);
-      return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      console.error("[API /chat] streamText ERROR:", message, stack);
+      return new Response(JSON.stringify({ error: message }), { status: 500 });
     }
 
     // Use the native UI Message Stream Response from ai@6
-    if (typeof (result as any).toUIMessageStreamResponse === 'function') {
-      const originalResponse = (result as any).toUIMessageStreamResponse();
+    if (hasUIMessageStreamResponse(result)) {
+      const originalResponse = result.toUIMessageStreamResponse();
+      if (!originalResponse.body) {
+        return originalResponse;
+      }
       
       const debugTransform = new TransformStream({
         transform(chunk, controller) {

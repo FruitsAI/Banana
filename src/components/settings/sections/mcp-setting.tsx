@@ -21,6 +21,7 @@ import {
   UnavailableIcon,
 } from "@hugeicons/core-free-icons";
 import { v4 as uuidv4 } from "uuid";
+import { useConfirm } from "@/hooks/use-confirm";
 import { useToast } from "@/hooks/use-toast";
 import { useMcpStore } from "@/stores/mcp/useMcpStore";
 
@@ -37,13 +38,110 @@ interface McpProviderTab {
   type: "discover" | "provider";
 }
 
+interface McpMarketTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: "stdio" | "sse";
+  command: string;
+  args: string;
+  env_vars?: string;
+  tags: string[];
+  setupNote?: string;
+}
+
 const MCP_STAGES: McpProviderTab[] = [
   { id: "builtin", name: "MCP 服务器", icon: "box", type: "discover" },
   { id: "market", name: "市场", icon: "store", type: "discover" },
 ];
 
+const MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
+  {
+    id: "filesystem",
+    name: "Filesystem",
+    description: "为本地目录提供读写能力，适合代码库、文档和素材文件管理。",
+    type: "stdio",
+    command: "npx",
+    args: "-y\n@modelcontextprotocol/server-filesystem\n/Users/your-name/workspace",
+    env_vars: "",
+    tags: ["本地文件", "官方模板", "stdio"],
+    setupNote: "保存前请把最后一行替换成你允许访问的本地目录。",
+  },
+  {
+    id: "github",
+    name: "GitHub",
+    description: "读取仓库、Issue、PR 与提交信息，适合研发协作与代码托管场景。",
+    type: "stdio",
+    command: "npx",
+    args: "-y\n@modelcontextprotocol/server-github",
+    env_vars: "GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx",
+    tags: ["代码托管", "协作", "stdio"],
+    setupNote: "需要配置 GitHub Personal Access Token。",
+  },
+  {
+    id: "brave-search",
+    name: "Brave Search",
+    description: "提供联网搜索能力，适合为模型补充公开网页与资讯检索。",
+    type: "stdio",
+    command: "npx",
+    args: "-y\n@modelcontextprotocol/server-brave-search",
+    env_vars: "BRAVE_API_KEY=your_api_key",
+    tags: ["联网搜索", "检索", "stdio"],
+    setupNote: "需要在环境变量中填入 Brave Search API Key。",
+  },
+  {
+    id: "fetch",
+    name: "Fetch",
+    description: "抓取远程网页与接口响应，适合网页摘要、内容清洗和轻量爬取。",
+    type: "stdio",
+    command: "uvx",
+    args: "mcp-server-fetch",
+    env_vars: "",
+    tags: ["HTTP", "抓取", "stdio"],
+    setupNote: "如果本机未安装 uvx，可以改成你实际可用的 Python/Node 启动方式。",
+  },
+];
+
+function createEmptyServer(): Partial<McpServer> {
+  return {
+    id: uuidv4(),
+    name: "",
+    description: "",
+    type: "stdio",
+    command: "",
+    args: "",
+    env_vars: "",
+    is_enabled: true,
+  };
+}
+
+function createServerFromTemplate(template: McpMarketTemplate): Partial<McpServer> {
+  return {
+    id: uuidv4(),
+    name: template.name,
+    description: template.description,
+    type: template.type,
+    command: template.command,
+    args: template.args,
+    env_vars: template.env_vars ?? "",
+    is_enabled: true,
+  };
+}
+
+function getTemplateCommandPreview(template: McpMarketTemplate): string {
+  const argsPreview = template.args
+    .split("\n")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" ");
+
+  return [template.command, argsPreview].filter(Boolean).join(" ");
+}
+
 export function McpSetting() {
   const { loadServers: loadServersFromStore, removeServer, saveServer } = useMcpStore();
+  const confirm = useConfirm();
   const toast = useToast();
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,16 +190,12 @@ export function McpSetting() {
   };
 
   const handleAddNew = () => {
-    setEditingServer({
-      id: uuidv4(),
-      name: "",
-      description: "",
-      type: "stdio",
-      command: "",
-      args: "",
-      env_vars: "",
-      is_enabled: true
-    });
+    setEditingServer(createEmptyServer());
+    setViewMode("detail");
+  };
+
+  const handleUseTemplate = (template: McpMarketTemplate) => {
+    setEditingServer(createServerFromTemplate(template));
     setViewMode("detail");
   };
 
@@ -131,13 +225,26 @@ export function McpSetting() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("确定要删除此 MCP 服务器吗？")) return;
+  const handleDelete = async (id: string, name?: string) => {
+    const accepted = await confirm({
+      title: "删除 MCP 服务器",
+      description: name
+        ? `删除后将移除「${name}」的配置。此操作不可撤销。`
+        : "删除后将移除当前 MCP 服务器配置，此操作不可撤销。",
+      confirmText: "删除",
+      cancelText: "取消",
+      variant: "destructive",
+    });
+
+    if (!accepted) return;
     
     try {
       await removeServer(id);
       setServers(prev => prev.filter(s => s.id !== id));
-      if (editingServer.id === id) setViewMode("list");
+      if (editingServer.id === id) {
+        setEditingServer({});
+        setViewMode("list");
+      }
       toast.success("删除成功");
     } catch (error) {
       console.error("Failed to delete MCP server:", error);
@@ -177,14 +284,16 @@ export function McpSetting() {
               <HugeiconsIcon icon={Search01Icon} size={16} className="cursor-pointer" style={{ color: "var(--text-tertiary)" }} />
             </div>
             <div className="flex items-center gap-3">
-              <div 
+              <button
+                type="button"
+                aria-label="刷新 MCP 服务器"
                 className="flex items-center justify-center h-8 w-8 rounded-xl border cursor-pointer hover:bg-glass-hover transition-colors"
                 style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}
                 onClick={loadServers}
                 title="刷新服务器状态"
               >
                 <HugeiconsIcon icon={Refresh01Icon} size={18} className={loading ? "animate-spin" : ""} style={{ color: "var(--text-tertiary)" }} />
-              </div>
+              </button>
               <Button
                 variant="outline"
                 size="sm"
@@ -244,20 +353,27 @@ export function McpSetting() {
                         checked={server.is_enabled} 
                         onCheckedChange={(checked) => handleToggleEnable(server, checked)}
                       />
-                      <HugeiconsIcon 
-                        icon={Delete01Icon} 
-                        size={16} 
-                        className="cursor-pointer transition-colors hover:text-[var(--danger)]" 
-                        style={{ color: "var(--danger)" }} 
-                        onClick={(e) => { e.stopPropagation(); handleDelete(server.id); }}
-                      />
-                      <HugeiconsIcon 
-                        icon={Settings01Icon} 
-                        size={16} 
-                        className="cursor-pointer hover:text-[var(--brand-primary)]" 
-                        style={{ color: "var(--text-tertiary)" }} 
+                      <button
+                        type="button"
+                        aria-label={`删除 MCP 服务器 ${server.name}`}
+                        className="transition-colors hover:text-[var(--danger)]"
+                        style={{ color: "var(--danger)" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDelete(server.id, server.name);
+                        }}
+                      >
+                        <HugeiconsIcon icon={Delete01Icon} size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`编辑 MCP 服务器 ${server.name}`}
+                        className="hover:text-[var(--brand-primary)]"
+                        style={{ color: "var(--text-tertiary)" }}
                         onClick={() => handleEdit(server)}
-                      />
+                      >
+                        <HugeiconsIcon icon={Settings01Icon} size={16} />
+                      </button>
                     </div>
                   </div>
                   <p className="text-xs mt-1 text-[var(--text-tertiary)] truncate">
@@ -285,8 +401,118 @@ export function McpSetting() {
         </div>
       </div>
     ) : (
-      <div className="flex-1 flex items-center justify-center p-6 text-[var(--text-tertiary)]">
-        市场功能开发中...
+      <div className="flex-1 flex flex-col h-full p-6">
+        <div className="flex flex-col gap-6 h-full">
+          <div className="flex items-end justify-between gap-6">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                MCP 市场
+              </h2>
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                从内置模板快速创建服务器，随后仍可在详情页继续调整命令、参数和环境变量。
+              </p>
+            </div>
+            <div
+              className="shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium"
+              style={{
+                color: "var(--text-secondary)",
+                borderColor: "var(--glass-border)",
+                background: "var(--glass-surface)",
+              }}
+            >
+              内置模板 {MCP_MARKET_TEMPLATES.length}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 overflow-y-auto h-full pb-10 custom-scroll">
+            {MCP_MARKET_TEMPLATES.map((template) => (
+              <article
+                key={template.id}
+                className="group rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5"
+                style={{
+                  background: "var(--glass-surface)",
+                  borderColor: "var(--glass-border)",
+                  boxShadow: "0 20px 60px rgba(15, 23, 42, 0.04)",
+                }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-3 min-w-0">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
+                        style={{
+                          background: "var(--brand-primary-lightest)",
+                          borderColor: "var(--brand-primary-border)",
+                        }}
+                      >
+                        <HugeiconsIcon icon={McpServerIcon} size={18} style={{ color: "var(--brand-primary)" }} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                          {template.name}
+                        </h3>
+                        <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--text-quaternary)" }}>
+                          {template.type}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                      {template.description}
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0 rounded-xl px-4 text-xs font-medium"
+                    style={{ background: "var(--glass-elevated)", borderColor: "var(--glass-border)" }}
+                    aria-label={`使用 ${template.name} 模板`}
+                    onClick={() => handleUseTemplate(template)}
+                  >
+                    使用模板
+                  </Button>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {template.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border px-2.5 py-1 text-[11px] font-medium"
+                      style={{
+                        color: "var(--text-secondary)",
+                        borderColor: "var(--glass-border)",
+                        background: "var(--glass-subtle)",
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                <div
+                  className="mt-4 rounded-xl border p-3 space-y-2"
+                  style={{
+                    background: "var(--glass-subtle)",
+                    borderColor: "var(--glass-border)",
+                  }}
+                >
+                  <div className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
+                    启动命令
+                  </div>
+                  <div className="text-xs font-mono break-all" style={{ color: "var(--text-primary)" }}>
+                    {getTemplateCommandPreview(template)}
+                  </div>
+                  {template.setupNote ? (
+                    <p className="text-[11px] leading-5" style={{ color: "var(--text-tertiary)" }}>
+                      {template.setupNote}
+                    </p>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
       </div>
     )
   ) : (
@@ -325,13 +551,19 @@ export function McpSetting() {
             >
               日志
             </Button>
-            <HugeiconsIcon 
-              icon={Delete01Icon} 
-              size={16} 
-              className="cursor-pointer hover:text-[var(--danger)]" 
-              style={{ color: "var(--danger)" }} 
-              onClick={() => editingServer.id && handleDelete(editingServer.id)}
-            />
+            <button
+              type="button"
+              aria-label={`删除 MCP 服务器 ${editingServer.name || "当前服务器"}`}
+              className="hover:text-[var(--danger)]"
+              style={{ color: "var(--danger)" }}
+              onClick={() => {
+                if (editingServer.id) {
+                  void handleDelete(editingServer.id, editingServer.name);
+                }
+              }}
+            >
+              <HugeiconsIcon icon={Delete01Icon} size={16} />
+            </button>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">

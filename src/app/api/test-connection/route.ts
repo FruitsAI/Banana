@@ -31,12 +31,12 @@ export async function POST(req: Request) {
       ? openai.chat(modelId || "gpt-4o-mini") 
       : openai(modelId || "gpt-4o-mini");
 
-    await generateText({
+    const request = {
       model: modelParams,
       messages: [{ role: "user", content: "ping" }],
-      // maxTokens is correct for AI SDK 3.x generateText
-      maxTokens: 1,
-    } as any);
+    } satisfies Parameters<typeof generateText>[0];
+
+    await generateText(request);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

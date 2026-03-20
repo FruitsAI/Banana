@@ -9,8 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
-import { getConfig, setConfig } from "@/lib/db";
+import { useConfigStore } from "@/stores/config/useConfigStore";
 import {
   ANIMATION_INTENSITY_CONFIG_KEY,
   DEFAULT_ANIMATION_INTENSITY,
@@ -40,6 +39,7 @@ function applyIntensityToDocument(intensity: AnimationIntensity) {
 }
 
 export function AnimationIntensityProvider({ children }: { children: ReactNode }) {
+  const { loadConfig, saveConfig } = useConfigStore();
   const [intensity, setIntensityState] = useState<AnimationIntensity>(
     DEFAULT_ANIMATION_INTENSITY
   );
@@ -50,7 +50,7 @@ export function AnimationIntensityProvider({ children }: { children: ReactNode }
 
     const loadIntensity = async () => {
       try {
-        const stored = await getConfig(ANIMATION_INTENSITY_CONFIG_KEY);
+        const stored = await loadConfig(ANIMATION_INTENSITY_CONFIG_KEY);
         if (!active) return;
         const normalized = normalizeAnimationIntensity(stored);
         setIntensityState(normalized);
@@ -71,7 +71,7 @@ export function AnimationIntensityProvider({ children }: { children: ReactNode }
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadConfig]);
 
   const setIntensity = useCallback(async (next: AnimationIntensity) => {
     const normalized = normalizeAnimationIntensity(next);
@@ -79,11 +79,11 @@ export function AnimationIntensityProvider({ children }: { children: ReactNode }
     applyIntensityToDocument(normalized);
 
     try {
-      await setConfig(ANIMATION_INTENSITY_CONFIG_KEY, normalized);
+      await saveConfig(ANIMATION_INTENSITY_CONFIG_KEY, normalized);
     } catch (error) {
       console.error("Failed to save animation intensity:", error);
     }
-  }, []);
+  }, [saveConfig]);
 
   const value = useMemo<AnimationIntensityContextValue>(
     () => ({
@@ -105,4 +105,3 @@ export function AnimationIntensityProvider({ children }: { children: ReactNode }
 export function useAnimationIntensity() {
   return useContext(AnimationIntensityContext);
 }
-

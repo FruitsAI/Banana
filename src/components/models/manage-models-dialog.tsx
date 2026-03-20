@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ModelIcon } from "@/components/models/model-selector";
 import { cn } from "@/lib/utils";
-import type { Provider, Model } from "@/lib/db";
+import type { Model, Provider } from "@/domain/models/types";
 
 interface ManageModelsDialogProps {
   open: boolean;
