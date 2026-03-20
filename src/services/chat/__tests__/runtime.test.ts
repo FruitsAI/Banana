@@ -377,6 +377,54 @@ describe("chat runtime", () => {
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
   });
 
+  it("passes abort signals through to the transport and does not report cancellation as an error", async () => {
+    const sendMessages = vi.fn(async ({ abortSignal }: { abortSignal?: AbortSignal }) => {
+      if (abortSignal?.aborted) {
+        const abortError = new Error("aborted");
+        abortError.name = "AbortError";
+        throw abortError;
+      }
+
+      return new ReadableStream();
+    });
+    mockDefaultChatTransport.mockImplementation(function () {
+      return { sendMessages };
+    });
+
+    const controller = new AbortController();
+    controller.abort();
+
+    const onMessagesUpdate = vi.fn();
+    const onStatusChange = vi.fn();
+    const onError = vi.fn();
+    const runtime = createChatRuntime({
+      onMessagesUpdate,
+      onStatusChange,
+      onError,
+      fetchImpl: mockFetch,
+    });
+
+    await expect(
+      runtime.send({
+        messages: sampleMessages,
+        apiKey: "test-key",
+        modelId: "gpt-4o-mini",
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toMatchObject({
+      name: "AbortError",
+    });
+
+    expect(sendMessages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        abortSignal: controller.signal,
+      }),
+    );
+    expect(onStatusChange).toHaveBeenCalledWith("submitting");
+    expect(onStatusChange).not.toHaveBeenCalledWith("error");
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   it("keeps the request body builder stable", () => {
     const body = buildChatRequestBody({
       messages: sampleMessages,

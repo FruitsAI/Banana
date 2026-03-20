@@ -12,6 +12,7 @@ export interface ChatRuntimeRequest {
   isSearch?: boolean;
   isThink?: boolean;
   tools?: RuntimeToolDescriptor[];
+  abortSignal?: AbortSignal;
 }
 
 export interface ChatRuntimeCallbacks {
@@ -38,6 +39,10 @@ function wrapError(operation: string, error: unknown): AppError {
     operation,
     code: "SERVICE_ERROR",
   });
+}
+
+function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 function getThreadId(message: RuntimeTransportMessage): string | undefined {
@@ -106,10 +111,13 @@ export function createChatRuntime(options: CreateChatRuntimeOptions): ChatRuntim
           chatId: resolveChatId(request.messages),
           messageId: resolveMessageId(request.messages),
           messages: request.messages,
-          abortSignal: undefined,
+          abortSignal: request.abortSignal,
           body: request,
         });
       } catch (error) {
+        if (isAbortError(error)) {
+          throw error;
+        }
         const wrappedError = wrapError("createChatRuntime.send", error);
         options.onStatusChange("error");
         options.onError(wrappedError);
@@ -123,10 +131,16 @@ export function createChatRuntime(options: CreateChatRuntimeOptions): ChatRuntim
         for await (const assistantMessage of readUIMessageStream<RuntimeTransportMessage>({
           stream,
         })) {
+          if (request.abortSignal?.aborted) {
+            throw request.abortSignal.reason ?? Object.assign(new Error("Aborted"), { name: "AbortError" });
+          }
           latestMessages = [...request.messages, assistantMessage];
           options.onMessagesUpdate(latestMessages);
         }
       } catch (error) {
+        if (isAbortError(error)) {
+          throw error;
+        }
         const wrappedError = wrapError("createChatRuntime.send", error);
         options.onStatusChange("error");
         options.onError(wrappedError);

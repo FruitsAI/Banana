@@ -1,20 +1,25 @@
 import { useCallback, useEffect, useReducer, useRef, type Reducer } from "react";
 import { flushSync } from "react-dom";
 import { v4 as uuidv4 } from "uuid";
+import type { RuntimeTransportMessage } from "@/services/chat/runtime";
 import {
   type BananaUIMessage,
   type ChatSessionEvent,
   type ChatSessionState,
 } from "@/domain/chat/types";
-import { ensureProviderModelsReady, ensureProvidersReady, getActiveModelSelection } from "@/lib/model-settings";
+import { createInitialChatSessionState, reduceChatSession } from "@/domain/chat/session";
+import {
+  ensureProviderModelsReady,
+  ensureProvidersReady,
+  getActiveModelSelection,
+} from "@/lib/model-settings";
 import {
   createChatRuntime,
   createRuntimeToolMap,
   getMcpServersForChat,
   getProvidersForChat,
 } from "@/services/chat";
-import type { RuntimeTransportMessage } from "@/services/chat/runtime";
-import { createInitialChatSessionState, reduceChatSession } from "@/domain/chat/session";
+import { getErrorMessage } from "@/shared/errors";
 import { useChatStore } from "./useChatStore";
 
 interface SendMessageOptions {
@@ -36,6 +41,11 @@ interface PendingToolExecution {
   toolName: string;
 }
 
+interface ActiveTurn {
+  controller: AbortController;
+  id: number;
+}
+
 interface DynamicToolPart {
   type: "dynamic-tool";
   toolCallId: string;
@@ -45,12 +55,23 @@ interface DynamicToolPart {
   output?: unknown;
 }
 
+interface TextPart {
+  type: "text";
+  text: string;
+}
+
+type RuntimeTransportPart = RuntimeTransportMessage["parts"][number];
+
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_THREAD_TITLE = "新会话";
 const MAX_TOOL_ROUNDS = 5;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isTextPart(part: unknown): part is TextPart {
+  return isObject(part) && part.type === "text" && typeof part.text === "string";
 }
 
 function isDynamicToolPart(part: unknown): part is DynamicToolPart {
@@ -61,6 +82,16 @@ function isDynamicToolPart(part: unknown): part is DynamicToolPart {
     typeof part.toolName === "string" &&
     (part.state === "input-available" || part.state === "output-available")
   );
+}
+
+function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function createAbortError(): Error {
+  const error = new Error("The operation was aborted.");
+  error.name = "AbortError";
+  return error;
 }
 
 function findPendingToolExecutions(messages: BananaUIMessage[]): PendingToolExecution[] {
@@ -133,8 +164,52 @@ function normalizeMessages(
   }));
 }
 
+function toRuntimePart(part: unknown): RuntimeTransportPart | null {
+  if (isTextPart(part)) {
+    return {
+      type: "text",
+      text: part.text,
+    };
+  }
+
+  if (isDynamicToolPart(part)) {
+    if (part.state === "output-available") {
+      return {
+        type: "dynamic-tool",
+        toolCallId: part.toolCallId,
+        toolName: part.toolName,
+        state: "output-available",
+        input: part.input ?? {},
+        output: part.output,
+      };
+    }
+
+    return {
+      type: "dynamic-tool",
+      toolCallId: part.toolCallId,
+      toolName: part.toolName,
+      state: "input-available",
+      input: part.input ?? {},
+    };
+  }
+
+  return null;
+}
+
 function toRuntimeMessages(messages: BananaUIMessage[]): RuntimeTransportMessage[] {
-  return messages as RuntimeTransportMessage[];
+  return messages
+    .filter(
+      (message): message is BananaUIMessage & { role: "assistant" | "system" | "user" } =>
+        message.role === "assistant" || message.role === "system" || message.role === "user",
+    )
+    .map((message) => ({
+      id: message.id,
+      role: message.role,
+      parts: message.parts
+        .map(toRuntimePart)
+        .filter((part): part is RuntimeTransportPart => part !== null),
+      metadata: message.metadata,
+    }));
 }
 
 export function useChatSession(threadId: string) {
@@ -144,15 +219,85 @@ export function useChatSession(threadId: string) {
     createInitialChatSessionState,
   );
   const stateRef = useRef<ChatSessionState>(state);
+  const nextTurnIdRef = useRef(0);
+  const activeTurnRef = useRef<ActiveTurn | null>(null);
   const {
     createChatThread,
     loadCanonicalMessages,
     replaceCanonicalMessages,
-    truncateMessagesAfter,
-    updateChatMessage,
   } = useChatStore();
 
   stateRef.current = state;
+
+  const isTurnActive = useCallback((turn: ActiveTurn): boolean => {
+    return activeTurnRef.current?.id === turn.id && !turn.controller.signal.aborted;
+  }, []);
+
+  const ensureTurnActive = useCallback(
+    (turn: ActiveTurn): void => {
+      if (!isTurnActive(turn)) {
+        throw createAbortError();
+      }
+    },
+    [isTurnActive],
+  );
+
+  const dispatchIfActive = useCallback(
+    (turn: ActiveTurn, event: ChatSessionEvent): void => {
+      if (!isTurnActive(turn)) {
+        return;
+      }
+
+      dispatch(event);
+    },
+    [isTurnActive],
+  );
+
+  const stopActiveTurn = useCallback((): void => {
+    const activeTurn = activeTurnRef.current;
+    if (activeTurn && !activeTurn.controller.signal.aborted) {
+      activeTurn.controller.abort();
+    }
+    activeTurnRef.current = null;
+  }, []);
+
+  const beginTurn = useCallback((): ActiveTurn => {
+    stopActiveTurn();
+
+    const turn: ActiveTurn = {
+      id: nextTurnIdRef.current + 1,
+      controller: new AbortController(),
+    };
+
+    nextTurnIdRef.current = turn.id;
+    activeTurnRef.current = turn;
+
+    return turn;
+  }, [stopActiveTurn]);
+
+  const clearTurn = useCallback((turn: ActiveTurn): void => {
+    if (activeTurnRef.current?.id === turn.id) {
+      activeTurnRef.current = null;
+    }
+  }, []);
+
+  const handleTurnFailure = useCallback(
+    (turn: ActiveTurn, error: unknown): void => {
+      if (isAbortError(error) || turn.controller.signal.aborted) {
+        if (activeTurnRef.current?.id === turn.id) {
+          activeTurnRef.current = null;
+        }
+        dispatch({ type: "STATUS_CHANGED", status: "ready" });
+        return;
+      }
+
+      dispatch({
+        type: "ERROR",
+        error: getErrorMessage(error),
+      });
+    },
+    [],
+  );
 
   const loadThread = useCallback(
     async (nextThreadId = threadId): Promise<void> => {
@@ -166,8 +311,7 @@ export function useChatSession(threadId: string) {
           messages: normalizeMessages(nextThreadId, messages),
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        dispatch({ type: "ERROR", error: message });
+        dispatch({ type: "ERROR", error: getErrorMessage(error) });
       }
     },
     [loadCanonicalMessages, threadId],
@@ -175,7 +319,11 @@ export function useChatSession(threadId: string) {
 
   useEffect(() => {
     void loadThread(threadId);
-  }, [loadThread, threadId]);
+
+    return () => {
+      stopActiveTurn();
+    };
+  }, [loadThread, stopActiveTurn, threadId]);
 
   const resolveChatContext = useCallback(async (): Promise<ResolvedChatContext> => {
     const selection = await getActiveModelSelection();
@@ -223,23 +371,31 @@ export function useChatSession(threadId: string) {
   const runAssistantTurn = useCallback(
     async (
       seedMessages: BananaUIMessage[],
+      turn: ActiveTurn,
       options?: SendMessageOptions,
+      contextOverride?: ResolvedChatContext,
     ): Promise<BananaUIMessage[]> => {
-      const context = await resolveChatContext();
+      const context = contextOverride ?? (await resolveChatContext());
+      ensureTurnActive(turn);
+
       const servers = await getMcpServersForChat();
+      ensureTurnActive(turn);
+
       const runtimeToolMap = await createRuntimeToolMap(servers);
+      ensureTurnActive(turn);
+
       const runtime = createChatRuntime({
         onMessagesUpdate(messages) {
-          dispatch({
+          dispatchIfActive(turn, {
             type: "MESSAGES_UPDATED",
             messages: normalizeMessages(threadId, messages, context),
           });
         },
         onStatusChange(status) {
-          dispatch({ type: "STATUS_CHANGED", status });
+          dispatchIfActive(turn, { type: "STATUS_CHANGED", status });
         },
         onError(error) {
-          dispatch({ type: "ERROR", error: error.message });
+          dispatchIfActive(turn, { type: "ERROR", error: error.message });
         },
       });
 
@@ -253,6 +409,8 @@ export function useChatSession(threadId: string) {
       let round = 0;
 
       while (round < MAX_TOOL_ROUNDS) {
+        ensureTurnActive(turn);
+
         const responseMessages = await runtime.send({
           messages: toRuntimeMessages(currentMessages),
           apiKey: context.apiKey,
@@ -262,25 +420,33 @@ export function useChatSession(threadId: string) {
           isSearch: options?.isSearch,
           isThink: options?.isThink,
           tools: runtimeTools,
+          abortSignal: turn.controller.signal,
         });
+
+        ensureTurnActive(turn);
 
         currentMessages = normalizeMessages(threadId, responseMessages, context);
         const pendingTools = findPendingToolExecutions(currentMessages);
-        dispatch({ type: "MESSAGES_UPDATED", messages: currentMessages });
-        if (pendingTools.length > 0) {
+        dispatchIfActive(turn, { type: "MESSAGES_UPDATED", messages: currentMessages });
+
+        if (pendingTools.length > 0 && isTurnActive(turn)) {
           flushSync(() => {
-            dispatch({ type: "STATUS_CHANGED", status: "tool-running" });
+            dispatchIfActive(turn, { type: "STATUS_CHANGED", status: "tool-running" });
           });
         }
+
         await replaceCanonicalMessages(threadId, currentMessages);
+        ensureTurnActive(turn);
 
         if (pendingTools.length === 0) {
-          dispatch({ type: "STATUS_CHANGED", status: "ready" });
+          dispatchIfActive(turn, { type: "STATUS_CHANGED", status: "ready" });
           return currentMessages;
         }
 
         const toolOutputs = [];
         for (const pendingTool of pendingTools) {
+          ensureTurnActive(turn);
+
           const runtimeTool = runtimeToolMap[pendingTool.toolName];
           if (!runtimeTool) {
             toolOutputs.push({
@@ -293,6 +459,7 @@ export function useChatSession(threadId: string) {
           const result = await runtimeTool.execute(
             isObject(pendingTool.input) ? pendingTool.input : {},
           );
+          ensureTurnActive(turn);
 
           toolOutputs.push({
             toolCallId: pendingTool.toolCallId,
@@ -301,49 +468,81 @@ export function useChatSession(threadId: string) {
         }
 
         currentMessages = applyToolOutputs(currentMessages, toolOutputs);
-        dispatch({ type: "MESSAGES_UPDATED", messages: currentMessages });
+        dispatchIfActive(turn, { type: "MESSAGES_UPDATED", messages: currentMessages });
         await replaceCanonicalMessages(threadId, currentMessages);
+        ensureTurnActive(turn);
         round += 1;
       }
 
-      dispatch({ type: "STATUS_CHANGED", status: "ready" });
+      dispatchIfActive(turn, { type: "STATUS_CHANGED", status: "ready" });
       return currentMessages;
     },
-    [replaceCanonicalMessages, resolveChatContext, threadId],
+    [
+      dispatchIfActive,
+      ensureTurnActive,
+      isTurnActive,
+      replaceCanonicalMessages,
+      resolveChatContext,
+      threadId,
+    ],
   );
 
   const sendMessage = useCallback(
     async (content: string, options?: SendMessageOptions): Promise<void> => {
-      const context = await resolveChatContext();
-      const userMessage: BananaUIMessage = {
-        id: uuidv4(),
-        role: "user",
-        parts: [{ type: "text", text: content }],
-        metadata: {
-          threadId,
-          modelId: context.modelId,
-          providerId: context.providerId,
-          searchEnabled: options?.isSearch,
-          thinkEnabled: options?.isThink,
-        },
-      };
-      const nextMessages = [...stateRef.current.messages, userMessage];
+      const turn = beginTurn();
 
       try {
-        await createChatThread(threadId, DEFAULT_THREAD_TITLE, context.modelId);
-      } catch {
-        // Ignore duplicate thread creation for existing conversations.
-      }
+        const context = await resolveChatContext();
+        ensureTurnActive(turn);
 
-      dispatch({
-        type: "SEND_MESSAGE",
-        messageId: userMessage.id,
-        messages: nextMessages,
-      });
-      await replaceCanonicalMessages(threadId, nextMessages);
-      await runAssistantTurn(nextMessages, options);
+        const userMessage: BananaUIMessage = {
+          id: uuidv4(),
+          role: "user",
+          parts: [{ type: "text", text: content }],
+          metadata: {
+            threadId,
+            modelId: context.modelId,
+            providerId: context.providerId,
+            searchEnabled: options?.isSearch,
+            thinkEnabled: options?.isThink,
+          },
+        };
+        const nextMessages = [...stateRef.current.messages, userMessage];
+
+        try {
+          await createChatThread(threadId, DEFAULT_THREAD_TITLE, context.modelId);
+        } catch {
+          // Ignore duplicate thread creation for existing conversations.
+        }
+
+        dispatchIfActive(turn, {
+          type: "SEND_MESSAGE",
+          messageId: userMessage.id,
+          messages: nextMessages,
+        });
+
+        await replaceCanonicalMessages(threadId, nextMessages);
+        ensureTurnActive(turn);
+
+        await runAssistantTurn(nextMessages, turn, options, context);
+      } catch (error) {
+        handleTurnFailure(turn, error);
+      } finally {
+        clearTurn(turn);
+      }
     },
-    [createChatThread, replaceCanonicalMessages, resolveChatContext, runAssistantTurn, threadId],
+    [
+      beginTurn,
+      clearTurn,
+      createChatThread,
+      dispatchIfActive,
+      ensureTurnActive,
+      handleTurnFailure,
+      replaceCanonicalMessages,
+      resolveChatContext,
+      runAssistantTurn,
+      threadId,
+    ],
   );
 
   const regenerate = useCallback(
@@ -355,19 +554,30 @@ export function useChatSession(threadId: string) {
         return;
       }
 
+      const turn = beginTurn();
       const boundaryMessages = stateRef.current.messages.slice(0, assistantIndex);
-      dispatch({ type: "MESSAGES_UPDATED", messages: boundaryMessages });
 
       try {
-        await truncateMessagesAfter(threadId, assistantMessageId);
-      } catch {
-        // Persistence truncation is best-effort here; replace handles final state.
+        dispatchIfActive(turn, { type: "MESSAGES_UPDATED", messages: boundaryMessages });
+        await replaceCanonicalMessages(threadId, boundaryMessages);
+        ensureTurnActive(turn);
+        await runAssistantTurn(boundaryMessages, turn, options);
+      } catch (error) {
+        handleTurnFailure(turn, error);
+      } finally {
+        clearTurn(turn);
       }
-
-      await replaceCanonicalMessages(threadId, boundaryMessages);
-      await runAssistantTurn(boundaryMessages, options);
     },
-    [replaceCanonicalMessages, runAssistantTurn, threadId, truncateMessagesAfter],
+    [
+      beginTurn,
+      clearTurn,
+      dispatchIfActive,
+      ensureTurnActive,
+      handleTurnFailure,
+      replaceCanonicalMessages,
+      runAssistantTurn,
+      threadId,
+    ],
   );
 
   const editUserMessage = useCallback(
@@ -377,6 +587,7 @@ export function useChatSession(threadId: string) {
         return;
       }
 
+      const turn = beginTurn();
       const existingMessage = stateRef.current.messages[messageIndex];
       const editedMessage: BananaUIMessage = {
         ...existingMessage,
@@ -386,18 +597,28 @@ export function useChatSession(threadId: string) {
         ...stateRef.current.messages.slice(0, messageIndex),
         editedMessage,
       ];
-      const nextMessage = stateRef.current.messages[messageIndex + 1];
 
-      dispatch({ type: "MESSAGES_UPDATED", messages: nextMessages });
-
-      await updateChatMessage(messageId, content);
-      if (nextMessage) {
-        await truncateMessagesAfter(threadId, nextMessage.id);
+      try {
+        dispatchIfActive(turn, { type: "MESSAGES_UPDATED", messages: nextMessages });
+        await replaceCanonicalMessages(threadId, nextMessages);
+        ensureTurnActive(turn);
+        await runAssistantTurn(nextMessages, turn, options);
+      } catch (error) {
+        handleTurnFailure(turn, error);
+      } finally {
+        clearTurn(turn);
       }
-      await replaceCanonicalMessages(threadId, nextMessages);
-      await runAssistantTurn(nextMessages, options);
     },
-    [replaceCanonicalMessages, runAssistantTurn, threadId, truncateMessagesAfter, updateChatMessage],
+    [
+      beginTurn,
+      clearTurn,
+      dispatchIfActive,
+      ensureTurnActive,
+      handleTurnFailure,
+      replaceCanonicalMessages,
+      runAssistantTurn,
+      threadId,
+    ],
   );
 
   const retry = useCallback(async (): Promise<void> => {
@@ -410,14 +631,25 @@ export function useChatSession(threadId: string) {
       return;
     }
 
-    if (stateRef.current.messages.length > 0) {
-      await runAssistantTurn(stateRef.current.messages);
+    if (stateRef.current.messages.length === 0) {
+      return;
     }
-  }, [regenerate, runAssistantTurn]);
+
+    const turn = beginTurn();
+
+    try {
+      await runAssistantTurn(stateRef.current.messages, turn);
+    } catch (error) {
+      handleTurnFailure(turn, error);
+    } finally {
+      clearTurn(turn);
+    }
+  }, [beginTurn, clearTurn, handleTurnFailure, regenerate, runAssistantTurn]);
 
   const stop = useCallback((): void => {
+    stopActiveTurn();
     dispatch({ type: "STATUS_CHANGED", status: "ready" });
-  }, []);
+  }, [stopActiveTurn]);
 
   return {
     status: state.status,

@@ -96,6 +96,19 @@ function createAssistantToolCallMessage(threadId = "thread-1"): BananaUIMessage 
   };
 }
 
+function createToolMessage(
+  id: string,
+  text: string,
+  threadId = "thread-1",
+): BananaUIMessage {
+  return {
+    id,
+    role: "tool",
+    parts: [{ type: "text", text }],
+    metadata: { threadId },
+  };
+}
+
 describe("useChatSession", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -204,6 +217,7 @@ describe("useChatSession", () => {
         messages: hydratedMessages.slice(0, 3),
       }),
     );
+    expect(mockDeleteMessagesAfter).not.toHaveBeenCalled();
   });
 
   it("editUserMessage truncates later messages and reruns from the edited point", async () => {
@@ -237,6 +251,8 @@ describe("useChatSession", () => {
     expect(replayMessages).toHaveLength(3);
     expect(replayMessages[2].parts).toEqual([{ type: "text", text: "second edited" }]);
     expect(mockReplacePersistedMessages).toHaveBeenCalled();
+    expect(mockUpdateMessage).not.toHaveBeenCalled();
+    expect(mockDeleteMessagesAfter).not.toHaveBeenCalled();
   });
 
   it("exposes a tool-running transition while executing MCP tools", async () => {
@@ -290,5 +306,114 @@ describe("useChatSession", () => {
 
     expect(sendMock).toHaveBeenCalledTimes(2);
     expect(result.current.status).toBe("ready");
+  });
+
+  it("surfaces persistence failures before runtime callbacks fire", async () => {
+    mockReplacePersistedMessages.mockRejectedValueOnce(new Error("persist failed"));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    await act(async () => {
+      await result.current.sendMessage("hello banana");
+    });
+
+    expect(mockCreateChatRuntime).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toBe("persist failed");
+    expect(result.current.messages[0]?.role).toBe("user");
+  });
+
+  it("stops the active turn and ignores late runtime updates", async () => {
+    let releaseTurn:
+      | (() => void)
+      | undefined;
+    let seenAbortSignal: AbortSignal | undefined;
+
+    mockCreateChatRuntime.mockImplementation(({ onMessagesUpdate, onStatusChange }) => ({
+      send: vi.fn(
+        ({ messages, abortSignal }: { messages: BananaUIMessage[]; abortSignal?: AbortSignal }) =>
+          new Promise<BananaUIMessage[]>((resolve, reject) => {
+            seenAbortSignal = abortSignal;
+            releaseTurn = () => {
+              if (abortSignal?.aborted) {
+                const abortError = new Error("aborted");
+                abortError.name = "AbortError";
+                reject(abortError);
+                return;
+              }
+
+              const assistant = createAssistantMessage("msg-assistant-late", "late reply");
+              const nextMessages = [...messages, assistant];
+              onMessagesUpdate(nextMessages);
+              onStatusChange("ready");
+              resolve(nextMessages);
+            };
+          }),
+      ),
+    }));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    let pending: Promise<void> | undefined;
+    act(() => {
+      pending = result.current.sendMessage("hello banana");
+    });
+
+    await waitFor(() => {
+      expect(releaseTurn).toBeTypeOf("function");
+    });
+
+    act(() => {
+      result.current.stop();
+    });
+
+    await act(async () => {
+      releaseTurn?.();
+      await pending;
+    });
+
+    expect(seenAbortSignal).toBeDefined();
+    expect(seenAbortSignal?.aborted).toBe(true);
+    expect(result.current.status).toBe("ready");
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.messages).toHaveLength(1);
+    expect(mockReplacePersistedMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it("filters tool-role messages before crossing the runtime transport boundary", async () => {
+    mockLoadPersistedMessages.mockResolvedValueOnce([
+      createUserMessage("msg-user-1", "hello"),
+      createAssistantToolCallMessage(),
+      createToolMessage("msg-tool-1", "12:00"),
+    ]);
+
+    const sendMock = vi.fn(async ({ messages }: { messages: BananaUIMessage[] }) => {
+      const assistant = createAssistantMessage("msg-assistant-1", "assistant reply");
+      return [...messages, assistant];
+    });
+    mockCreateChatRuntime.mockImplementation(() => ({
+      send: sendMock,
+    }));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    await act(async () => {
+      await result.current.sendMessage("follow up");
+    });
+
+    const runtimeMessages = sendMock.mock.calls[0]?.[0]?.messages as BananaUIMessage[];
+    expect(runtimeMessages.map((message) => message.role)).toEqual(["user", "assistant", "user"]);
   });
 });
