@@ -73,10 +73,15 @@ function StageContent() {
   };
 
   const handleSaveEdit = async (id: string) => {
-    if (!editingContent.trim()) return;
-    // Adapter edits + reruns in one call, so avoid a second regenerate trigger here.
-    await updateMessageContent(id, editingContent, { isSearch: isSearchEnabled, isThink: isThinkingEnabled });
+    const nextContent = editingContent.trim();
+    if (!nextContent) return;
+
+    // Close the editor immediately so the rerun streams in the normal bubble view.
     setEditingMessageId(null);
+    setEditingContent("");
+
+    // Adapter edits + reruns in one call, so avoid a second regenerate trigger here.
+    await updateMessageContent(id, nextContent, { isSearch: isSearchEnabled, isThink: isThinkingEnabled });
     // 保存后自动触发重新生成，并透传当前状态
     // regenerate is handled by updateMessageContent for user edits.
   };
