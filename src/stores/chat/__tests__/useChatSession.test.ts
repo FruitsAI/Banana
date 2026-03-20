@@ -109,6 +109,18 @@ function createToolMessage(
   };
 }
 
+function createUnknownPartAssistantMessage(threadId = "thread-1"): BananaUIMessage {
+  return {
+    id: "msg-assistant-unknown-part",
+    role: "assistant",
+    parts: [
+      { type: "text", text: "assistant reply" },
+      { type: "reasoning", text: "kept for future transport compatibility" },
+    ],
+    metadata: { threadId },
+  };
+}
+
 describe("useChatSession", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -573,5 +585,36 @@ describe("useChatSession", () => {
 
     const runtimeMessages = sendMock.mock.calls[0]?.[0]?.messages as BananaUIMessage[];
     expect(runtimeMessages.map((message) => message.role)).toEqual(["user", "assistant", "user"]);
+  });
+
+  it("preserves unknown assistant parts across the runtime transport boundary", async () => {
+    mockLoadPersistedMessages.mockResolvedValueOnce([
+      createUserMessage("msg-user-1", "hello"),
+      createUnknownPartAssistantMessage(),
+    ]);
+
+    const sendMock = vi.fn(async ({ messages }: { messages: BananaUIMessage[] }) => {
+      const assistant = createAssistantMessage("msg-assistant-1", "assistant reply");
+      return [...messages, assistant];
+    });
+    mockCreateChatRuntime.mockImplementation(() => ({
+      send: sendMock,
+    }));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    await act(async () => {
+      await result.current.sendMessage("follow up");
+    });
+
+    const runtimeMessages = sendMock.mock.calls[0]?.[0]?.messages as BananaUIMessage[];
+    expect(runtimeMessages[1]?.parts).toEqual([
+      { type: "text", text: "assistant reply" },
+      { type: "reasoning", text: "kept for future transport compatibility" },
+    ]);
   });
 });

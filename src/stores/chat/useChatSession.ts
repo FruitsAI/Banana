@@ -193,6 +193,10 @@ function toRuntimePart(part: unknown): RuntimeTransportPart | null {
     };
   }
 
+  if (isObject(part) && typeof part.type === "string") {
+    return { ...part } as RuntimeTransportPart;
+  }
+
   return null;
 }
 
