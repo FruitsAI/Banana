@@ -109,6 +109,25 @@ function createToolMessage(
   };
 }
 
+function createDeferred<T>() {
+  let resolve:
+    | ((value: T | PromiseLike<T>) => void)
+    | undefined;
+  let reject:
+    | ((reason?: unknown) => void)
+    | undefined;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return {
+    promise,
+    resolve: (value: T) => resolve?.(value),
+    reject: (reason?: unknown) => reject?.(reason),
+  };
+}
+
 function createUnknownPartAssistantMessage(threadId = "thread-1"): BananaUIMessage {
   return {
     id: "msg-assistant-unknown-part",
@@ -483,6 +502,104 @@ describe("useChatSession", () => {
     expect(result.current.error).toBeUndefined();
   });
 
+  it("serializes canonical writes so a lagging older turn cannot overwrite a newer turn", async () => {
+    const firstFinalWrite = createDeferred<void>();
+    const persistedSnapshots: string[][] = [];
+    let replaceCallCount = 0;
+
+    mockReplacePersistedMessages.mockImplementation(
+      async (_threadId: string, messages: BananaUIMessage[]) => {
+        replaceCallCount += 1;
+        const snapshot = messages.map((message) => message.id);
+
+        if (replaceCallCount === 2) {
+          await firstFinalWrite.promise;
+        }
+
+        persistedSnapshots.push(snapshot);
+      },
+    );
+
+    let sendCount = 0;
+    let releaseFirstTurn:
+      | (() => void)
+      | undefined;
+
+    mockCreateChatRuntime.mockImplementation(({ onMessagesUpdate, onStatusChange }) => ({
+      send: vi.fn(
+        ({ messages }: { messages: BananaUIMessage[] }) =>
+          new Promise<BananaUIMessage[]>((resolve) => {
+            sendCount += 1;
+
+            const complete = () => {
+              onStatusChange("streaming");
+              const assistant = createAssistantMessage(
+                sendCount === 1 ? "msg-assistant-first" : "msg-assistant-second",
+                sendCount === 1 ? "first reply" : "second reply",
+              );
+              const nextMessages = [...messages, assistant];
+              onMessagesUpdate(nextMessages);
+              onStatusChange("ready");
+              resolve(nextMessages);
+            };
+
+            if (sendCount === 1) {
+              releaseFirstTurn = complete;
+              return;
+            }
+
+            complete();
+          }),
+      ),
+    }));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    let firstPending: Promise<void> | undefined;
+    act(() => {
+      firstPending = result.current.sendMessage("first");
+    });
+
+    await waitFor(() => {
+      expect(releaseFirstTurn).toBeTypeOf("function");
+    });
+
+    act(() => {
+      releaseFirstTurn?.();
+    });
+
+    await waitFor(() => {
+      expect(mockReplacePersistedMessages).toHaveBeenCalledTimes(2);
+    });
+
+    let secondPending: Promise<void> | undefined;
+    act(() => {
+      secondPending = result.current.sendMessage("second");
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockCreateChatRuntime).toHaveBeenCalledTimes(1);
+
+    firstFinalWrite.resolve(undefined);
+
+    await act(async () => {
+      await firstPending;
+      await secondPending;
+    });
+
+    expect(mockCreateChatRuntime).toHaveBeenCalledTimes(2);
+    expect(persistedSnapshots.at(-1)).toHaveLength(4);
+    expect(persistedSnapshots.at(-1)?.[1]).toBe("msg-assistant-first");
+    expect(persistedSnapshots.at(-1)?.[3]).toBe("msg-assistant-second");
+  });
+
   it("does not start a new persistence write after stop lands between runtime resolution and snapshot persistence", async () => {
     let stopSession: (() => void) | undefined;
 
@@ -555,6 +672,90 @@ describe("useChatSession", () => {
 
     expect(mockReplacePersistedMessages).toHaveBeenCalledTimes(1);
     expect(result.current.status).toBe("ready");
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("ignores stale hydrate success after switching threads", async () => {
+    const threadOne = createDeferred<BananaUIMessage[]>();
+    const threadTwo = createDeferred<BananaUIMessage[]>();
+
+    mockLoadPersistedMessages.mockImplementation((requestedThreadId: string) => {
+      if (requestedThreadId === "thread-1") {
+        return threadOne.promise;
+      }
+
+      return threadTwo.promise;
+    });
+
+    const { result, rerender } = renderHook(
+      ({ activeThreadId }: { activeThreadId: string }) => useChatSession(activeThreadId),
+      {
+        initialProps: { activeThreadId: "thread-1" },
+      },
+    );
+
+    expect(result.current.status).toBe("hydrating");
+
+    rerender({ activeThreadId: "thread-2" });
+
+    threadTwo.resolve([createUserMessage("msg-user-thread-2", "thread two", "thread-2")]);
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    expect(result.current.messages).toEqual([
+      createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+    ]);
+
+    threadOne.resolve([createUserMessage("msg-user-thread-1", "thread one", "thread-1")]);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.messages).toEqual([
+      createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+    ]);
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("ignores stale hydrate errors after a newer thread load succeeds", async () => {
+    const threadOne = createDeferred<BananaUIMessage[]>();
+    const threadTwo = createDeferred<BananaUIMessage[]>();
+
+    mockLoadPersistedMessages.mockImplementation((requestedThreadId: string) => {
+      if (requestedThreadId === "thread-1") {
+        return threadOne.promise;
+      }
+
+      return threadTwo.promise;
+    });
+
+    const { result, rerender } = renderHook(
+      ({ activeThreadId }: { activeThreadId: string }) => useChatSession(activeThreadId),
+      {
+        initialProps: { activeThreadId: "thread-1" },
+      },
+    );
+
+    rerender({ activeThreadId: "thread-2" });
+    threadTwo.resolve([createUserMessage("msg-user-thread-2", "thread two", "thread-2")]);
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    threadOne.reject(new Error("thread one failed"));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.status).toBe("ready");
+    expect(result.current.messages).toEqual([
+      createUserMessage("msg-user-thread-2", "thread two", "thread-2"),
+    ]);
     expect(result.current.error).toBeUndefined();
   });
 

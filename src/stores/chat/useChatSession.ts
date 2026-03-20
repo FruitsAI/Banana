@@ -65,6 +65,7 @@ type RuntimeTransportPart = RuntimeTransportMessage["parts"][number];
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_THREAD_TITLE = "新会话";
 const MAX_TOOL_ROUNDS = 5;
+const canonicalPersistenceLanes = new Map<string, Promise<void>>();
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -92,6 +93,27 @@ function createAbortError(): Error {
   const error = new Error("The operation was aborted.");
   error.name = "AbortError";
   return error;
+}
+
+function enqueueCanonicalPersistence<T>(
+  threadId: string,
+  write: () => Promise<T>,
+): Promise<T> {
+  const previous = canonicalPersistenceLanes.get(threadId) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(write);
+  const tracked = next.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  canonicalPersistenceLanes.set(threadId, tracked);
+  void tracked.finally(() => {
+    if (canonicalPersistenceLanes.get(threadId) === tracked) {
+      canonicalPersistenceLanes.delete(threadId);
+    }
+  });
+
+  return next;
 }
 
 function findPendingToolExecutions(messages: BananaUIMessage[]): PendingToolExecution[] {
@@ -225,6 +247,7 @@ export function useChatSession(threadId: string) {
   const stateRef = useRef<ChatSessionState>(state);
   const nextTurnIdRef = useRef(0);
   const activeTurnRef = useRef<ActiveTurn | null>(null);
+  const loadRequestIdRef = useRef(0);
   const {
     createChatThread,
     loadCanonicalMessages,
@@ -309,8 +332,11 @@ export function useChatSession(threadId: string) {
 
   const persistIfActive = useCallback(
     async (turn: ActiveTurn, messages: BananaUIMessage[]): Promise<void> => {
-      ensureTurnActive(turn);
-      await replaceCanonicalMessages(threadId, messages);
+      await enqueueCanonicalPersistence(threadId, async () => {
+        ensureTurnActive(turn);
+        await replaceCanonicalMessages(threadId, messages);
+        ensureTurnActive(turn);
+      });
       ensureTurnActive(turn);
     },
     [ensureTurnActive, replaceCanonicalMessages, threadId],
@@ -318,16 +344,24 @@ export function useChatSession(threadId: string) {
 
   const loadThread = useCallback(
     async (nextThreadId = threadId): Promise<void> => {
+      const requestId = loadRequestIdRef.current + 1;
+      loadRequestIdRef.current = requestId;
       dispatch({ type: "HYDRATE_START", threadId: nextThreadId });
 
       try {
         const messages = await loadCanonicalMessages(nextThreadId);
+        if (loadRequestIdRef.current !== requestId) {
+          return;
+        }
         dispatch({
           type: "HYDRATE_SUCCESS",
           threadId: nextThreadId,
           messages: normalizeMessages(nextThreadId, messages),
         });
       } catch (error) {
+        if (loadRequestIdRef.current !== requestId) {
+          return;
+        }
         dispatch({ type: "ERROR", error: getErrorMessage(error) });
       }
     },
