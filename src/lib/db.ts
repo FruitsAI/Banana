@@ -41,25 +41,8 @@ export async function deleteThread(id: string): Promise<void> {
   await invoke('db_delete_thread', { id });
 }
 
-export async function updateThreadTime(): Promise<void> {
-  // Update thread time is handled automatically by rust when saving a message. 
-  // Should rarely be needed on frontend directly now, but we'll leave invoke if needed.
-}
-
-export async function getMessages(threadId: string): Promise<Message[]> {
-  return await invoke('db_get_messages', { threadId });
-}
-
-export async function appendMessage(msg: Omit<Message, 'created_at'>): Promise<void> {
-  await appendPersistedMessage(msg);
-}
-
 export async function deleteMessagesAfter(threadId: string, messageId: string): Promise<void> {
   await invoke('db_delete_messages_after', { threadId, messageId });
-}
-
-export async function updateMessage(id: string, content: string): Promise<void> {
-  await invoke('db_update_message', { id, content });
 }
 
 export async function getPersistedMessages(threadId: string): Promise<PersistedMessageRecord[]> {

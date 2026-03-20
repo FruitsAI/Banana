@@ -314,14 +314,6 @@ impl Database {
         Ok(())
     }
 
-    pub async fn update_message(&self, id: &str, content: &str) -> Result<()> {
-        sqlx::query("UPDATE messages SET content = ? WHERE id = ?")
-            .bind(content)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
-        Ok(())
-    }
 }
 
 #[cfg(test)]

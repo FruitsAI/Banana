@@ -9,8 +9,6 @@ const {
   mockCreateChatRuntime,
   mockCreateRuntimeToolMap,
   mockCreateThread,
-  mockDeleteMessagesAfter,
-  mockUpdateMessage,
   mockGetProvidersForChat,
   mockGetMcpServersForChat,
   mockGetActiveModelSelection,
@@ -22,8 +20,6 @@ const {
   mockCreateChatRuntime: vi.fn(),
   mockCreateRuntimeToolMap: vi.fn(),
   mockCreateThread: vi.fn(),
-  mockDeleteMessagesAfter: vi.fn(),
-  mockUpdateMessage: vi.fn(),
   mockGetProvidersForChat: vi.fn(),
   mockGetMcpServersForChat: vi.fn(),
   mockGetActiveModelSelection: vi.fn(),
@@ -36,8 +32,6 @@ vi.mock("@/services/chat", () => ({
   createChatRuntime: mockCreateChatRuntime,
   createRuntimeToolMap: mockCreateRuntimeToolMap,
   createThread: mockCreateThread,
-  deleteMessagesAfter: mockDeleteMessagesAfter,
-  updateMessage: mockUpdateMessage,
   getProvidersForChat: mockGetProvidersForChat,
   getMcpServersForChat: mockGetMcpServersForChat,
 }));
@@ -147,8 +141,6 @@ describe("useChatSession", () => {
     mockLoadPersistedMessages.mockResolvedValue([]);
     mockReplacePersistedMessages.mockResolvedValue(undefined);
     mockCreateThread.mockResolvedValue(undefined);
-    mockDeleteMessagesAfter.mockResolvedValue(undefined);
-    mockUpdateMessage.mockResolvedValue(undefined);
     mockGetActiveModelSelection.mockResolvedValue({
       activeProviderId: "openai",
       activeModelId: "gpt-4o-mini",
@@ -250,7 +242,6 @@ describe("useChatSession", () => {
         messages: hydratedMessages.slice(0, 3),
       }),
     );
-    expect(mockDeleteMessagesAfter).not.toHaveBeenCalled();
   });
 
   it("editUserMessage truncates later messages and reruns from the edited point", async () => {
@@ -284,8 +275,6 @@ describe("useChatSession", () => {
     expect(replayMessages).toHaveLength(3);
     expect(replayMessages[2].parts).toEqual([{ type: "text", text: "second edited" }]);
     expect(mockReplacePersistedMessages).toHaveBeenCalled();
-    expect(mockUpdateMessage).not.toHaveBeenCalled();
-    expect(mockDeleteMessagesAfter).not.toHaveBeenCalled();
   });
 
   it("exposes a tool-running transition while executing MCP tools", async () => {

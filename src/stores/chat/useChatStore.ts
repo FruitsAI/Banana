@@ -1,14 +1,10 @@
 import { useCallback } from "react";
-import type { BananaUIMessage, Message, Thread } from "@/domain/chat/types";
+import type { BananaUIMessage, Thread } from "@/domain/chat/types";
 import {
-  appendMessage,
   createThread,
-  deleteMessagesAfter,
   deleteThread,
-  getMessages,
   getThreads,
   loadPersistedMessages,
-  updateMessage,
   updateThreadTitle,
 } from "@/services/chat";
 import { replacePersistedMessages } from "@/services/chat/persistence";
@@ -33,22 +29,6 @@ export function useChatStore() {
     await deleteThread(id);
   }, []);
 
-  const loadMessages = useCallback(async (threadId: string): Promise<Message[]> => {
-    return await getMessages(threadId);
-  }, []);
-
-  const appendChatMessage = useCallback(async (message: Omit<Message, "created_at">): Promise<void> => {
-    await appendMessage(message);
-  }, []);
-
-  const truncateMessagesAfter = useCallback(async (threadId: string, messageId: string): Promise<void> => {
-    await deleteMessagesAfter(threadId, messageId);
-  }, []);
-
-  const updateChatMessage = useCallback(async (id: string, content: string): Promise<void> => {
-    await updateMessage(id, content);
-  }, []);
-
   const loadCanonicalMessages = useCallback(async (threadId: string): Promise<BananaUIMessage[]> => {
     return await loadPersistedMessages(threadId);
   }, []);
@@ -65,10 +45,6 @@ export function useChatStore() {
     createChatThread,
     renameChatThread,
     removeChatThread,
-    loadMessages,
-    appendChatMessage,
-    truncateMessagesAfter,
-    updateChatMessage,
     loadCanonicalMessages,
     replaceCanonicalMessages,
   };

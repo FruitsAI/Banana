@@ -35,7 +35,3 @@ pub async fn append_message(db: &Database, msg: &Message) -> Result<()> {
 pub async fn delete_messages_after(db: &Database, thread_id: &str, message_id: &str) -> Result<()> {
     db.delete_messages_after(thread_id, message_id).await
 }
-
-pub async fn update_message(db: &Database, id: &str, content: &str) -> Result<()> {
-    db.update_message(id, content).await
-}
