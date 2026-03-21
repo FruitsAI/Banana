@@ -4,6 +4,14 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ZapIcon, Layers01Icon, CpuIcon, CodeIcon, LinkSquare02Icon } from "@hugeicons/core-free-icons";
+import {
+  APP_COPYRIGHT_OWNER,
+  APP_COPYRIGHT_YEAR,
+  APP_DISPLAY_VERSION,
+  APP_LINKS,
+  APP_NAME,
+  APP_TAGLINE,
+} from "@/config/app-metadata";
 
 /**
  * @function AboutSetting
@@ -63,10 +71,10 @@ export function AboutSetting() {
 
           {/* App Info - 分别渲染应用名称、定位标语以及版本号标签 */}
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-            Banana
+            {APP_NAME}
           </h1>
           <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
-            Tiny AI Assistant
+            {APP_TAGLINE}
           </p>
           <div
             className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border"
@@ -76,7 +84,7 @@ export function AboutSetting() {
               color: 'var(--brand-primary)',
             }}
           >
-            v0.1.0-alpha
+            {APP_DISPLAY_VERSION}
           </div>
         </motion.div>
 
@@ -150,14 +158,13 @@ export function AboutSetting() {
           transition={{ duration: 0.3, delay: 0.2 }}
         >
           {/* 将静态外链数据映射为纵向布局里可悬浮交互的独立入口按钮 */}
-          {[
-            { label: '官方网站', value: 'banana.willxue.com' },
-            { label: 'GitHub', value: 'github.com/FruitsAI/Banana' },
-            { label: '文档', value: 'docs.banana.willxue.com' },
-          ].map((link, index, arr) => (
-            <motion.button
+          {APP_LINKS.map((link, index, arr) => (
+            <motion.a
               key={link.label}
               className="w-full flex items-center justify-between p-4 text-left group"
+              href={link.url}
+              target="_blank"
+              rel="noreferrer noopener"
               // 通过检测当前 item 是否是列表最后一项，灵活地控制是否渲染底部内分割线（Divider）
               style={{
                 borderBottom: index < arr.length - 1 ? '1px solid var(--divider)' : 'none',
@@ -175,7 +182,7 @@ export function AboutSetting() {
                 {/* 右侧的外链跳转引导 Icon：默认全透明，只有当父级项（group）处于 Hover 态时才会通过透明度过渡显形 */}
                 <HugeiconsIcon icon={LinkSquare02Icon} size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-quaternary)' }} />
               </div>
-            </motion.button>
+            </motion.a>
           ))}
         </motion.div>
 
@@ -190,7 +197,7 @@ export function AboutSetting() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          © 2025 Fruits AI. All rights reserved.
+          © {APP_COPYRIGHT_YEAR} {APP_COPYRIGHT_OWNER}. All rights reserved.
         </motion.p>
       </div>
     </div>

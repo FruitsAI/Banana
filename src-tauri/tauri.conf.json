@@ -1,8 +1,9 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "temp_next",
-  "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "productName": "Banana",
+  "mainBinaryName": "Banana",
+  "version": "../package.json",
+  "identifier": "com.fruitsai.banana",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
@@ -26,17 +27,28 @@
     "security": {
       "csp": null
     },
-    "macOSPrivateApi": true
+    "macOSPrivateApi": true,
+    "enableGTKAppId": true
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "FruitsAI",
+    "homepage": "https://github.com/FruitsAI/Banana",
+    "copyright": "Copyright (c) FruitsAI. All rights reserved.",
+    "license": "UNLICENSED",
+    "category": "DeveloperTool",
+    "shortDescription": "A local-first desktop AI assistant.",
+    "longDescription": "Banana is a local-first desktop AI assistant built with Next.js, Tauri, and SQLite. It supports multi-model configuration, MCP tool integration, and local SQLite persistence.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "bundleName": "Banana"
+    }
   }
 }

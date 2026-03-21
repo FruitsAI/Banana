@@ -1,15 +1,43 @@
 {
   "name": "banana",
   "version": "0.1.0",
+  "description": "Banana is a local-first desktop AI assistant built with Next.js, Tauri, and SQLite.",
+  "author": "FruitsAI",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/FruitsAI/Banana",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FruitsAI/Banana.git"
+  },
+  "bugs": {
+    "url": "https://github.com/FruitsAI/Banana/issues"
+  },
+  "packageManager": "pnpm@10.30.3",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "changelog:check": "node scripts/changelog-manager.mjs check",
+    "version:check": "node scripts/version-manager.mjs check",
+    "version:sync": "node scripts/version-manager.mjs sync",
+    "version:set": "node scripts/version-manager.mjs set",
+    "version:patch": "node scripts/version-manager.mjs bump patch",
+    "version:minor": "node scripts/version-manager.mjs bump minor",
+    "version:major": "node scripts/version-manager.mjs bump major",
+    "release:tag:print": "node scripts/release-tag.mjs --print",
+    "release:tag": "node scripts/release-tag.mjs",
+    "release:tag:push": "node scripts/release-tag.mjs --push",
+    "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
+    "check:repo": "pnpm changelog:check && pnpm version:check && pnpm lint && pnpm test && pnpm build && pnpm check:rust",
+    "desktop:build": "tauri build",
+    "desktop:build:debug": "tauri build --debug --bundles app",
     "tauri": "tauri"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "3.0.63",
     "@ai-sdk/openai": "^3.0.37",
     "@hugeicons/core-free-icons": "^4.0.0",
     "@hugeicons/react": "^1.1.5",

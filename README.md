@@ -11,30 +11,83 @@ Banana 是一个本地优先（local-first）的桌面 AI 助手，基于 `Next.
 ## 开发启动
 
 ### 前置依赖
-- Node.js 18+
-- npm（或 pnpm/yarn）
-- Rust stable toolchain（`cargo`）
+- Node.js 22.12.0（见 `.node-version`）
+- pnpm 10.30.3（推荐通过 Corepack）
+- Rust 1.93.1（见 `rust-toolchain.toml`）
 - Tauri 2 运行环境依赖
 
 ### 安装依赖
 ```bash
-npm install
+corepack enable
+pnpm install --frozen-lockfile
 ```
 
 ### 启动前端开发
 ```bash
-npm run dev
+pnpm dev
 ```
 
 ### 启动桌面应用开发（Tauri）
 ```bash
-npm run tauri dev
+pnpm tauri dev
 ```
 
 ### 构建桌面应用
 ```bash
-npm run tauri build
+pnpm desktop:build
 ```
+
+### 仓库自检
+```bash
+pnpm changelog:check
+pnpm version:check
+pnpm lint
+pnpm test
+pnpm build
+pnpm check:rust
+```
+
+### 统一管理版本号
+```bash
+pnpm changelog:check
+pnpm version:patch
+pnpm version:minor
+pnpm version:major
+pnpm version:set -- 0.2.0
+pnpm version:check
+pnpm release:tag:print
+pnpm release:tag
+```
+
+- 每次提交前都要同步更新 [`CHANGELOG.md`](CHANGELOG.md)，并保持每条记录中英双语。
+- `package.json` 是唯一可编辑版本源。
+- `src-tauri/tauri.conf.json` 已直接跟随 `package.json`。
+- `src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 通过版本脚本自动同步。
+- `pnpm changelog:check` 会检查当前变更是否已同步更新 `CHANGELOG.md`。
+- 提交前跑一次 `pnpm version:check`，发布时让 Git tag 与 `package.json.version` 保持一致。
+- `pnpm release:tag` 会基于当前版本创建本地 annotated tag。
+- `pnpm release:tag:push` 会创建并推送 tag 到 `origin`，从而触发 GitHub Release workflow。
+
+### CHANGELOG 规范
+- 使用 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 结构，保留 `Unreleased`。
+- 段落标题保持英文兼容性：`Added`、`Changed`、`Deprecated`、`Removed`、`Fixed`、`Security`。
+- 每条记录写成一句英文加一句中文，尽量描述用户影响或工程影响，不直接粘贴 git commit 列表。
+- 发版时把 `Unreleased` 中已确认的内容移动到 `## [x.y.z] - YYYY-MM-DD`，并保持版本号、tag、release note 一致。
+- 项目级发版提交流程 skill 位于 [`.codex/skills/release-commit/SKILL.md`](.codex/skills/release-commit/SKILL.md)，不依赖全局 skill 目录。
+
+## GitHub 流程
+- `CI`：对 `push` / `pull_request` 自动执行 `lint`、`vitest`、`next build`、`cargo check`、`cargo clippy`。
+- `Release`：支持手动触发和 `v*` tag，构建各平台 unsigned Tauri bundle 并上传到 GitHub Release draft。
+- 发布与协作说明见：
+  - [`CHANGELOG.md`](CHANGELOG.md)
+  - [`CONTRIBUTING.md`](CONTRIBUTING.md)
+  - [`RELEASE.md`](RELEASE.md)
+  - [`LICENSE`](LICENSE)
+
+## 分发说明
+- 当前仓库默认产出的是 unsigned 构建物。
+- macOS 未做 notarization，Windows 未做 code signing。
+- 适合 GitHub 内部分发、测试或手动下载，不适合作为面向大众用户的正式安装包直接分发。
 
 ## 关键目录结构
 ```text
