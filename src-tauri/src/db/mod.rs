@@ -26,6 +26,73 @@ fn is_duplicate_column_error(error: &sqlx::Error, column_name: &str) -> bool {
     }
 }
 
+#[derive(sqlx::FromRow)]
+struct TableInfoRow {
+    name: String,
+    pk: i64,
+}
+
+async fn ensure_models_table_uses_provider_scoped_identity(pool: &Pool<Sqlite>) -> Result<()> {
+    let table_info = sqlx::query_as::<_, TableInfoRow>(r#"PRAGMA table_info(models)"#)
+        .fetch_all(pool)
+        .await?;
+
+    let provider_id_pk = table_info
+        .iter()
+        .find(|column| column.name == "provider_id")
+        .map(|column| column.pk)
+        .unwrap_or_default();
+    let model_id_pk = table_info
+        .iter()
+        .find(|column| column.name == "id")
+        .map(|column| column.pk)
+        .unwrap_or_default();
+
+    if provider_id_pk > 0 && model_id_pk > 0 {
+        return Ok(());
+    }
+
+    let mut tx = pool.begin().await?;
+
+    sqlx::query("DROP TABLE IF EXISTS models__new")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query(
+        r#"
+        CREATE TABLE models__new (
+            provider_id TEXT NOT NULL,
+            id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            group_name TEXT,
+            capabilities TEXT,
+            capabilities_source TEXT,
+            PRIMARY KEY(provider_id, id),
+            FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE CASCADE
+        )
+        "#,
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(
+        r#"
+        INSERT INTO models__new (provider_id, id, name, is_enabled, group_name, capabilities, capabilities_source)
+        SELECT provider_id, id, name, is_enabled, group_name, capabilities, capabilities_source
+        FROM models
+        "#,
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query("DROP TABLE models").execute(&mut *tx).await?;
+    sqlx::query("ALTER TABLE models__new RENAME TO models")
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(())
+}
+
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
         let options = SqliteConnectOptions::from_str(database_url)
@@ -56,13 +123,14 @@ impl Database {
                 base_url TEXT
             );
             CREATE TABLE IF NOT EXISTS models (
-                id TEXT PRIMARY KEY,
                 provider_id TEXT NOT NULL,
+                id TEXT NOT NULL,
                 name TEXT NOT NULL,
                 is_enabled INTEGER NOT NULL DEFAULT 1,
                 group_name TEXT,
                 capabilities TEXT,
                 capabilities_source TEXT,
+                PRIMARY KEY(provider_id, id),
                 FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE CASCADE
             );
             CREATE TABLE IF NOT EXISTS mcp_servers (
@@ -125,6 +193,8 @@ impl Database {
                 return Err(error.into());
             }
         }
+
+        ensure_models_table_uses_provider_scoped_identity(&pool).await?;
 
         Ok(Self { pool })
     }
@@ -320,17 +390,48 @@ impl Database {
 mod tests {
     use super::Database;
     use super::Message;
+    use super::Model;
+    use super::Provider;
     use crate::error::Result;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    #[tokio::test]
-    async fn message_ui_payload_round_trips_through_db_layer() -> Result<()> {
+    fn create_test_provider(id: &str, name: &str) -> Provider {
+        Provider {
+            id: id.to_string(),
+            name: name.to_string(),
+            icon: name.chars().next().unwrap_or('P').to_string(),
+            is_enabled: true,
+            api_key: None,
+            base_url: None,
+            provider_type: Some("openai".to_string()),
+        }
+    }
+
+    fn create_test_model(provider_id: &str, model_id: &str, name: &str) -> Model {
+        Model {
+            id: model_id.to_string(),
+            provider_id: provider_id.to_string(),
+            name: name.to_string(),
+            is_enabled: true,
+            group_name: None,
+            capabilities: None,
+            capabilities_source: None,
+        }
+    }
+
+    fn create_temp_db_url(prefix: &str) -> (String, String) {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("system clock should be after unix epoch")
             .as_nanos();
-        let db_file_name = format!("banana-roundtrip-{unique}.db");
+        let db_file_name = format!("{prefix}-{unique}.db");
         let db_url = format!("sqlite:{db_file_name}");
+        (db_file_name, db_url)
+    }
+
+    #[tokio::test]
+    async fn message_ui_payload_round_trips_through_db_layer() -> Result<()> {
+        let (db_file_name, db_url) = create_temp_db_url("banana-roundtrip");
 
         let _ = std::fs::remove_file(&db_file_name);
 
@@ -351,6 +452,41 @@ mod tests {
         let loaded = db.get_messages("thread-roundtrip").await?;
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].ui_message_json, inserted.ui_message_json);
+
+        drop(db);
+        let _ = std::fs::remove_file(&db_file_name);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn models_with_same_id_remain_scoped_to_their_provider() -> Result<()> {
+        let (db_file_name, db_url) = create_temp_db_url("banana-model-scope");
+
+        let _ = std::fs::remove_file(&db_file_name);
+
+        let db = Database::new(&db_url).await?;
+        db.upsert_provider(&create_test_provider("openai", "OpenAI")).await?;
+        db.upsert_provider(&create_test_provider("openrouter", "OpenRouter")).await?;
+
+        db.upsert_model(&create_test_model("openai", "gpt-4o-mini", "OpenAI GPT-4o mini"))
+            .await?;
+        db.upsert_model(&create_test_model(
+            "openrouter",
+            "gpt-4o-mini",
+            "OpenRouter GPT-4o mini",
+        ))
+        .await?;
+
+        let openai_models = db.get_models_by_provider("openai").await?;
+        let openrouter_models = db.get_models_by_provider("openrouter").await?;
+
+        assert_eq!(openai_models.len(), 1);
+        assert_eq!(openrouter_models.len(), 1);
+        assert_eq!(openai_models[0].provider_id, "openai");
+        assert_eq!(openrouter_models[0].provider_id, "openrouter");
+        assert_eq!(openai_models[0].id, "gpt-4o-mini");
+        assert_eq!(openrouter_models[0].id, "gpt-4o-mini");
 
         drop(db);
         let _ = std::fs::remove_file(&db_file_name);

@@ -52,8 +52,12 @@ pub async fn db_upsert_model(state: State<'_, AppState>, model: Model) -> Result
 }
 
 #[tauri::command]
-pub async fn db_delete_model(state: State<'_, AppState>, model_id: String) -> Result<()> {
-    models_service::delete_model(&state.db, &model_id).await
+pub async fn db_delete_model(
+    state: State<'_, AppState>,
+    provider_id: String,
+    model_id: String,
+) -> Result<()> {
+    models_service::delete_model(&state.db, &provider_id, &model_id).await
 }
 
 /// ---- McpServers ----

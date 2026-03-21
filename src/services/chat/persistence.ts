@@ -20,17 +20,58 @@ function normalizeRole(value: string): BananaUIMessage["role"] {
   return FALLBACK_ROLE;
 }
 
+function hasMessageId(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeIdToken(value: string | undefined, fallback: string): string {
+  const normalized = (value ?? "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized.length > 0 ? normalized : fallback;
+}
+
+function synthesizePersistedMessageId(options: {
+  content?: string;
+  createdAt?: string;
+  role: BananaUIMessage["role"];
+  threadId: string;
+}): string {
+  return [
+    "persisted",
+    normalizeIdToken(options.threadId, "thread"),
+    normalizeIdToken(options.role, "assistant"),
+    normalizeIdToken(options.createdAt, "time"),
+    normalizeIdToken(options.content?.slice(0, 24), "message"),
+  ].join("-");
+}
+
 export function toStoredMessageRecord(
   threadId: string,
   message: BananaUIMessage,
 ): Omit<PersistedMessageRecord, "created_at"> {
+  const content = summarizeMessageText(message);
+  const id = hasMessageId(message.id)
+    ? message.id
+    : synthesizePersistedMessageId({
+        threadId,
+        role: message.role,
+        createdAt: message.metadata?.createdAt,
+        content,
+      });
+
   return {
-    id: message.id,
+    id,
     thread_id: threadId,
     role: message.role,
-    content: summarizeMessageText(message),
+    content,
     model_id: message.metadata?.modelId,
-    ui_message_json: serializeUIMessage(message),
+    ui_message_json: serializeUIMessage({
+      ...message,
+      id,
+    }),
   };
 }
 
@@ -47,9 +88,19 @@ export function fromStoredMessageRecord(
   };
 
   const message = coerceStoredMessageToUIMessage(normalized);
+  const content = summarizeMessageText(message);
+  const id = hasMessageId(message.id)
+    ? message.id
+    : synthesizePersistedMessageId({
+        threadId: row.thread_id,
+        role: message.role,
+        createdAt: row.created_at,
+        content,
+      });
 
   return {
     ...message,
+    id,
     metadata: {
       threadId: message.metadata?.threadId ?? row.thread_id,
       modelId: message.metadata?.modelId,

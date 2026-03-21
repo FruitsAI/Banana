@@ -124,8 +124,8 @@ export async function upsertModel(m: Model): Promise<void> {
   await invoke('db_upsert_model', { model: payload });
 }
 
-export async function deleteModel(modelId: string): Promise<void> {
-  await invoke('db_delete_model', { modelId });
+export async function deleteModel(providerId: string, modelId: string): Promise<void> {
+  await invoke('db_delete_model', { providerId, modelId });
 }
 
 export async function getMcpServers(): Promise<McpServer[]> {

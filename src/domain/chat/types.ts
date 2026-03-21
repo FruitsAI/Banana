@@ -23,12 +23,36 @@ export interface ToolInvocation {
   result?: unknown;
 }
 
+export interface ChatReasoningSegment {
+  content: string;
+  isStreaming?: boolean;
+  type: "reasoning";
+}
+
+export interface ChatContentSegment {
+  content: string;
+  type: "content";
+}
+
+export interface ChatToolSegment {
+  toolInvocation: ToolInvocation;
+  type: "tool";
+}
+
+export type ChatMessageSegment =
+  | ChatReasoningSegment
+  | ChatContentSegment
+  | ChatToolSegment;
+
 export interface ChatMessage {
+  segments?: ChatMessageSegment[];
   toolInvocations?: ToolInvocation[];
   id: string;
   role: "user" | "assistant" | "system" | "tool";
   content: string;
+  reasoning?: string;
   modelId?: string;
+  providerId?: string;
   createdAt?: string;
 }
 

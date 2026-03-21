@@ -26,6 +26,7 @@ import {
   buildChatRequestBody as buildChatRequestBodyInternal,
   createChatRuntime as createChatRuntimeInternal,
 } from "./runtime";
+import { generateConversationTitle as generateConversationTitleInternal } from "./title";
 
 function wrapError(operation: string, error: unknown): AppError {
   return normalizeError(error, {
@@ -172,5 +173,15 @@ export function createChatRuntime(
     return createChatRuntimeInternal(...args);
   } catch (error) {
     throw wrapError("createChatRuntime", error);
+  }
+}
+
+export async function generateConversationTitle(
+  ...args: Parameters<typeof generateConversationTitleInternal>
+): ReturnType<typeof generateConversationTitleInternal> {
+  try {
+    return await generateConversationTitleInternal(...args);
+  } catch (error) {
+    throw wrapError("generateConversationTitle", error);
   }
 }

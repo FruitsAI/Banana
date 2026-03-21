@@ -11,9 +11,18 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "coverage/**",
     "next-env.d.ts",
     // Rust/Tauri workspace and generated artifacts:
     "src-tauri/**",
+    // Local worktrees and tool state:
+    ".worktrees/**",
+    ".agents/**",
+    ".ai_memory/**",
+    ".iflow/**",
+    ".kiro/**",
+    ".serena/**",
+    ".trae/**",
   ]),
 ]);
 

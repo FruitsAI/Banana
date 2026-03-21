@@ -12,10 +12,13 @@ import {
   ensureProviderModelsReady,
   ensureProvidersReady,
   getActiveModelSelection,
+  resolveThinkingModelId,
+  setActiveModelSelection,
 } from "@/lib/model-settings";
 import {
   createChatRuntime,
   createRuntimeToolMap,
+  generateConversationTitle,
   getMcpServersForChat,
   getProvidersForChat,
 } from "@/services/chat";
@@ -55,6 +58,14 @@ interface DynamicToolPart {
   output?: unknown;
 }
 
+interface StaticToolPart extends Record<string, unknown> {
+  type: `tool-${string}`;
+  toolCallId: string;
+  state: "input-available" | "output-available";
+  input?: unknown;
+  output?: unknown;
+}
+
 interface TextPart {
   type: "text";
   text: string;
@@ -67,12 +78,25 @@ const DEFAULT_THREAD_TITLE = "新会话";
 const MAX_TOOL_ROUNDS = 5;
 const canonicalPersistenceLanes = new Map<string, Promise<void>>();
 
+function hasApiKey(apiKey?: string): boolean {
+  return typeof apiKey === "string" && apiKey.trim().length > 0;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
 function isTextPart(part: unknown): part is TextPart {
   return isObject(part) && part.type === "text" && typeof part.text === "string";
+}
+
+function getStaticToolName(type: string): string | null {
+  if (!type.startsWith("tool-")) {
+    return null;
+  }
+
+  const toolName = type.slice(5);
+  return toolName.length > 0 ? toolName : null;
 }
 
 function isDynamicToolPart(part: unknown): part is DynamicToolPart {
@@ -83,6 +107,28 @@ function isDynamicToolPart(part: unknown): part is DynamicToolPart {
     typeof part.toolName === "string" &&
     (part.state === "input-available" || part.state === "output-available")
   );
+}
+
+function isStaticToolPart(part: unknown): part is StaticToolPart {
+  return (
+    isObject(part) &&
+    typeof part.type === "string" &&
+    getStaticToolName(part.type) !== null &&
+    typeof part.toolCallId === "string" &&
+    (part.state === "input-available" || part.state === "output-available")
+  );
+}
+
+function isToolPart(part: unknown): part is DynamicToolPart | StaticToolPart {
+  return isDynamicToolPart(part) || isStaticToolPart(part);
+}
+
+function getToolPartName(part: DynamicToolPart | StaticToolPart): string {
+  if (part.type === "dynamic-tool") {
+    return part.toolName;
+  }
+
+  return getStaticToolName(part.type) ?? "";
 }
 
 function isAbortError(error: unknown): error is Error {
@@ -129,14 +175,14 @@ function findPendingToolExecutions(messages: BananaUIMessage[]): PendingToolExec
 
   messages.forEach((message) => {
     message.parts.forEach((part) => {
-      if (!isDynamicToolPart(part) || part.state !== "input-available") {
+      if (!isToolPart(part) || part.state !== "input-available") {
         return;
       }
 
       pending.push({
         input: part.input ?? {},
         toolCallId: part.toolCallId,
-        toolName: part.toolName,
+        toolName: getToolPartName(part),
       });
     });
   });
@@ -156,7 +202,7 @@ function applyToolOutputs(
   return messages.map((message) => ({
     ...message,
     parts: message.parts.map((part) => {
-      if (!isDynamicToolPart(part)) {
+      if (!isToolPart(part)) {
         return part;
       }
 
@@ -270,6 +316,7 @@ export function useChatSession(threadId: string) {
   const {
     createChatThread,
     loadCanonicalMessages,
+    renameChatThread,
     replaceCanonicalMessages,
   } = useChatStore();
 
@@ -396,47 +443,124 @@ export function useChatSession(threadId: string) {
     };
   }, [loadThread, stopActiveTurn, threadId]);
 
-  const resolveChatContext = useCallback(async (): Promise<ResolvedChatContext> => {
+  const resolveChatContext = useCallback(async (
+    options?: SendMessageOptions,
+  ): Promise<ResolvedChatContext> => {
     const selection = await getActiveModelSelection();
-    let providerId = selection.activeProviderId;
-    let modelId = selection.activeModelId;
     let providers = await getProvidersForChat();
+    const providerId = selection.activeProviderId;
+    const modelId = selection.activeModelId;
 
-    if (!providerId || !modelId) {
+    const syncProviders = async () => {
       providers = await ensureProvidersReady();
-      providerId = providerId ?? providers[0]?.id ?? null;
+      return providers;
+    };
 
-      if (providerId && !modelId) {
-        const models = await ensureProviderModelsReady(providerId);
-        modelId = models[0]?.id ?? null;
+    const resolveEnabledModels = async (candidateProviderId: string) => {
+      const models = await ensureProviderModelsReady(candidateProviderId);
+      return models.filter((model) => model.is_enabled !== false);
+    };
+
+    let activeProvider = providerId
+      ? providers.find((provider) => provider.id === providerId)
+      : undefined;
+
+    if (!activeProvider) {
+      await syncProviders();
+      activeProvider = providerId
+        ? providers.find((provider) => provider.id === providerId)
+        : undefined;
+    }
+
+    const canUseProvider = (provider?: (typeof providers)[number]) =>
+      provider?.is_enabled !== false && hasApiKey(provider?.api_key);
+
+    if (activeProvider && canUseProvider(activeProvider)) {
+      const enabledModels = await resolveEnabledModels(activeProvider.id);
+      const selectedModel = modelId
+        ? enabledModels.find((model) => model.id === modelId)
+        : undefined;
+
+      if (selectedModel) {
+        const effectiveModelId = resolveThinkingModelId(
+          activeProvider.id,
+          selectedModel.id,
+          enabledModels,
+          options?.isThink === true,
+        );
+
+        return {
+          apiKey: activeProvider.api_key!.trim(),
+          baseURL: activeProvider.base_url || DEFAULT_BASE_URL,
+          modelId: effectiveModelId,
+          providerId: activeProvider.id,
+          providerType: activeProvider.provider_type ?? "openai",
+        };
+      }
+
+      const fallbackModel = enabledModels[0];
+      if (fallbackModel) {
+        if (activeProvider.id !== providerId || fallbackModel.id !== modelId) {
+          await setActiveModelSelection(activeProvider.id, fallbackModel.id);
+        }
+        const effectiveModelId = resolveThinkingModelId(
+          activeProvider.id,
+          fallbackModel.id,
+          enabledModels,
+          options?.isThink === true,
+        );
+        return {
+          apiKey: activeProvider.api_key!.trim(),
+          baseURL: activeProvider.base_url || DEFAULT_BASE_URL,
+          modelId: effectiveModelId,
+          providerId: activeProvider.id,
+          providerType: activeProvider.provider_type ?? "openai",
+        };
       }
     }
 
-    if (!providerId || !modelId) {
-      throw new Error("未找到可用的模型配置");
+    await syncProviders();
+
+    for (const provider of providers) {
+      if (!canUseProvider(provider)) {
+        continue;
+      }
+
+      const enabledModels = await resolveEnabledModels(provider.id);
+      const fallbackModel = enabledModels[0];
+      if (!fallbackModel) {
+        continue;
+      }
+
+      if (provider.id !== providerId || fallbackModel.id !== modelId) {
+        await setActiveModelSelection(provider.id, fallbackModel.id);
+      }
+
+      const effectiveModelId = resolveThinkingModelId(
+        provider.id,
+        fallbackModel.id,
+        enabledModels,
+        options?.isThink === true,
+      );
+
+      return {
+        apiKey: provider.api_key!.trim(),
+        baseURL: provider.base_url || DEFAULT_BASE_URL,
+        modelId: effectiveModelId,
+        providerId: provider.id,
+        providerType: provider.provider_type ?? "openai",
+      };
     }
 
-    let activeProvider = providers.find((provider) => provider.id === providerId);
-    if (!activeProvider) {
-      providers = await ensureProvidersReady();
-      activeProvider = providers.find((provider) => provider.id === providerId);
-    }
+    const hasConfiguredProvider = providers.some(
+      (provider) => provider.is_enabled !== false && hasApiKey(provider.api_key),
+    );
 
-    if (!activeProvider) {
-      throw new Error("供应商未找到");
-    }
-
-    if (!activeProvider.api_key) {
+    if (!hasConfiguredProvider) {
       throw new Error("API Key 未配置");
     }
 
-    return {
-      apiKey: activeProvider.api_key,
-      baseURL: activeProvider.base_url || DEFAULT_BASE_URL,
-      modelId,
-      providerId,
-      providerType: activeProvider.provider_type ?? "openai",
-    };
+    throw new Error("未找到可用的模型配置");
   }, []);
 
   const runAssistantTurn = useCallback(
@@ -446,7 +570,7 @@ export function useChatSession(threadId: string) {
       options?: SendMessageOptions,
       contextOverride?: ResolvedChatContext,
     ): Promise<BananaUIMessage[]> => {
-      const context = contextOverride ?? (await resolveChatContext());
+      const context = contextOverride ?? (await resolveChatContext(options));
       ensureTurnActive(turn);
 
       let currentMessages = normalizeMessages(
@@ -459,7 +583,11 @@ export function useChatSession(threadId: string) {
       const servers = await getMcpServersForChat();
       ensureTurnActive(turn);
 
-      const runtimeToolMap = await createRuntimeToolMap(servers);
+      const runtimeToolMap = await createRuntimeToolMap(servers, {
+        capabilityMode: {
+          searchEnabled: options?.isSearch ?? false,
+        },
+      });
       ensureTurnActive(turn);
 
       const runtime = createChatRuntime({
@@ -563,12 +691,59 @@ export function useChatSession(threadId: string) {
     ],
   );
 
+  const updateThreadTitleInBackground = useCallback(
+    (context: ResolvedChatContext, messages: BananaUIMessage[]): void => {
+      if (threadId === "default-thread") {
+        return;
+      }
+
+      void (async () => {
+        let titleModelId = context.modelId;
+        try {
+          const providerModels = await ensureProviderModelsReady(context.providerId);
+          titleModelId = resolveThinkingModelId(
+            context.providerId,
+            context.modelId,
+            providerModels,
+            false,
+          );
+        } catch {
+          titleModelId = context.modelId;
+        }
+
+        const result = await generateConversationTitle({
+          apiKey: context.apiKey,
+          baseURL: context.baseURL,
+          modelId: titleModelId,
+          providerType: context.providerType,
+          messages,
+        });
+
+        if (!result.title || result.title === DEFAULT_THREAD_TITLE) {
+          return;
+        }
+
+        if (result.source === "fallback") {
+          console.info("[thread-title] fallback used", {
+            threadId,
+            reason: result.reason,
+          });
+        }
+
+        await renameChatThread(threadId, result.title);
+        notifyThreadsChanged();
+      })().catch(() => undefined);
+    },
+    [renameChatThread, threadId],
+  );
+
   const sendMessage = useCallback(
-    async (content: string, options?: SendMessageOptions): Promise<void> => {
+    async (content: string, options?: SendMessageOptions): Promise<boolean> => {
       const turn = beginTurn();
+      const isFirstTurn = stateRef.current.messages.length === 0;
 
       try {
-        const context = await resolveChatContext();
+        const context = await resolveChatContext(options);
         ensureTurnActive(turn);
 
         const userMessage: BananaUIMessage = {
@@ -600,9 +775,15 @@ export function useChatSession(threadId: string) {
 
         await persistIfActive(turn, nextMessages);
 
-        await runAssistantTurn(nextMessages, turn, options, context);
+        const finalMessages = await runAssistantTurn(nextMessages, turn, options, context);
+
+        if (isFirstTurn) {
+          updateThreadTitleInBackground(context, finalMessages);
+        }
+        return true;
       } catch (error) {
         handleTurnFailure(turn, error);
+        return false;
       } finally {
         clearTurn(turn);
       }
@@ -618,6 +799,7 @@ export function useChatSession(threadId: string) {
       resolveChatContext,
       runAssistantTurn,
       threadId,
+      updateThreadTitleInBackground,
     ],
   );
 
@@ -647,11 +829,9 @@ export function useChatSession(threadId: string) {
       beginTurn,
       clearTurn,
       dispatchIfActive,
-      ensureTurnActive,
       handleTurnFailure,
       persistIfActive,
       runAssistantTurn,
-      threadId,
     ],
   );
 
@@ -687,11 +867,9 @@ export function useChatSession(threadId: string) {
       beginTurn,
       clearTurn,
       dispatchIfActive,
-      ensureTurnActive,
       handleTurnFailure,
       persistIfActive,
       runAssistantTurn,
-      threadId,
     ],
   );
 

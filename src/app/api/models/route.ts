@@ -1,18 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-interface ProviderModel {
-  id: string;
-  created?: number;
-  owned_by?: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isProviderModel(value: unknown): value is ProviderModel {
-  return isRecord(value) && typeof value.id === "string";
-}
+import { listProviderModels } from "@/services/providers";
 
 /**
  * 获取提供商支持的模型列表
@@ -20,53 +7,17 @@ function isProviderModel(value: unknown): value is ProviderModel {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { apiKey, baseURL } = await req.json();
+    const { apiKey, baseURL, providerType } = await req.json();
 
     if (!apiKey) {
       return NextResponse.json({ error: "API Key is required" }, { status: 400 });
     }
 
-    // 格式化 Base URL
-    let url = baseURL || "https://api.openai.com/v1";
-    if (!url.endsWith("/")) url += "/";
-    url += "models";
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+    const formattedModels = await listProviderModels({
+      apiKey,
+      baseURL,
+      providerType,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: errorData.error?.message || `Failed to fetch models from provider (${response.status})` },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    
-    // 统一处理模型数据格式
-    // 标准 OpenAI 返回是 { data: [{ id: "...", ... }] }
-    let rawModels: ProviderModel[] = [];
-    if (Array.isArray(data)) {
-      rawModels = data.filter(isProviderModel);
-    } else if (isRecord(data) && Array.isArray(data.data)) {
-      rawModels = data.data.filter(isProviderModel);
-    } else if (isRecord(data)) {
-      // 某些非标准接口可能直接返回对象数组
-      rawModels = Object.values(data).filter(isProviderModel);
-    }
-
-    const formattedModels = rawModels.map((m) => ({
-      id: m.id,
-      name: m.id, // 默认 ID 作为 Name，前端可进一步匹配
-      created: m.created,
-      owned_by: m.owned_by,
-    }));
 
     return NextResponse.json({ models: formattedModels });
   } catch (error) {

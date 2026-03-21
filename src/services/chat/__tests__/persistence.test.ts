@@ -213,4 +213,27 @@ describe("chat persistence", () => {
     expect(messages).toHaveLength(1);
     expect(messages[0].parts[0]).toEqual({ type: "text", text: "legacy content" });
   });
+
+  it("synthesizes a stable fallback id when persisted assistant rows contain blank ids", () => {
+    const message = fromStoredMessageRecord({
+      id: "",
+      thread_id: "thread-1",
+      role: "assistant",
+      content: "hello from broken row",
+      created_at: "2026-03-20T15:10:29.943Z",
+      ui_message_json: JSON.stringify({
+        id: "",
+        role: "assistant",
+        parts: [{ type: "text", text: "hello from broken row" }],
+        metadata: {
+          threadId: "thread-1",
+          createdAt: "2026-03-20T15:10:29.943Z",
+        },
+      }),
+    });
+
+    expect(message.id).not.toBe("");
+    expect(message.id).toContain("thread-1");
+    expect(message.parts).toEqual([{ type: "text", text: "hello from broken row" }]);
+  });
 });

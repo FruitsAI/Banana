@@ -1,10 +1,12 @@
 import { useCallback } from "react";
 import type { ActiveModelSelection, Model, Provider } from "@/domain/models/types";
 import {
-  deleteProvider,
-  deleteModel,
+  deleteModelWithSeedLifecycle,
+  deleteProviderWithSeedLifecycle,
+  ensureProviderModelsReady,
+} from "@/lib/model-settings";
+import {
   getActiveModelSelection,
-  getModelsByProvider,
   getProviders,
   setActiveModelSelection,
   upsertModel,
@@ -21,19 +23,19 @@ export function useModelsStore() {
   }, []);
 
   const removeProvider = useCallback(async (providerId: string): Promise<void> => {
-    await deleteProvider(providerId);
+    await deleteProviderWithSeedLifecycle(providerId);
   }, []);
 
   const loadModelsByProvider = useCallback(async (providerId: string): Promise<Model[]> => {
-    return await getModelsByProvider(providerId);
+    return await ensureProviderModelsReady(providerId);
   }, []);
 
   const saveModel = useCallback(async (model: Model): Promise<void> => {
     await upsertModel(model);
   }, []);
 
-  const removeModel = useCallback(async (modelId: string): Promise<void> => {
-    await deleteModel(modelId);
+  const removeModel = useCallback(async (providerId: string, modelId: string): Promise<void> => {
+    await deleteModelWithSeedLifecycle(providerId, modelId);
   }, []);
 
   const loadActiveSelection = useCallback(async (): Promise<ActiveModelSelection> => {

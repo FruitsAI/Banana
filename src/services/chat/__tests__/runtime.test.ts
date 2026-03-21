@@ -66,6 +66,37 @@ describe("chat runtime tools", () => {
     });
   });
 
+  it("filters search-like MCP tools when search is disabled", async () => {
+    mockListMcpTools.mockResolvedValueOnce({
+      tools: [
+        {
+          name: "brave_search",
+          description: "Search the web for up-to-date information",
+          inputSchema: { type: "object" },
+        },
+        {
+          name: "get_current_time",
+          description: "Return the current local time",
+          inputSchema: { type: "object" },
+        },
+      ],
+    });
+
+    const tools = await createRuntimeToolMap(
+      [
+        {
+          id: "server-1",
+          command: "mixed-tools",
+          is_enabled: true,
+        },
+      ],
+      { capabilityMode: { searchEnabled: false } },
+    );
+
+    expect(tools.brave_search).toBeUndefined();
+    expect(tools.get_current_time).toBeDefined();
+  });
+
   it("maps enabled MCP tools into executable chat tools", async () => {
     const tools = await createRuntimeToolMap([
       {

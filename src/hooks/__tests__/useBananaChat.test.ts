@@ -75,6 +75,24 @@ function createAssistantMessageWithTool(threadId = "thread-1"): BananaUIMessage 
   };
 }
 
+function createAssistantMessageWithStaticTool(threadId = "thread-1"): BananaUIMessage {
+  return {
+    id: "msg-assistant-static-tool",
+    role: "assistant",
+    parts: [
+      { type: "text", text: "" },
+      {
+        type: "tool-get_current_time",
+        toolCallId: "tool-call-static-1",
+        state: "output-available",
+        input: { timezone: "Asia/Shanghai" },
+        output: { now: "2026-03-21 12:00:00" },
+      },
+    ],
+    metadata: { threadId, modelId: "gpt-5.3", createdAt: "2026-03-21T12:00:00.000Z" },
+  };
+}
+
 function createToolMessage(
   id: string,
   text: string,
@@ -85,6 +103,76 @@ function createToolMessage(
     role: "tool",
     parts: [{ type: "text", text }],
     metadata: { threadId },
+  };
+}
+
+function createAssistantTextMessage(
+  id: string,
+  text: string,
+  threadId = "thread-1",
+): BananaUIMessage {
+  return {
+    id,
+    role: "assistant",
+    parts: [{ type: "text", text }],
+    metadata: { threadId, modelId: "gpt-5.3", createdAt: "2026-03-21T12:00:06.000Z" },
+  };
+}
+
+function createAssistantThinkToolMessage(threadId = "thread-1"): BananaUIMessage {
+  return {
+    id: "msg-assistant-think-tool",
+    role: "assistant",
+    parts: [
+      { type: "text", text: "<think>先判断时区</think>\n\n" },
+      {
+        type: "tool-get_current_time",
+        toolCallId: "tool-call-sequenced-1",
+        state: "output-available",
+        input: { timezone: "America/New_York" },
+        output: { now: "2026-03-21 05:52:29" },
+      },
+    ],
+    metadata: {
+      threadId,
+      modelId: "minimaxai/minimax-m2.5",
+      createdAt: "2026-03-21T17:52:28.000Z",
+    },
+  };
+}
+
+function createAssistantThinkAnswerMessage(threadId = "thread-1"): BananaUIMessage {
+  return {
+    id: "msg-assistant-think-answer",
+    role: "assistant",
+    parts: [
+      {
+        type: "text",
+        text: "<think>我得到了纽约的当前时间信息</think>\n\n纽约今天的日期是 **2026年3月21日**，星期六。",
+      },
+    ],
+    metadata: {
+      threadId,
+      modelId: "minimaxai/minimax-m2.5",
+      createdAt: "2026-03-21T17:52:29.000Z",
+    },
+  };
+}
+
+function createAssistantReasoningMessage(
+  id: string,
+  reasoning: string,
+  text: string,
+  threadId = "thread-1",
+): BananaUIMessage {
+  return {
+    id,
+    role: "assistant",
+    parts: [
+      { type: "reasoning", text: reasoning },
+      { type: "text", text },
+    ],
+    metadata: { threadId, modelId: "gpt-5.3", createdAt: "2026-03-21T12:00:06.000Z" },
   };
 }
 
@@ -123,6 +211,22 @@ describe("useBananaChat", () => {
         content: "assistant reply",
         modelId: "gpt-4o-mini",
         createdAt: "2026-03-20T12:00:00.000Z",
+        segments: [
+          {
+            type: "content",
+            content: "assistant reply",
+          },
+          {
+            type: "tool",
+            toolInvocation: {
+              state: "result",
+              toolCallId: "tool-call-1",
+              toolName: "get_current_time",
+              args: { timezone: "Asia/Shanghai" },
+              result: { now: "2026-03-20 12:00:00" },
+            },
+          },
+        ],
         toolInvocations: [
           {
             state: "result",
@@ -136,6 +240,227 @@ describe("useBananaChat", () => {
     ]);
     expect(result.current.isLoading).toBe(true);
     expect(result.current.error).toBe("stream failed");
+  });
+
+  it("maps static AI SDK tool parts into legacy tool invocations", () => {
+    mockUseChatSession.mockReturnValue(
+      createSession({
+        messages: [createAssistantMessageWithStaticTool()],
+      }),
+    );
+
+    const { result } = renderHook(() => useBananaChat("thread-1"));
+
+    expect(result.current.messages).toEqual<ChatMessage[]>([
+      {
+        id: "msg-assistant-static-tool",
+        role: "assistant",
+        content: "",
+        modelId: "gpt-5.3",
+        createdAt: "2026-03-21T12:00:00.000Z",
+        segments: [
+          {
+            type: "tool",
+            toolInvocation: {
+              state: "result",
+              toolCallId: "tool-call-static-1",
+              toolName: "get_current_time",
+              args: { timezone: "Asia/Shanghai" },
+              result: { now: "2026-03-21 12:00:00" },
+            },
+          },
+        ],
+        toolInvocations: [
+          {
+            state: "result",
+            toolCallId: "tool-call-static-1",
+            toolName: "get_current_time",
+            args: { timezone: "Asia/Shanghai" },
+            result: { now: "2026-03-21 12:00:00" },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("merges consecutive assistant tool and text messages into one stage bubble", () => {
+    mockUseChatSession.mockReturnValue(
+      createSession({
+        messages: [
+          createAssistantMessageWithStaticTool(),
+          createAssistantTextMessage("msg-assistant-final", "北京今天是 2026年3月21日"),
+        ],
+      }),
+    );
+
+    const { result } = renderHook(() => useBananaChat("thread-1"));
+
+    expect(result.current.messages).toEqual<ChatMessage[]>([
+      {
+        id: "msg-assistant-static-tool",
+        role: "assistant",
+        content: "北京今天是 2026年3月21日",
+        modelId: "gpt-5.3",
+        createdAt: "2026-03-21T12:00:00.000Z",
+        segments: [
+          {
+            type: "tool",
+            toolInvocation: {
+              state: "result",
+              toolCallId: "tool-call-static-1",
+              toolName: "get_current_time",
+              args: { timezone: "Asia/Shanghai" },
+              result: { now: "2026-03-21 12:00:00" },
+            },
+          },
+          {
+            type: "content",
+            content: "北京今天是 2026年3月21日",
+          },
+        ],
+        toolInvocations: [
+          {
+            state: "result",
+            toolCallId: "tool-call-static-1",
+            toolName: "get_current_time",
+            args: { timezone: "Asia/Shanghai" },
+            result: { now: "2026-03-21 12:00:00" },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("maps assistant reasoning parts into stage-visible thought content", () => {
+    mockUseChatSession.mockReturnValue(
+      createSession({
+        messages: [
+          createAssistantReasoningMessage(
+            "msg-assistant-reasoning",
+            "先判断时区",
+            "北京今天是 2026年3月21日",
+          ),
+        ],
+      }),
+    );
+
+    const { result } = renderHook(() => useBananaChat("thread-1"));
+
+    expect(result.current.messages).toEqual<ChatMessage[]>([
+      {
+        id: "msg-assistant-reasoning",
+        role: "assistant",
+        content: "北京今天是 2026年3月21日",
+        reasoning: "先判断时区",
+        modelId: "gpt-5.3",
+        createdAt: "2026-03-21T12:00:06.000Z",
+        segments: [
+          {
+            type: "reasoning",
+            content: "先判断时区",
+          },
+          {
+            type: "content",
+            content: "北京今天是 2026年3月21日",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("keeps assistant reasoning when consecutive assistant messages are merged", () => {
+    mockUseChatSession.mockReturnValue(
+      createSession({
+        messages: [
+          createAssistantReasoningMessage(
+            "msg-assistant-reasoning",
+            "先判断时区",
+            "",
+          ),
+          createAssistantTextMessage("msg-assistant-final", "北京今天是 2026年3月21日"),
+        ],
+      }),
+    );
+
+    const { result } = renderHook(() => useBananaChat("thread-1"));
+
+    expect(result.current.messages).toEqual<ChatMessage[]>([
+      {
+        id: "msg-assistant-reasoning",
+        role: "assistant",
+        content: "北京今天是 2026年3月21日",
+        reasoning: "先判断时区",
+        modelId: "gpt-5.3",
+        createdAt: "2026-03-21T12:00:06.000Z",
+        segments: [
+          {
+            type: "reasoning",
+            content: "先判断时区",
+          },
+          {
+            type: "content",
+            content: "北京今天是 2026年3月21日",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("preserves assistant segment order across think tool think answer turns", () => {
+    mockUseChatSession.mockReturnValue(
+      createSession({
+        messages: [
+          createAssistantThinkToolMessage(),
+          createAssistantThinkAnswerMessage(),
+        ],
+      }),
+    );
+
+    const { result } = renderHook(() => useBananaChat("thread-1"));
+
+    expect(result.current.messages).toEqual<ChatMessage[]>([
+      {
+        id: "msg-assistant-think-tool",
+        role: "assistant",
+        content: "纽约今天的日期是 **2026年3月21日**，星期六。",
+        reasoning: "先判断时区\n\n我得到了纽约的当前时间信息",
+        modelId: "minimaxai/minimax-m2.5",
+        createdAt: "2026-03-21T17:52:28.000Z",
+        segments: [
+          {
+            type: "reasoning",
+            content: "先判断时区",
+          },
+          {
+            type: "tool",
+            toolInvocation: {
+              state: "result",
+              toolCallId: "tool-call-sequenced-1",
+              toolName: "get_current_time",
+              args: { timezone: "America/New_York" },
+              result: { now: "2026-03-21 05:52:29" },
+            },
+          },
+          {
+            type: "reasoning",
+            content: "我得到了纽约的当前时间信息",
+          },
+          {
+            type: "content",
+            content: "纽约今天的日期是 **2026年3月21日**，星期六。",
+          },
+        ],
+        toolInvocations: [
+          {
+            state: "result",
+            toolCallId: "tool-call-sequenced-1",
+            toolName: "get_current_time",
+            args: { timezone: "America/New_York" },
+            result: { now: "2026-03-21 05:52:29" },
+          },
+        ],
+      },
+    ]);
   });
 
   it("promotes default-thread sends to a generated thread id and delegates to that session", async () => {
@@ -226,5 +551,13 @@ describe("useBananaChat", () => {
       isSearch: true,
       isThink: true,
     });
+  });
+
+  it("does not expose a dead deleteMessage handler from the public hook contract", () => {
+    mockUseChatSession.mockReturnValue(createSession());
+
+    const { result } = renderHook(() => useBananaChat("thread-1"));
+
+    expect((result.current as Record<string, unknown>).deleteMessage).toBeUndefined();
   });
 });

@@ -543,14 +543,6 @@ export function McpSetting() {
             <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
               {editingServer.name || "新建服务器"}
             </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs border px-3 rounded-lg"
-              style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}
-            >
-              日志
-            </Button>
             <button
               type="button"
               aria-label={`删除 MCP 服务器 ${editingServer.name || "当前服务器"}`}
@@ -623,21 +615,21 @@ export function McpSetting() {
 
           <div className="space-y-2">
             <Label className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
-              <span style={{ color: "var(--danger)" }} className="mr-1">*</span>类型
+              连接方式
             </Label>
-            <div className="relative">
-              <select 
-                value={editingServer.type || "stdio"}
-                onChange={(e) => setEditingServer({...editingServer, type: e.target.value})}
-                className="w-full h-9 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-subtle)] px-3 py-1 text-sm appearance-none outline-none"
-                style={{ color: "var(--text-primary)" }}
-              >
-                <option value="stdio">标准输入 / 输出 (stdio)</option>
-                <option value="sse">SSE</option>
-              </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-tertiary)", opacity: 0.5 }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <div
+              className="rounded-xl border px-3 py-3"
+              style={{
+                background: "var(--glass-subtle)",
+                borderColor: "var(--glass-border)",
+              }}
+            >
+              <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                标准输入 / 输出 (stdio)
               </div>
+              <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-tertiary)" }}>
+                当前版本仅支持本地 `stdio` 型 MCP 服务，暂不提供 SSE 连接配置。
+              </p>
             </div>
           </div>
 
@@ -683,13 +675,6 @@ export function McpSetting() {
               autoComplete="off"
               autoCorrect="off"
             />
-          </div>
-
-          <div className="flex items-center gap-3 pt-2">
-            <Label className="text-[13px] font-medium flex items-center gap-1.5 cursor-pointer" style={{ color: "var(--text-primary)" }}>
-              长时间运行模式 <span style={{ color: "var(--text-tertiary)" }} className="cursor-help opacity-50">ⓘ</span> :
-            </Label>
-            <Switch />
           </div>
         </div>
       </div>

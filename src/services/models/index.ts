@@ -23,6 +23,18 @@ function getProviderModelsSeededKey(providerId: string): string {
   return `provider_models_seeded_${providerId}`;
 }
 
+function getProviderModelsSeedVersionKey(providerId: string): string {
+  return `provider_models_seed_version_${providerId}`;
+}
+
+function getProviderSeedDismissedKey(providerId: string): string {
+  return `provider_seed_dismissed_${providerId.trim().toLowerCase()}`;
+}
+
+function getSeedModelDismissedKey(providerId: string, modelId: string): string {
+  return `provider_seed_model_dismissed_${providerId.trim().toLowerCase()}_${modelId.trim().toLowerCase()}`;
+}
+
 export async function getProviders(): Promise<Provider[]> {
   try {
     return await dbGetProviders();
@@ -63,11 +75,55 @@ export async function upsertModel(model: Model): Promise<void> {
   }
 }
 
-export async function deleteModel(modelId: string): Promise<void> {
+export async function deleteModel(providerId: string, modelId: string): Promise<void> {
   try {
-    await dbDeleteModel(modelId);
+    await dbDeleteModel(providerId, modelId);
   } catch (error) {
     throw wrapError("deleteModel", error);
+  }
+}
+
+export async function getProviderSeedDismissedState(providerId: string): Promise<boolean> {
+  try {
+    const value = await dbGetConfig(getProviderSeedDismissedKey(providerId));
+    return value === "1";
+  } catch (error) {
+    throw wrapError("getProviderSeedDismissedState", error);
+  }
+}
+
+export async function setProviderSeedDismissedState(
+  providerId: string,
+  dismissed: boolean,
+): Promise<void> {
+  try {
+    await dbSetConfig(getProviderSeedDismissedKey(providerId), dismissed ? "1" : "0");
+  } catch (error) {
+    throw wrapError("setProviderSeedDismissedState", error);
+  }
+}
+
+export async function getSeedModelDismissedState(
+  providerId: string,
+  modelId: string,
+): Promise<boolean> {
+  try {
+    const value = await dbGetConfig(getSeedModelDismissedKey(providerId, modelId));
+    return value === "1";
+  } catch (error) {
+    throw wrapError("getSeedModelDismissedState", error);
+  }
+}
+
+export async function setSeedModelDismissedState(
+  providerId: string,
+  modelId: string,
+  dismissed: boolean,
+): Promise<void> {
+  try {
+    await dbSetConfig(getSeedModelDismissedKey(providerId, modelId), dismissed ? "1" : "0");
+  } catch (error) {
+    throw wrapError("setSeedModelDismissedState", error);
   }
 }
 
@@ -111,5 +167,30 @@ export async function setProviderModelsSeededState(providerId: string): Promise<
     await dbSetConfig(getProviderModelsSeededKey(providerId), "1");
   } catch (error) {
     throw wrapError("setProviderModelsSeededState", error);
+  }
+}
+
+export async function getProviderModelsSeedVersion(providerId: string): Promise<number | null> {
+  try {
+    const value = await dbGetConfig(getProviderModelsSeedVersionKey(providerId));
+    if (!value) {
+      return null;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch (error) {
+    throw wrapError("getProviderModelsSeedVersion", error);
+  }
+}
+
+export async function setProviderModelsSeedVersion(
+  providerId: string,
+  version: number
+): Promise<void> {
+  try {
+    await dbSetConfig(getProviderModelsSeedVersionKey(providerId), String(version));
+  } catch (error) {
+    throw wrapError("setProviderModelsSeedVersion", error);
   }
 }

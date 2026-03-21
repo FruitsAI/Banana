@@ -1,4 +1,5 @@
 use crate::db::{Database, Message, Thread};
+use crate::domain::chat::{sanitize_message, ThreadDraft, ThreadTitleUpdate};
 use crate::error::Result;
 
 pub async fn get_threads(db: &Database) -> Result<Vec<Thread>> {
@@ -11,11 +12,14 @@ pub async fn create_thread(
     title: &str,
     model_id: Option<&str>,
 ) -> Result<()> {
-    db.create_thread(id, title, model_id).await
+    let draft = ThreadDraft::new(id, title, model_id)?;
+    db.create_thread(&draft.id, &draft.title, draft.model_id.as_deref())
+        .await
 }
 
 pub async fn update_thread_title(db: &Database, id: &str, title: &str) -> Result<()> {
-    db.update_thread_title(id, title).await
+    let update = ThreadTitleUpdate::new(id, title)?;
+    db.update_thread_title(&update.id, &update.title).await
 }
 
 pub async fn delete_thread(db: &Database, id: &str) -> Result<()> {
@@ -28,8 +32,8 @@ pub async fn get_messages(db: &Database, thread_id: &str) -> Result<Vec<Message>
 }
 
 pub async fn append_message(db: &Database, msg: &Message) -> Result<()> {
-    // Persist the full Message struct as-is so optional fields (e.g. `ui_message_json`) round-trip.
-    db.append_message(msg).await
+    let normalized_message = sanitize_message(msg)?;
+    db.append_message(&normalized_message).await
 }
 
 pub async fn delete_messages_after(db: &Database, thread_id: &str, message_id: &str) -> Result<()> {

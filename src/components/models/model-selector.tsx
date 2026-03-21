@@ -19,6 +19,26 @@ import { cn } from "@/lib/utils";
 import { getProviderIcon } from "@/components/icons/provider-icons";
 import { useModelsStore } from "@/stores/models/useModelsStore";
 
+const CAPABILITY_CONFIG: Record<string, { icon: typeof ViewIcon; color: string }> = {
+  vision: { icon: ViewIcon, color: "var(--success)" },
+  reasoning: { icon: AiBrain02Icon, color: "var(--brand-primary)" },
+  tools: { icon: Wrench01Icon, color: "var(--warning)" },
+  web: { icon: InternetIcon, color: "var(--brand-primary)" },
+  audio: { icon: AudioWave01Icon, color: "var(--text-secondary)" },
+  embedding: { icon: Database01Icon, color: "var(--text-secondary)" },
+};
+
+const CAPABILITY_LABELS: Record<string, string> = {
+  vision: "视觉",
+  reasoning: "推理",
+  tools: "工具",
+  web: "联网",
+  audio: "音频",
+  embedding: "向量",
+};
+
+const CAPABILITY_ORDER = ["vision", "reasoning", "tools", "web", "audio", "embedding"];
+
 interface ModelIconProps {
   modelName: string;
   className?: string;
@@ -190,16 +210,24 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
     return models.find((m) => m.id === activeModelId && m.provider_id === activeProviderId) || models[0];
   }, [models, activeModelId, activeProviderId]);
 
-  const capabilityConfig: Record<string, { icon: typeof ViewIcon; color: string }> = {
-    vision: { icon: ViewIcon, color: "var(--success)" },
-    reasoning: { icon: AiBrain02Icon, color: "var(--brand-primary)" },
-    tools: { icon: Wrench01Icon, color: "var(--warning)" },
-    web: { icon: InternetIcon, color: "var(--brand-primary)" },
-    audio: { icon: AudioWave01Icon, color: "var(--text-secondary)" },
-    embedding: { icon: Database01Icon, color: "var(--text-secondary)" },
-  };
+  const visibleCapabilities = useMemo(() => {
+    const availableCapabilities = new Set<string>();
 
-  const capabilityOrder = ["vision", "reasoning", "tools", "web", "audio", "embedding"];
+    for (const model of filteredModels) {
+      const resolvedCapabilities =
+        model.capabilities && model.capabilities.length > 0
+          ? model.capabilities
+          : inferModelCapabilities(model.provider_id, model.id);
+
+      for (const capability of resolvedCapabilities) {
+        if (CAPABILITY_CONFIG[capability]) {
+          availableCapabilities.add(capability);
+        }
+      }
+    }
+
+    return CAPABILITY_ORDER.filter((capability) => availableCapabilities.has(capability));
+  }, [filteredModels]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -248,24 +276,27 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap gap-2 mt-3 pl-1">
-            <span className="text-xs mr-2 font-medium" style={{ color: "var(--text-tertiary)" }}>按标签筛选</span>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px]" style={{ background: "var(--glass-subtle)", color: "var(--text-secondary)" }}>
-              <HugeiconsIcon icon={ViewIcon} size={12} /> 视觉
+          {visibleCapabilities.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3 pl-1">
+              <span className="text-xs mr-2 font-medium" style={{ color: "var(--text-tertiary)" }}>能力标签</span>
+              {visibleCapabilities.map((capability) => {
+                const config = CAPABILITY_CONFIG[capability];
+                if (!config) {
+                  return null;
+                }
+
+                return (
+                  <div
+                    key={capability}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px]"
+                    style={{ background: "var(--glass-subtle)", color: "var(--text-secondary)" }}
+                  >
+                    <HugeiconsIcon icon={config.icon} size={12} /> {CAPABILITY_LABELS[capability] ?? capability}
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px]" style={{ background: "var(--glass-subtle)", color: "var(--text-secondary)" }}>
-              <HugeiconsIcon icon={AiBrain02Icon} size={12} /> 推理
-            </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px]" style={{ background: "var(--glass-subtle)", color: "var(--text-secondary)" }}>
-              <HugeiconsIcon icon={Wrench01Icon} size={12} /> 工具
-            </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px]" style={{ background: "var(--glass-subtle)", color: "var(--text-secondary)" }}>
-              <HugeiconsIcon icon={InternetIcon} size={12} /> 联网
-            </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px]" style={{ background: "var(--glass-subtle)", color: "var(--text-secondary)" }}>
-              免费
-            </div>
-          </div>
+          )}
         </div>
         
         <div className="overflow-y-auto" style={{ maxHeight: "350px" }}>
@@ -308,7 +339,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                                 model.capabilities && model.capabilities.length > 0
                                   ? model.capabilities
                                   : inferModelCapabilities(model.provider_id, model.id);
-                              const displayCapabilities = capabilityOrder.filter((capability) =>
+                              const displayCapabilities = CAPABILITY_ORDER.filter((capability) =>
                                 resolvedCapabilities.includes(capability)
                               );
                               if (displayCapabilities.length === 0) {
@@ -317,7 +348,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                               return (
                                 <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                                   {displayCapabilities.map((capability) => {
-                                    const config = capabilityConfig[capability];
+                                    const config = CAPABILITY_CONFIG[capability];
                                     if (!config) {
                                       return null;
                                     }

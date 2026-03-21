@@ -3,7 +3,12 @@ type TextPart = {
   text: string;
 };
 
-type MessagePart = TextPart | Record<string, unknown>;
+type ReasoningPart = {
+  type: "reasoning";
+  text: string;
+};
+
+type MessagePart = TextPart | ReasoningPart | Record<string, unknown>;
 
 type ChatRole = "user" | "assistant" | "system" | "tool";
 
@@ -38,6 +43,10 @@ function isChatRole(value: unknown): value is ChatRole {
   return value === "user" || value === "assistant" || value === "system" || value === "tool";
 }
 
+function hasMessageId(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function toTextPartFromContent(content?: string): TextPart {
   return { type: "text", text: content ?? "" };
 }
@@ -61,6 +70,10 @@ function isTextPart(value: unknown): value is TextPart {
   return isObject(value) && value.type === "text" && typeof value.text === "string";
 }
 
+function isReasoningPart(value: unknown): value is ReasoningPart {
+  return isObject(value) && value.type === "reasoning" && typeof value.text === "string";
+}
+
 function isMessagePart(value: unknown): value is MessagePart {
   if (!isObject(value)) {
     return false;
@@ -68,6 +81,10 @@ function isMessagePart(value: unknown): value is MessagePart {
 
   if (value.type === "text") {
     return isTextPart(value);
+  }
+
+  if (value.type === "reasoning") {
+    return isReasoningPart(value);
   }
 
   return true;
@@ -84,7 +101,7 @@ export function coerceStoredMessageToUIMessage(message: StoredChatMessageRow): B
 
       if (isObject(parsed) && isChatRole(parsed.role) && hasValidMessageParts(parsed.parts)) {
         return {
-          id: typeof parsed.id === "string" ? parsed.id : message.id,
+          id: hasMessageId(parsed.id) ? parsed.id : message.id,
           role: parsed.role,
           parts: parsed.parts,
           metadata: coerceMetadata(parsed.metadata),
@@ -112,4 +129,18 @@ export function summarizeMessageText(message: BananaUIMessage): string {
     .map((part) => part.text)
     .join("\n")
     .trim();
+}
+
+export function summarizeMessageReasoning(message: BananaUIMessage): string | undefined {
+  const reasoning = message.parts
+    .filter(
+      (part): part is ReasoningPart =>
+        part.type === "reasoning" && typeof part.text === "string",
+    )
+    .map((part) => part.text.trim())
+    .filter((part) => part.length > 0)
+    .join("\n\n")
+    .trim();
+
+  return reasoning.length > 0 ? reasoning : undefined;
 }

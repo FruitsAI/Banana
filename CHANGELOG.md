@@ -11,12 +11,16 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 ### Added
 
 - Add a reusable `release-commit` skill and repository release checklist for bilingual changelog maintenance. 新增可复用的 `release-commit` skill 与仓库级发版清单，用于维护双语 changelog。
+- Add provider services, route tests, and modular settings panels for provider and model management flows. 新增 provider 服务层、路由测试以及模块化的设置面板，用于完善 provider 与模型管理流程。
+- Add chat title generation, stage subcomponents, and regression coverage for runtime and transport behavior. 新增聊天标题生成、stage 子组件，以及运行时与传输链路的回归测试覆盖。
 
 ### Changed
 
 - Require `CHANGELOG.md` updates in local repository checks and CI validation, instead of relying on contributor memory alone. 将 `CHANGELOG.md` 更新要求纳入本地仓库检查与 CI 校验，不再只依赖提交者手动记忆。
 - Clarify release-note expectations, version alignment rules, and GitHub-only unsigned distribution limits in repository documentation. 在仓库文档中明确发版说明写法、版本对齐规则，以及仅限 GitHub unsigned 分发的边界。
 - Move the `release-commit` skill into the repository-local `.codex/skills/` directory instead of `.iflow` or the global skill store. 将 `release-commit` skill 移入仓库本地的 `.codex/skills/` 目录，不再放在 `.iflow` 或全局 skill 目录中。
+- Refactor the chat runtime, session store, model settings, and Rust service wiring to complete the capability-aware local-first migration. 重构聊天运行时、会话状态、模型设置与 Rust 服务接线，以完成面向能力控制的本地优先迁移收口。
+- Ignore temporary Rust SQLite test databases generated during local verification. 忽略本地验证过程中生成的 Rust SQLite 临时测试数据库。
 
 ### Fixed
 

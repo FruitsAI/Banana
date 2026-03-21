@@ -34,6 +34,9 @@ interface ListedToolCandidate extends RuntimeToolDescriptor {
 }
 
 interface RuntimeToolMapDependencies {
+  capabilityMode?: {
+    searchEnabled?: boolean;
+  };
   callTool?: typeof callMcpTool;
   listTools?: typeof listMcpTools;
   onDiscoveryError?: (event: {
@@ -52,6 +55,13 @@ function isListedToolCandidate(value: unknown): value is ListedToolCandidate {
 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(getErrorMessage(error));
+}
+
+function isSearchTool(candidate: ListedToolCandidate): boolean {
+  const haystack = `${candidate.name} ${candidate.description ?? ""}`.toLowerCase();
+  return ["search", "web", "browser", "crawl", "extract", "tavily", "brave"].some((token) =>
+    haystack.includes(token),
+  );
 }
 
 export function normalizeToolSuccess(data: McpToolCallResult): RuntimeToolSuccess {
@@ -75,6 +85,7 @@ export async function createRuntimeToolMap(
   servers: Array<Pick<McpServer, "id" | "is_enabled" | "command" | "args" | "env_vars">>,
   dependencies: RuntimeToolMapDependencies = {},
 ): Promise<RuntimeToolMap> {
+  const capabilityMode = dependencies.capabilityMode;
   const listTools = dependencies.listTools ?? listMcpTools;
   const callTool = dependencies.callTool ?? callMcpTool;
   const onDiscoveryError = dependencies.onDiscoveryError;
@@ -98,6 +109,10 @@ export async function createRuntimeToolMap(
 
     for (const candidate of result.tools) {
       if (!isListedToolCandidate(candidate)) {
+        continue;
+      }
+
+      if (capabilityMode?.searchEnabled === false && isSearchTool(candidate)) {
         continue;
       }
 

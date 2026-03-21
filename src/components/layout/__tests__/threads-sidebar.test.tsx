@@ -42,7 +42,13 @@ vi.mock("@/stores/chat/useChatStore", () => ({
 }));
 
 vi.mock("@/components/ui/search-input", () => ({
-  SearchInput: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  SearchInput: ({
+    containerClassName: _containerClassName,
+    ...props
+  }: React.InputHTMLAttributes<HTMLInputElement> & { containerClassName?: string }) => {
+    void _containerClassName;
+    return <input {...props} />;
+  },
 }));
 
 vi.mock("@/components/animation-intensity-provider", () => ({
@@ -73,15 +79,15 @@ vi.mock("framer-motion", () => {
       { children, ...props },
       ref,
     ) {
-      const {
-        animate: _animate,
-        exit: _exit,
-        initial: _initial,
-        transition: _transition,
-        whileHover: _whileHover,
-        whileTap: _whileTap,
-        ...domProps
-      } = props as React.HTMLAttributes<HTMLElement> & Record<string, unknown>;
+      const domProps = {
+        ...props,
+      } as React.HTMLAttributes<HTMLElement> & Record<string, unknown>;
+      delete domProps.animate;
+      delete domProps.exit;
+      delete domProps.initial;
+      delete domProps.transition;
+      delete domProps.whileHover;
+      delete domProps.whileTap;
 
       return React.createElement(tag, { ...domProps, ref }, children);
     });
@@ -101,6 +107,17 @@ vi.mock("framer-motion", () => {
 describe("ThreadsSidebar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("does not render a dead quick-actions footer button when no quick action surface exists", () => {
+    mockUseChatStore.mockReturnValue({
+      loadThreads: vi.fn(async () => []),
+      removeChatThread: vi.fn(),
+    });
+
+    render(<ThreadsSidebar />);
+
+    expect(screen.queryByText("快捷指令")).not.toBeInTheDocument();
   });
 
   it("ignores stale refresh loads so an older response cannot overwrite a newer sidebar snapshot", async () => {

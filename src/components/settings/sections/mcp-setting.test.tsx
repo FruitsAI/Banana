@@ -67,6 +67,16 @@ describe("McpSetting", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not expose unsupported MCP detail controls", async () => {
+    await renderSetting("暂无配置服务器，点击“添加”开始。");
+
+    fireEvent.click(screen.getByRole("button", { name: "添加" }));
+
+    expect(screen.queryByRole("button", { name: "日志" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "SSE" })).not.toBeInTheDocument();
+    expect(screen.queryByText("长时间运行模式")).not.toBeInTheDocument();
+  });
+
   it("uses the global confirm flow before deleting a server", async () => {
     loadServersMock.mockResolvedValue([
       {

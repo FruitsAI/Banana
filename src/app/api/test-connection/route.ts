@@ -1,9 +1,30 @@
-import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { testProviderConnection } from "@/services/providers";
+
+function toUserFriendlyConnectionError(message: string): string {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("timed out") || normalized.includes("timeout")) {
+    return "连接超时: 模型平台未在限定时间内响应，请检查 API 地址、网络或代理设置。";
+  }
+
+  if (normalized.includes("401")) {
+    return "身份验证失败 (401): 请检查您的 API Key 是否正确。";
+  }
+
+  if (normalized.includes("404")) {
+    return "接口未找到 (404): 请检查 API 地址或模型 ID 是否正确。";
+  }
+
+  if (normalized.includes("fetch_error")) {
+    return "连接失败: 无法访问 API 地址，请检查网络或代理设置。";
+  }
+
+  return message;
+}
 
 /**
  * API 连接性测试路由
- * @description 通过发送一个极轻量的请求 (maxTokens: 1) 来验证 API Key 和 Base URL 的有效性。
+ * @description 通过一个极轻量、带超时预算的探测请求验证 API Key 和 Base URL 的有效性。
  */
 export async function POST(req: Request) {
   try {
@@ -16,27 +37,12 @@ export async function POST(req: Request) {
       });
     }
 
-    const resolvedType = providerType ?? "openai";
-    const resolvedBaseURL = baseURL || "https://api.openai.com/v1";
-    
-    // 只有 openai-response 类型才使用特定 client，其余走兼容模式
-    const useCompatible = resolvedType !== "openai-response";
-
-    const openai = createOpenAI({
+    await testProviderConnection({
       apiKey,
-      baseURL: resolvedBaseURL,
+      baseURL,
+      modelId: modelId || "gpt-4o-mini",
+      providerType,
     });
-
-    const modelParams = useCompatible 
-      ? openai.chat(modelId || "gpt-4o-mini") 
-      : openai(modelId || "gpt-4o-mini");
-
-    const request = {
-      model: modelParams,
-      messages: [{ role: "user", content: "ping" }],
-    } satisfies Parameters<typeof generateText>[0];
-
-    await generateText(request);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
@@ -45,14 +51,8 @@ export async function POST(req: Request) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[API /test-connection] Error:", message);
-    
-    // 提取更有意义的错误信息
-    let userFriendlyMessage = message;
-    if (message.includes("401")) userFriendlyMessage = "身份验证失败 (401): 请检查您的 API Key 是否正确。";
-    if (message.includes("404")) userFriendlyMessage = "接口未找到 (404): 请检查 API 地址或模型 ID 是否正确。";
-    if (message.includes("FETCH_ERROR")) userFriendlyMessage = "连接失败: 无法访问 API 地址，请检查网络或代理设置。";
 
-    return new Response(JSON.stringify({ error: userFriendlyMessage }), {
+    return new Response(JSON.stringify({ error: toUserFriendlyConnectionError(message) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

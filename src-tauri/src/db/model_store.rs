@@ -33,8 +33,7 @@ impl Database {
             r#"
             INSERT INTO models (id, provider_id, name, is_enabled, group_name, capabilities, capabilities_source) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                provider_id = excluded.provider_id,
+            ON CONFLICT(provider_id, id) DO UPDATE SET
                 name = excluded.name,
                 is_enabled = excluded.is_enabled,
                 group_name = excluded.group_name,
@@ -55,8 +54,9 @@ impl Database {
         Ok(())
     }
 
-    pub async fn delete_model(&self, model_id: &str) -> Result<()> {
-        sqlx::query(r#"DELETE FROM models WHERE id = ?"#)
+    pub async fn delete_model(&self, provider_id: &str, model_id: &str) -> Result<()> {
+        sqlx::query(r#"DELETE FROM models WHERE provider_id = ? AND id = ?"#)
+            .bind(provider_id)
             .bind(model_id)
             .execute(&self.pool)
             .await?;

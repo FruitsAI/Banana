@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { ModelIcon } from "@/components/models/model-selector";
 import { cn } from "@/lib/utils";
 import type { Model, Provider } from "@/domain/models/types";
+import { inferModelCapabilities } from "@/lib/model-settings";
 
 interface ManageModelsDialogProps {
   open: boolean;
@@ -30,19 +31,21 @@ interface ManageModelsDialogProps {
 }
 
 interface RemoteModel {
+  capabilities: string[];
   id: string;
   name: string;
   groupName: string;
 }
 
-const CATEGORIES = [
+const CATEGORY_OPTIONS = [
   { label: "全部", value: "all" },
   { label: "推理", value: "reasoning" },
   { label: "视觉", value: "vision" },
-  { label: "联网", value: "online" },
-  { label: "免费", value: "free" },
-  { label: "嵌入", value: "embed" },
-];
+  { label: "工具", value: "tools" },
+  { label: "联网", value: "web" },
+  { label: "音频", value: "audio" },
+  { label: "嵌入", value: "embedding" },
+] as const;
 
 /**
  * ManageModelsDialog 组件
@@ -98,6 +101,7 @@ export function ManageModelsDialog({
             if (seenIds.has(model.id)) continue;
             seenIds.add(model.id);
             formatted.push({
+              capabilities: inferModelCapabilities(activeProvider.id, model.id),
               id: model.id,
               name: model.name || model.id,
               groupName: model.id.includes('/') ? model.id.split('/')[0] : (model.owned_by || activeProvider.name),
@@ -117,6 +121,31 @@ export function ManageModelsDialog({
     void fetchModels();
   }, [open, activeProvider, apiKey, baseUrl]);
 
+  const availableCategories = useMemo(() => {
+    const availableCapabilitySet = new Set<string>();
+
+    for (const model of remoteModels) {
+      for (const capability of model.capabilities) {
+        availableCapabilitySet.add(capability);
+      }
+    }
+
+    return CATEGORY_OPTIONS.filter(
+      (category) => category.value === "all" || availableCapabilitySet.has(category.value),
+    );
+  }, [remoteModels]);
+
+  useEffect(() => {
+    if (activeCategory === "all") {
+      return;
+    }
+
+    const hasActiveCategory = availableCategories.some((category) => category.value === activeCategory);
+    if (!hasActiveCategory) {
+      setActiveCategory("all");
+    }
+  }, [activeCategory, availableCategories]);
+
   // 过滤逻辑
   const filteredModels = useMemo(() => {
     return remoteModels.filter((m) => {
@@ -126,15 +155,8 @@ export function ManageModelsDialog({
       
       if (!matchesSearch) return false;
 
-      // 分类逻辑 (简单启发式匹配)
       if (activeCategory === "all") return true;
-      if (activeCategory === "vision") return m.id.includes("vision") || m.id.includes("vl");
-      if (activeCategory === "reasoning") return m.id.includes("instruct") || m.id.includes("chat") || m.id.includes("01");
-      if (activeCategory === "online") return m.id.includes("online") || m.id.includes("search");
-      if (activeCategory === "free") return m.id.includes("free");
-      if (activeCategory === "embed") return m.id.includes("embedding");
-      
-      return true;
+      return m.capabilities.includes(activeCategory);
     });
   }, [remoteModels, searchQuery, activeCategory]);
 
@@ -193,7 +215,7 @@ export function ManageModelsDialog({
 
             {/* Tabs */}
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none border-b" style={{ borderColor: "var(--divider)" }}>
-              {CATEGORIES.map((cat) => (
+              {availableCategories.map((cat) => (
                 <button
                   key={cat.value}
                   onClick={() => setActiveCategory(cat.value)}

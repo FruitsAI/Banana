@@ -1,6 +1,9 @@
 use crate::db::{Database, McpServer};
+use crate::domain::mcp::{
+    build_call_tool_request, build_initialize_request, build_initialized_notification,
+    build_list_tools_request, JsonRpcRequest, JsonRpcResponse, McpServerConfig,
+};
 use crate::error::{AppError, Result};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, Command, Stdio};
@@ -21,24 +24,6 @@ pub struct McpServerProcess {
     pub command: String,
     pub args: Vec<String>,
     pub env_vars: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct JsonRpcRequest {
-    jsonrpc: String,
-    method: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    params: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<serde_json::Value>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct JsonRpcResponse {
-    jsonrpc: String,
-    result: Option<serde_json::Value>,
-    error: Option<serde_json::Value>,
-    id: Option<serde_json::Value>,
 }
 
 pub async fn get_mcp_servers(db: &Database) -> Result<Vec<McpServer>> {
@@ -71,12 +56,12 @@ pub fn list_tools(
     env_vars: Option<&str>,
 ) -> McpCommandResult<serde_json::Value> {
     let mut processes = state.processes.lock().map_err(|e| e.to_string())?;
-    let normalized_env_vars = normalize_env_vars(env_vars);
+    let requested_config = McpServerConfig::new(command, args, env_vars)?;
 
     let need_spawn = if let Some(mut existing_process) = processes.remove(server_id) {
-        let config_changed = existing_process.command != command
-            || existing_process.args.as_slice() != args
-            || existing_process.env_vars != normalized_env_vars;
+        let config_changed = existing_process.command != requested_config.command
+            || existing_process.args != requested_config.args
+            || existing_process.env_vars != requested_config.env_vars;
         let process_exited = match existing_process.child.try_wait() {
             Ok(status) => status.is_some(),
             Err(_) => true,
@@ -94,13 +79,13 @@ pub fn list_tools(
     };
 
     if need_spawn {
-        let mut cmd = Command::new(command);
-        cmd.args(args)
+        let mut cmd = Command::new(&requested_config.command);
+        cmd.args(&requested_config.args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
 
-        if let Some(env_text) = normalized_env_vars.as_deref() {
+        if let Some(env_text) = requested_config.env_vars.as_deref() {
             for pair in env_text.split('\n') {
                 let parts: Vec<&str> = pair.splitn(2, '=').collect();
                 if parts.len() == 2 {
@@ -121,9 +106,9 @@ pub fn list_tools(
                 stdin,
                 stdout: reader,
                 initialized: false,
-                command: command.to_string(),
-                args: args.to_vec(),
-                env_vars: normalized_env_vars,
+                command: requested_config.command.clone(),
+                args: requested_config.args.clone(),
+                env_vars: requested_config.env_vars.clone(),
             },
         );
     }
@@ -133,35 +118,16 @@ pub fn list_tools(
         .ok_or_else(|| "MCP 进程未运行".to_string())?;
 
     if !proc.initialized {
-        let init_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: "initialize".to_string(),
-            params: Some(serde_json::json!({
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": { "name": "Banana", "version": "1.0.0" }
-            })),
-            id: Some(serde_json::json!(1)),
-        };
+        let init_req = build_initialize_request();
         send_rpc(&mut proc.stdin, &init_req)?;
         let _ = read_rpc(&mut proc.child, &mut proc.stdout)?;
 
-        let initialized_notify = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: "notifications/initialized".to_string(),
-            params: Some(serde_json::json!({})),
-            id: None,
-        };
+        let initialized_notify = build_initialized_notification();
         send_rpc(&mut proc.stdin, &initialized_notify)?;
         proc.initialized = true;
     }
 
-    let list_req = JsonRpcRequest {
-        jsonrpc: "2.0".to_string(),
-        method: "tools/list".to_string(),
-        params: Some(serde_json::json!({})),
-        id: Some(serde_json::json!("list_tools_id")),
-    };
+    let list_req = build_list_tools_request();
     send_rpc(&mut proc.stdin, &list_req)?;
     let list_res = read_rpc(&mut proc.child, &mut proc.stdout)?;
 
@@ -179,15 +145,7 @@ pub fn call_tool(
         .get_mut(server_id)
         .ok_or_else(|| "MCP 进程未运行".to_string())?;
 
-    let req = JsonRpcRequest {
-        jsonrpc: "2.0".to_string(),
-        method: "tools/call".to_string(),
-        params: Some(serde_json::json!({
-            "name": tool_name,
-            "arguments": arguments
-        })),
-        id: Some(serde_json::json!(uuid::Uuid::new_v4().to_string())),
-    };
+    let req = build_call_tool_request(tool_name, arguments);
 
     send_rpc(&mut proc.stdin, &req)?;
     let res = read_rpc(&mut proc.child, &mut proc.stdout)?;
@@ -198,15 +156,6 @@ pub fn call_tool(
 
     Ok(res.result.unwrap_or(serde_json::json!({})))
 }
-
-pub fn start_server() -> McpCommandResult<()> {
-    Err("start_mcp_server is deprecated; use mcp_list_tools/mcp_call_tool flow".to_string())
-}
-
-pub fn send_message() -> McpCommandResult<()> {
-    Err("send_mcp_message is deprecated; use mcp_call_tool flow".to_string())
-}
-
 fn send_rpc(stdin: &mut std::process::ChildStdin, req: &JsonRpcRequest) -> McpCommandResult<()> {
     let json = serde_json::to_string(req).map_err(|e| e.to_string())?;
     writeln!(stdin, "{json}").map_err(|e| format!("发送消息失败: {e}"))?;
@@ -239,13 +188,6 @@ fn read_rpc(
             }
         }
     }
-}
-
-fn normalize_env_vars(env_vars: Option<&str>) -> Option<String> {
-    env_vars
-        .map(str::trim)
-        .filter(|text| !text.is_empty())
-        .map(str::to_owned)
 }
 
 fn stop_process_instance(process: &mut McpServerProcess) {

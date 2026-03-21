@@ -1,14 +1,18 @@
 import {
+  createIdGenerator,
   convertToModelMessages,
   dynamicTool,
+  extractReasoningMiddleware,
+  jsonSchema,
   streamText,
   tool,
   validateUIMessages,
+  wrapLanguageModel,
   type FlexibleSchema,
   type Tool,
   type UIMessage,
 } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createProviderLanguageModel } from "@/services/providers";
 
 interface ClientToolDescriptor {
   name: string;
@@ -33,9 +37,55 @@ type ValidationToolMap = Record<string, Tool<unknown, unknown>>;
 type StreamToolMap = Record<string, ReturnType<typeof tool>>;
 type DynamicToolPart = Extract<UIMessage["parts"][number], { type: "dynamic-tool" }>;
 type DynamicToolOutputPart = Extract<DynamicToolPart, { state: "output-available" }>;
+const AI_SDK_SCHEMA_SYMBOL = Symbol.for("vercel.ai.schema");
+const generateResponseMessageId = createIdGenerator({
+  prefix: "banana-msg",
+  size: 24,
+});
+const NVIDIA_COMPAT_BASE_URL_TOKEN = "integrate.api.nvidia.com";
+const NVIDIA_REASONING_MODEL_PREFIXES = ["z-ai/", "moonshotai/"] as const;
+
+interface CompatibleReasoningBridgeOptions {
+  baseURL?: string;
+  isThink?: boolean;
+  modelId?: string;
+  providerType?: string;
+}
+
+interface CompatibleReasoningRewriteState {
+  inReasoning: boolean;
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isFlexibleSchemaLike(value: unknown): value is FlexibleSchema<unknown> {
+  if (typeof value === "function") {
+    return true;
+  }
+
+  if (!isObject(value)) {
+    return false;
+  }
+
+  return AI_SDK_SCHEMA_SYMBOL in value || "~standard" in value;
+}
+
+function normalizeToolInputSchema(inputSchema: unknown): FlexibleSchema<unknown> {
+  if (isFlexibleSchemaLike(inputSchema)) {
+    return inputSchema;
+  }
+
+  if (isObject(inputSchema)) {
+    return jsonSchema(inputSchema);
+  }
+
+  return jsonSchema({
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  });
 }
 
 function isLegacyRole(value: unknown): value is LegacyRole {
@@ -98,8 +148,274 @@ function isDynamicToolPart(value: unknown): value is DynamicToolPart {
   );
 }
 
-function shouldUseCompatibleMode(providerType: string): boolean {
-  return providerType !== "openai-response";
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function cloneJsonValue<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export function shouldUseCompatibleReasoningBridge(
+  options: CompatibleReasoningBridgeOptions,
+): boolean {
+  const normalizedType = (options.providerType ?? "openai").trim().toLowerCase();
+  const normalizedBaseURL = (options.baseURL ?? "").trim().toLowerCase();
+  const normalizedModelId = (options.modelId ?? "").trim().toLowerCase();
+
+  return (
+    normalizedType === "openai" &&
+    normalizedBaseURL.includes(NVIDIA_COMPAT_BASE_URL_TOKEN) &&
+    NVIDIA_REASONING_MODEL_PREFIXES.some((prefix) => normalizedModelId.startsWith(prefix))
+  );
+}
+
+export function patchCompatibleThinkingRequestBody(
+  bodyText: string,
+  options: CompatibleReasoningBridgeOptions,
+): string {
+  if (!shouldUseCompatibleReasoningBridge(options) || options.isThink === undefined) {
+    return bodyText;
+  }
+
+  try {
+    const parsed = JSON.parse(bodyText) as unknown;
+    if (!isObjectRecord(parsed)) {
+      return bodyText;
+    }
+
+    if ("thinking" in parsed) {
+      return bodyText;
+    }
+
+    const normalizedModelId = (options.modelId ?? "").trim().toLowerCase();
+    const glmThinkingControls = normalizedModelId.startsWith("z-ai/")
+      ? {
+          chat_template_kwargs: options.isThink
+            ? {
+                enable_thinking: true,
+                clear_thinking: false,
+              }
+            : {
+                enable_thinking: false,
+              },
+        }
+      : {};
+
+    return JSON.stringify({
+      ...parsed,
+      ...glmThinkingControls,
+      thinking: {
+        type: options.isThink ? "enabled" : "disabled",
+      },
+    });
+  } catch {
+    return bodyText;
+  }
+}
+
+function createCompatibleTextDeltaPayload(
+  template: Record<string, unknown>,
+  content: string,
+): string {
+  const nextPayload = cloneJsonValue(template);
+  const choices = Array.isArray(nextPayload.choices)
+    ? nextPayload.choices as Array<Record<string, unknown>>
+    : [];
+  const firstChoice = choices[0];
+
+  if (!firstChoice) {
+    return JSON.stringify({
+      choices: [{ index: 0, delta: { content }, finish_reason: null }],
+    });
+  }
+
+  const nextChoice = firstChoice;
+  const nextDelta = isObjectRecord(nextChoice.delta)
+    ? cloneJsonValue(nextChoice.delta)
+    : {};
+
+  delete nextDelta.reasoning_content;
+  nextDelta.content = content;
+
+  nextChoice.delta = nextDelta;
+  nextChoice.finish_reason = null;
+
+  return JSON.stringify(nextPayload);
+}
+
+export function rewriteCompatibleReasoningSsePayload(
+  payload: string,
+  state: CompatibleReasoningRewriteState,
+): string[] {
+  if (payload === "[DONE]") {
+    if (!state.inReasoning) {
+      return [payload];
+    }
+
+    state.inReasoning = false;
+    return [
+      JSON.stringify({
+        choices: [{ index: 0, delta: { content: "</think>" }, finish_reason: null }],
+      }),
+      payload,
+    ];
+  }
+
+  try {
+    const parsed = JSON.parse(payload) as Record<string, unknown>;
+    const choices = Array.isArray(parsed.choices)
+      ? parsed.choices as Array<Record<string, unknown>>
+      : [];
+    const firstChoice = choices[0];
+    const delta = firstChoice && isObjectRecord(firstChoice.delta)
+      ? firstChoice.delta
+      : null;
+
+    if (!delta) {
+      return [payload];
+    }
+
+    const reasoningContent =
+      typeof delta.reasoning_content === "string" ? delta.reasoning_content : "";
+    const content = typeof delta.content === "string" ? delta.content : "";
+    const rewrittenPayloads: string[] = [];
+
+    if (reasoningContent.length > 0) {
+      const prefix = state.inReasoning ? "" : "<think>";
+      rewrittenPayloads.push(
+        createCompatibleTextDeltaPayload(parsed, `${prefix}${reasoningContent}`),
+      );
+      state.inReasoning = true;
+    }
+
+    if (content.length > 0) {
+      const prefix = state.inReasoning ? "</think>" : "";
+      rewrittenPayloads.push(
+        createCompatibleTextDeltaPayload(parsed, `${prefix}${content}`),
+      );
+      state.inReasoning = false;
+    }
+
+    if (rewrittenPayloads.length === 0) {
+      return [payload];
+    }
+
+    return rewrittenPayloads;
+  } catch {
+    return [payload];
+  }
+}
+
+function resolveRequestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") {
+    return input;
+  }
+
+  if (input instanceof URL) {
+    return input.toString();
+  }
+
+  return input.url;
+}
+
+function isChatCompletionsRequest(url: string): boolean {
+  try {
+    return new URL(url).pathname.endsWith("/chat/completions");
+  } catch {
+    return url.includes("/chat/completions");
+  }
+}
+
+function transformCompatibleReasoningResponse(response: Response): Response {
+  if (!response.body) {
+    return response;
+  }
+
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  const state: CompatibleReasoningRewriteState = { inReasoning: false };
+  let buffer = "";
+
+  const transformedBody = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const reader = response.body!.getReader();
+
+      const flushLine = (rawLine: string) => {
+        const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
+        if (!line.startsWith("data: ")) {
+          controller.enqueue(encoder.encode(`${line}\n`));
+          return;
+        }
+
+        const payload = line.slice(6);
+        const nextPayloads = rewriteCompatibleReasoningSsePayload(payload, state);
+        for (const nextPayload of nextPayloads) {
+          controller.enqueue(encoder.encode(`data: ${nextPayload}\n`));
+        }
+      };
+
+      const pump = async (): Promise<void> => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            if (buffer.length > 0) {
+              flushLine(buffer);
+            }
+            controller.close();
+            return;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          let newlineIndex = buffer.indexOf("\n");
+          while (newlineIndex !== -1) {
+            const line = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + 1);
+            flushLine(line);
+            newlineIndex = buffer.indexOf("\n");
+          }
+        }
+      };
+
+      void pump().catch((error) => {
+        controller.error(error);
+      });
+    },
+  });
+
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+
+  return new Response(transformedBody, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function createCompatibleReasoningFetch(
+  options: CompatibleReasoningBridgeOptions & { fetchImpl: typeof fetch },
+): typeof fetch {
+  return async (input, init) => {
+    const requestUrl = resolveRequestUrl(input);
+    const nextInit = { ...init };
+
+    if (isChatCompletionsRequest(requestUrl) && typeof nextInit.body === "string") {
+      nextInit.body = patchCompatibleThinkingRequestBody(nextInit.body, options);
+    }
+
+    const response = await options.fetchImpl(input, nextInit);
+
+    if (
+      !isChatCompletionsRequest(requestUrl) ||
+      !response.body ||
+      !response.headers.get("content-type")?.includes("text/event-stream")
+    ) {
+      return response;
+    }
+
+    return transformCompatibleReasoningResponse(response);
+  };
 }
 
 function buildSystemInstructions(options: {
@@ -112,7 +428,10 @@ function buildSystemInstructions(options: {
     `Current local time: ${now.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
     "Local timezone: Asia/Shanghai",
     "",
-    "When using any tool (like get_current_time), you MUST explicitly provide the 'timezone' parameter as \"Asia/Shanghai\" unless the user asks for a different one. DO NOT leave required parameters empty.",
+    "[Tool Rules]",
+    "Only use tools when the user asks for real-world, current, or external information, or when a tool is strictly necessary to complete the request.",
+    "Do NOT use tools for pure reasoning, math, writing, translation, or summarization tasks that you can answer directly.",
+    "If you use a tool that requires a timezone parameter, you MUST explicitly provide it as \"Asia/Shanghai\" unless the user asks for a different timezone. DO NOT leave required parameters empty.",
   ];
 
   if (options.isThink) {
@@ -293,7 +612,7 @@ function buildValidationTools(clientTools: unknown): ValidationToolMap {
 
     runtimeTools[descriptor.name] = dynamicTool({
       description: descriptor.description,
-      inputSchema: descriptor.inputSchema as FlexibleSchema<unknown>,
+      inputSchema: normalizeToolInputSchema(descriptor.inputSchema),
       execute: async () => {
         throw new Error(
           `Client-side MCP tool "${descriptor.name}" cannot be executed on the server.`,
@@ -321,7 +640,9 @@ function buildStreamTools(clientTools: unknown): StreamToolMap {
 
     runtimeTools[descriptor.name] = tool({
       description: descriptor.description,
-      inputSchema: descriptor.inputSchema as Parameters<typeof tool>[0]["inputSchema"],
+      inputSchema: normalizeToolInputSchema(
+        descriptor.inputSchema,
+      ) as Parameters<typeof tool>[0]["inputSchema"],
     });
   }
 
@@ -351,16 +672,33 @@ export async function POST(req: Request) {
     const resolvedType = providerType ?? "openai";
     const resolvedBaseURL = baseURL || "https://api.openai.com/v1";
     const resolvedModelId = modelId || "gpt-4o-mini";
-    const useCompatibleMode = shouldUseCompatibleMode(resolvedType);
-
-    const provider = createOpenAI({
-      apiKey,
+    const compatibleReasoningBridgeEnabled = shouldUseCompatibleReasoningBridge({
       baseURL: resolvedBaseURL,
+      modelId: resolvedModelId,
+      providerType: resolvedType,
     });
 
-    const model = useCompatibleMode
-      ? provider.chat(resolvedModelId)
-      : provider(resolvedModelId);
+    const baseModel = createProviderLanguageModel({
+      apiKey,
+      baseURL: resolvedBaseURL,
+      fetchImpl: compatibleReasoningBridgeEnabled
+        ? createCompatibleReasoningFetch({
+            baseURL: resolvedBaseURL,
+            fetchImpl: fetch,
+            isThink,
+            modelId: resolvedModelId,
+            providerType: resolvedType,
+          })
+        : undefined,
+      modelId: resolvedModelId,
+      providerType: resolvedType,
+    });
+    const model = compatibleReasoningBridgeEnabled
+      ? wrapLanguageModel({
+          model: baseModel,
+          middleware: extractReasoningMiddleware({ tagName: "think" }),
+        })
+      : baseModel;
 
     const normalizedMessages = normalizeIncomingMessages(messages);
     const validationTools = buildValidationTools(clientTools);
@@ -370,7 +708,10 @@ export async function POST(req: Request) {
       tools: validationTools,
     });
     const modelMessages = await convertToModelMessages(
-      validatedMessages.map(({ id: _id, ...messageWithoutId }) => messageWithoutId),
+      validatedMessages.map(({ id, ...messageWithoutId }) => {
+        void id;
+        return messageWithoutId;
+      }),
       { tools: validationTools },
     );
 
@@ -381,7 +722,9 @@ export async function POST(req: Request) {
       tools: streamTools,
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({
+      generateMessageId: generateResponseMessageId,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[API /chat] Error in /api/chat:", message);

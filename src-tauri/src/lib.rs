@@ -28,8 +28,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            mcp::start_mcp_server,
-            mcp::send_mcp_message,
             mcp::mcp_list_tools,
             mcp::mcp_call_tool,
             commands::db_get_config,

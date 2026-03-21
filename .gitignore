@@ -46,12 +46,16 @@ next-env.d.ts
 
 # Database
 banana.db*
+src-tauri/*.db*
 
 # IDE and Editor
 .idea/
 .vscode/
 *.swp
 *.swo
+
+# Local worktrees and automation sandboxes
+.worktrees/
 
 # AI Plugins and Tools
 .gemini/
