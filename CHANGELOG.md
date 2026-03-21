@@ -11,6 +11,7 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 ### Fixed
 
 - Pin the GitHub Release workflow to `tauri-apps/tauri-action@action-v0.6.2` because the upstream `v1` ref is no longer resolvable. 将 GitHub Release 工作流固定到 `tauri-apps/tauri-action@action-v0.6.2`，因为上游 `v1` 引用已无法解析。
+- Switch the Intel macOS release runner from `macos-13` to `macos-15-intel` because GitHub no longer supports the old hosted runner label for this repository. 将 Intel macOS 发版 runner 从 `macos-13` 切换到 `macos-15-intel`，因为 GitHub 已不再为当前仓库支持旧的托管 runner 标签。
 
 ## [0.1.0] - 2026-03-21
 

@@ -70,7 +70,7 @@ jobs:
             bundle-label: macos-apple-silicon
             args: "--target aarch64-apple-darwin"
             rust-target: aarch64-apple-darwin
-          - os: macos-13
+          - os: macos-15-intel
             bundle-label: macos-intel
             args: "--target x86_64-apple-darwin"
             rust-target: x86_64-apple-darwin
