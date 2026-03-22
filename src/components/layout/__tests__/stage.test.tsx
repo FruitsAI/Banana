@@ -16,6 +16,16 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
 }));
 
 const {
+  mockWindowClose,
+  mockWindowMinimize,
+  mockWindowToggleMaximize,
+} = vi.hoisted(() => ({
+  mockWindowClose: vi.fn(async () => undefined),
+  mockWindowMinimize: vi.fn(async () => undefined),
+  mockWindowToggleMaximize: vi.fn(async () => undefined),
+}));
+
+const {
   mockEnsureProviderModelsReady,
   mockEnsureProvidersReady,
   mockGetActiveModelSelection,
@@ -77,6 +87,14 @@ vi.mock("@/components/ui/button", () => ({
     children,
     ...props
   }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
+}));
+
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({
+    close: mockWindowClose,
+    minimize: mockWindowMinimize,
+    toggleMaximize: mockWindowToggleMaximize,
+  }),
 }));
 
 vi.mock("@/lib/utils", () => ({
@@ -148,6 +166,14 @@ const userMessage: ChatMessage = {
 };
 
 describe("Titlebar", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", {
+      configurable: true,
+      value: undefined,
+      writable: true,
+    });
+  });
+
   it("renders native window controls inside the branded drag region", () => {
     render(<Titlebar />);
 
@@ -157,6 +183,26 @@ describe("Titlebar", () => {
     expect(screen.getByLabelText("最小化窗口")).toBeInTheDocument();
     expect(screen.getByLabelText("调整窗口")).toBeInTheDocument();
     expect(screen.getByText("Banana")).toBeInTheDocument();
+  });
+
+  it("routes the traffic-light controls to the current tauri window", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", {
+      configurable: true,
+      value: {},
+      writable: true,
+    });
+
+    render(<Titlebar />);
+
+    fireEvent.click(screen.getByLabelText("关闭窗口"));
+    fireEvent.click(screen.getByLabelText("最小化窗口"));
+    fireEvent.click(screen.getByLabelText("调整窗口"));
+
+    await waitFor(() => {
+      expect(mockWindowClose).toHaveBeenCalledTimes(1);
+      expect(mockWindowMinimize).toHaveBeenCalledTimes(1);
+      expect(mockWindowToggleMaximize).toHaveBeenCalledTimes(1);
+    });
   });
 });
 

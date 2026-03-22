@@ -18,7 +18,7 @@ function git(args) {
     cwd: repoRoot,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-  }).trim();
+  }).trimEnd();
 }
 
 function parseArguments(argv) {

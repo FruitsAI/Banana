@@ -23,7 +23,10 @@ export function parseGitStatusPaths(statusText) {
       .split(/\r?\n/u)
       .map((line) => line.trimEnd())
       .filter(Boolean)
-      .map((line) => line.slice(3).trim())
+      .map((line) => {
+        const match = line.match(/^(?:[ MADRCU?!]{1,2})\s+(.*)$/u);
+        return (match?.[1] ?? line).trim();
+      })
       .filter(Boolean)
       .map((pathText) => {
         const renamedPath = pathText.includes(" -> ")

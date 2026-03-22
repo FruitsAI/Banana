@@ -86,6 +86,7 @@ vi.mock("framer-motion", () => {
       delete domProps.animate;
       delete domProps.exit;
       delete domProps.initial;
+      delete domProps.layoutId;
       delete domProps.transition;
       delete domProps.whileHover;
       delete domProps.whileTap;
@@ -204,6 +205,8 @@ describe("ThreadsSidebar", () => {
       "data-material-role",
       "chrome",
     );
+    const selectedThreadButton = screen.getByRole("button", { name: /selected thread/i });
+    expect(selectedThreadButton).toHaveAttribute("aria-current", "page");
     expect(screen.getByText("selected thread").closest("[data-material-role]")).toHaveAttribute(
       "data-material-role",
       "content",
@@ -239,5 +242,51 @@ describe("ThreadsSidebar", () => {
       "data-empty-tone",
       "search",
     );
+  });
+
+  it("clamps the thread context menu and restores focus when dismissed with Escape", async () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 320,
+      writable: true,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 240,
+      writable: true,
+    });
+
+    mockUseChatStore.mockReturnValue({
+      loadThreads: vi.fn(async () => [
+        {
+          id: "thread-selected",
+          title: "selected thread",
+          model_id: "gpt-4o-mini",
+          created_at: "2026-03-20T10:00:00.000Z",
+          updated_at: "2026-03-20T10:00:00.000Z",
+        },
+      ]),
+      removeChatThread: vi.fn(),
+    });
+
+    render(<ThreadsSidebar />);
+
+    const threadButton = await screen.findByRole("button", { name: /selected thread/i });
+
+    fireEvent.contextMenu(threadButton, { clientX: 999, clientY: 999 });
+
+    const menu = await screen.findByRole("menu", { name: "会话操作" });
+    expect(Number.parseFloat(menu.style.left)).toBeLessThan(999);
+    expect(Number.parseFloat(menu.style.top)).toBeLessThan(999);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("menu", { name: "会话操作" })).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /selected thread/i })).toHaveFocus();
+    });
   });
 });

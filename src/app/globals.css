@@ -857,6 +857,40 @@
   .dot.green { background: #28c840; }
   
   .dot:hover { transform: scale(1.15); }
+
+  .titlebar-control {
+    transition:
+      transform 160ms var(--ease-out),
+      box-shadow 200ms var(--ease-out),
+      filter 180ms var(--ease-out);
+  }
+
+  .titlebar-control:hover {
+    transform: scale(1.08);
+    filter: saturate(1.04) brightness(1.01);
+  }
+
+  .titlebar-control:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--brand-primary) 32%, white);
+    outline-offset: 2px;
+  }
+
+  .titlebar-control-glyph {
+    color: rgba(15, 23, 42, 0.58);
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0;
+    transform: scale(0.75);
+    transition:
+      opacity 140ms var(--ease-out),
+      transform 140ms var(--ease-out);
+  }
+
+  .titlebar-control:is(:hover, :focus-visible) .titlebar-control-glyph {
+    opacity: 0.88;
+    transform: scale(1);
+  }
   
   .titlebar-search {
     flex: 1;
@@ -1034,12 +1068,18 @@
     }
   }
 
-  :root[data-platform="windows"] .titlebar {
+  :root[data-runtime="tauri"][data-platform="windows"] .titlebar {
     display: none !important;
   }
 
-  :root[data-platform="windows"] .content {
+  :root[data-runtime="tauri"][data-platform="windows"] .content {
     height: 100dvh !important;
+  }
+
+  :root[data-runtime="tauri"][data-platform="macos"] [data-titlebar-controls="custom"] {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-2px) scale(0.96);
   }
 
   /* ═══════════════════════════════════════════════════════════════════════

@@ -1,12 +1,43 @@
 "use client";
 
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { detectRuntimeEnvironment } from "@/lib/platform";
 
 const WINDOW_CONTROLS = [
-  { id: "close", label: "关闭窗口", tone: "#ff5f57" },
-  { id: "minimize", label: "最小化窗口", tone: "#febc2e" },
-  { id: "zoom", label: "调整窗口", tone: "#28c840" },
+  { id: "close", label: "关闭窗口", glyph: "×", tone: "#ff5f57" },
+  { id: "minimize", label: "最小化窗口", glyph: "−", tone: "#febc2e" },
+  { id: "zoom", label: "调整窗口", glyph: "+", tone: "#28c840" },
 ] as const;
+
+type WindowControlId = (typeof WINDOW_CONTROLS)[number]["id"];
+
+async function triggerWindowControl(control: WindowControlId) {
+  if (
+    typeof window === "undefined" ||
+    detectRuntimeEnvironment(window as Window & { __TAURI_INTERNALS__?: unknown }) !== "tauri"
+  ) {
+    return;
+  }
+
+  try {
+    const currentWindow = getCurrentWindow();
+
+    if (control === "close") {
+      await currentWindow.close();
+      return;
+    }
+
+    if (control === "minimize") {
+      await currentWindow.minimize();
+      return;
+    }
+
+    await currentWindow.toggleMaximize();
+  } catch (error) {
+    console.error("Failed to control current window:", error);
+  }
+}
 
 /**
  * @function Titlebar
@@ -34,7 +65,8 @@ export function Titlebar() {
 
       <div className="relative z-10 flex w-24 flex-shrink-0 items-center sm:w-28" data-tauri-drag-region="false">
         <div
-          className="flex items-center gap-2 rounded-full border px-2.5 py-1.5"
+          className="flex items-center gap-2 rounded-full border px-2.5 py-1.5 transition-[opacity,transform] duration-200"
+          data-titlebar-controls="custom"
           data-testid="titlebar-window-controls"
           style={{
             ...getMaterialSurfaceStyle("floating", "sm"),
@@ -47,14 +79,21 @@ export function Titlebar() {
             <button
               key={control.id}
               aria-label={control.label}
-              className="relative h-3.5 w-3.5 rounded-full border"
+              className="titlebar-control group relative flex h-3.5 w-3.5 items-center justify-center rounded-full border"
+              data-tauri-drag-region="false"
+              data-titlebar-control={control.id}
+              onClick={() => void triggerWindowControl(control.id)}
               style={{
                 background: `linear-gradient(180deg, rgba(255,255,255,0.38) 0%, ${control.tone} 100%)`,
                 borderColor: "rgba(15, 23, 42, 0.12)",
                 boxShadow: `0 0 0 1px rgba(255,255,255,0.18) inset, 0 6px 12px ${control.tone}22`,
               }}
               type="button"
-            />
+            >
+              <span aria-hidden="true" className="titlebar-control-glyph">
+                {control.glyph}
+              </span>
+            </button>
           ))}
         </div>
       </div>

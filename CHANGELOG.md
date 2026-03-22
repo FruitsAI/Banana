@@ -8,6 +8,18 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 
 ## [Unreleased]
 
+### Added
+
+- Add reusable platform detection helpers, pre-hydration runtime marking, and targeted desktop QA tests for titlebar and thread-sidebar behavior. 新增可复用的平台检测工具、预水合运行时标记，以及覆盖标题栏与线程侧边栏行为的桌面 QA 定向测试。
+
+### Changed
+
+- Refine the liquid-glass desktop titlebar with real Tauri window controls, hover glyph micro-interactions, and platform-aware chrome handling for macOS and Windows. 打磨液态玻璃桌面标题栏：接入真实 Tauri 窗口控制、补充 hover 字形微交互，并为 macOS 与 Windows 做平台感知的窗口 chrome 处理。
+
+### Fixed
+
+- Make thread rows keyboard-focusable and desktop-native, clamp the context menu to the viewport, support Escape dismissal, and restore focus after closing the menu. 将线程列表项改为可键盘聚焦的桌面化交互，限制右键菜单在视口内显示，支持 Escape 关闭，并在菜单收起后恢复焦点。
+
 ## [0.1.0] - 2026-03-21
 
 ### Added
