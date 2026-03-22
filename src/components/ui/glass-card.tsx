@@ -1,5 +1,13 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { IridescentBorder } from "@/components/ui/iridescent-border";
+import {
+  getMaterialSurfaceStyle,
+  type MaterialDepth,
+  type MaterialRole,
+} from "@/components/ui/material-surface";
+import { useAnimationIntensity } from "@/components/animation-intensity-provider";
 
 interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   iridescent?: boolean;
@@ -7,40 +15,38 @@ interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   /** 是否启用虹彩边框流动动画 */
   iridescentAnimated?: boolean;
   /** 玻璃深度等级：sm / md / lg */
-  depth?: "sm" | "md" | "lg";
+  depth?: MaterialDepth;
+  surface?: Exclude<MaterialRole, "chrome">;
 }
 
-const depthStyles: Record<string, string> = {
-  sm: "0 4px 16px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.55)",
-  md: "0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.6)",
-  lg: "0 16px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.65)",
-};
-
 export function GlassCard({
-  iridescent = true,
+  iridescent = false,
   iridescentOpacity = 0.35,
   iridescentAnimated = false,
   depth = "md",
+  surface = "content",
   className,
   children,
   style,
   ...props
 }: GlassCardProps) {
+  const { intensity } = useAnimationIntensity();
+  const allowAnimatedIridescence = iridescent && iridescentAnimated && intensity !== "low";
+
   return (
     <div
-      className={cn("relative overflow-hidden rounded-xl", className)}
+      className={cn("relative overflow-hidden rounded-xl border", className)}
+      data-material-role={surface}
+      data-iridescent={iridescent ? "true" : "false"}
+      data-iridescent-animated={allowAnimatedIridescence ? "true" : "false"}
       style={{
-        background: "var(--glass-surface)",
-        border: "1px solid var(--glass-border)",
-        boxShadow: depthStyles[depth],
-        backdropFilter: "blur(20px) saturate(200%) brightness(1.01)",
-        WebkitBackdropFilter: "blur(20px) saturate(200%) brightness(1.01)",
+        ...getMaterialSurfaceStyle(surface, depth),
         ...style,
       }}
       {...props}
     >
       {iridescent && (
-        <IridescentBorder opacity={iridescentOpacity} animated={iridescentAnimated} />
+        <IridescentBorder opacity={iridescentOpacity} animated={allowAnimatedIridescence} />
       )}
       {children}
     </div>

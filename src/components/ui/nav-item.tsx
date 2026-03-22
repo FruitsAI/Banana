@@ -1,7 +1,7 @@
 "use client";
 
-import type { ComponentProps } from "react";
-import { motion } from "framer-motion";
+import type { ComponentProps, ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,8 @@ interface NavItemProps {
   icon: ComponentProps<typeof HugeiconsIcon>["icon"];
   /** 显示文本 */
   label: string;
+  /** 辅助说明文本 */
+  description?: string;
   /** 是否处于激活状态 */
   isActive: boolean;
   /** 点击回调 */
@@ -22,6 +24,16 @@ interface NavItemProps {
   layoutId?: string;
   /** 额外 className */
   className?: string;
+  /** 右侧补充内容 */
+  accessory?: ReactNode;
+  /** 透传给底层 button 的附加语义属性 */
+  semanticProps?: {
+    "aria-controls"?: string;
+    "aria-selected"?: boolean;
+    id?: string;
+    role?: string;
+    type?: "button" | "submit" | "reset";
+  };
 }
 
 /**
@@ -32,26 +44,36 @@ interface NavItemProps {
 export function NavItem({
   icon,
   label,
+  description,
   isActive,
   onClick,
   layoutId = "navActiveIndicator",
   className,
+  accessory,
+  semanticProps,
 }: NavItemProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.button
       onClick={onClick}
+      {...semanticProps}
       className={cn(
-        "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200",
-        className
+        "material-interactive relative w-full border text-sm transition-all duration-200",
+        description
+          ? "flex items-start gap-3 rounded-2xl px-3.5 py-3 text-left"
+          : "flex items-center gap-3 rounded-xl px-3 py-2.5",
+        className,
       )}
+      data-active={isActive ? "true" : "false"}
+      data-hover-surface={isActive ? "accent" : "content"}
       style={{
         background: isActive ? "var(--brand-primary-lighter)" : "transparent",
+        borderColor: isActive ? "var(--brand-primary-border)" : "transparent",
         color: isActive ? "var(--brand-primary)" : "var(--text-secondary)",
       }}
-      whileHover={{
-        background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
-      }}
-      whileTap={{ scale: 0.99 }}
+      whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+      whileTap={shouldReduceMotion ? undefined : { scale: 0.99 }}
     >
       {/* 激活态边框动画 */}
       {isActive && (
@@ -63,13 +85,44 @@ export function NavItem({
         />
       )}
 
-      <HugeiconsIcon
-        icon={icon}
-        size={18}
-        style={{ color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)" }}
-      />
+      <div
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-xl border",
+          description ? "mt-0.5 h-9 w-9" : "h-8 w-8",
+        )}
+        style={{
+          background: isActive ? "var(--brand-primary-lightest)" : "var(--glass-subtle)",
+          borderColor: isActive ? "var(--brand-primary-border)" : "var(--glass-border)",
+        }}
+      >
+        <HugeiconsIcon
+          icon={icon}
+          size={description ? 18 : 17}
+          style={{ color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)" }}
+        />
+      </div>
 
-      <span className="font-medium">{label}</span>
+      {description ? (
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <span
+              className="font-medium"
+              style={{ color: isActive ? "var(--brand-primary)" : "var(--text-primary)" }}
+            >
+              {label}
+            </span>
+            {accessory}
+          </div>
+          <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-tertiary)" }}>
+            {description}
+          </p>
+        </div>
+      ) : (
+        <>
+          <span className="font-medium">{label}</span>
+          {accessory}
+        </>
+      )}
 
       {/* 左侧激活指示条动画 */}
       {isActive && (

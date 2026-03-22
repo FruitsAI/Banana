@@ -28,9 +28,10 @@ export function SelectionCard({ isActive, onClick, children, className }: Select
     <motion.button
       onClick={onClick}
       className={cn(
-        "relative rounded-xl border p-4 text-left transition-all duration-200",
+        "material-interactive relative rounded-xl border p-4 text-left transition-all duration-200",
         className
       )}
+      data-hover-surface={isActive ? "accent" : "content"}
       style={{
         background: isActive ? "var(--brand-primary-lighter)" : "var(--glass-surface)",
         borderColor: isActive ? "var(--brand-primary-border)" : "var(--glass-border)",
@@ -40,10 +41,6 @@ export function SelectionCard({ isActive, onClick, children, className }: Select
           ? undefined
           : {
               y: -2,
-              background: isActive ? "var(--brand-primary-light)" : "var(--glass-hover)",
-              borderColor: isActive
-                ? "var(--brand-primary-border-strong)"
-                : "var(--glass-border-strong)",
             }
       }
       whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}

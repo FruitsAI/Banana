@@ -18,6 +18,7 @@ import type { Model, Provider } from "@/domain/models/types";
 import { cn } from "@/lib/utils";
 import { getProviderIcon } from "@/components/icons/provider-icons";
 import { useModelsStore } from "@/stores/models/useModelsStore";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 
 const CAPABILITY_CONFIG: Record<string, { icon: typeof ViewIcon; color: string }> = {
   vision: { icon: ViewIcon, color: "var(--success)" },
@@ -234,14 +235,16 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
       <PopoverTrigger asChild>
         <button
           disabled={disabled || models.length === 0}
-          className="flex items-center justify-center h-8 sm:h-9 px-3 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-200"
+          className="material-interactive flex items-center justify-center h-8 sm:h-9 px-3.5 rounded-2xl text-xs font-semibold cursor-pointer border"
           style={{
-            background: "var(--brand-primary-light)",
-            color: "var(--brand-primary)",
+            ...getMaterialSurfaceStyle("accent", "sm"),
+            color: activeModel ? "var(--brand-primary)" : "var(--text-tertiary)",
             opacity: disabled || models.length === 0 ? 0.5 : 1,
             pointerEvents: disabled || models.length === 0 ? "none" : "auto",
-            border: "1px solid var(--brand-primary-border)",
           }}
+          data-testid="model-selector-trigger"
+          data-trigger-shape="pill"
+          data-hover-surface="accent"
           role="button"
           tabIndex={0}
           aria-label="选择模型"
@@ -251,20 +254,21 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
       </PopoverTrigger>
       
       <PopoverContent 
-        className="w-[450px] p-0 rounded-2xl border overflow-hidden" 
+        className="w-[450px] p-0 rounded-[24px] border overflow-hidden" 
         style={{ 
-          background: "var(--bg-elevated)", 
-          borderColor: "var(--glass-border)",
-          boxShadow: "var(--shadow-xl)",
+          ...getMaterialSurfaceStyle("floating", "lg"),
+          boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
         }}
         align="start"
-        sideOffset={12}
+        sideOffset={10}
+        data-testid="model-selector-popover"
+        data-material-role="floating"
+        data-surface-clarity="high"
       >
         <div className="p-3 border-b" style={{ borderColor: "var(--divider)" }}>
           <div className="search flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 border"
             style={{
-              background: "var(--glass-surface)",
-              borderColor: "var(--glass-border)",
+              ...getMaterialSurfaceStyle("floating", "sm"),
             }}
           >
             <HugeiconsIcon icon={Search01Icon} size={16} style={{ color: "var(--text-tertiary)" }} />
@@ -322,9 +326,13 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                           <div
                             key={model.id}
                             onClick={() => handleSelect(model.provider_id, model.id)}
-                            className="group flex items-center justify-between px-4 py-2.5 mx-2 rounded-xl cursor-pointer transition-colors"
+                            className="group material-interactive flex items-center justify-between px-4 py-2.5 mx-2 rounded-2xl cursor-pointer border"
+                            data-hover-surface={isSelected ? "accent" : "floating"}
                             style={{
-                              background: isSelected ? "var(--brand-primary-light)" : "transparent",
+                              ...getMaterialSurfaceStyle(isSelected ? "accent" : "floating", "sm"),
+                              borderColor: isSelected
+                                ? "var(--material-accent-border)"
+                                : "transparent",
                             }}
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">

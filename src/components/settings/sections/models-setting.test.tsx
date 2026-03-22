@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActiveModelSelection, Model, Provider } from "@/domain/models/types";
 import { ModelsSetting } from "./models-setting";
@@ -221,19 +221,7 @@ describe("ModelsSetting", () => {
       activeProviderId: "openai",
       activeModelId: "gpt-4o-mini",
     });
-    ensureProvidersReadyMock
-      .mockResolvedValueOnce([openaiProvider])
-      .mockResolvedValueOnce([
-        openaiProvider,
-        {
-          id: "nvidia",
-          name: "NVIDIA",
-          icon: "N",
-          is_enabled: true,
-          provider_type: "anthropic",
-          base_url: "https://api.anthropic.com/v1",
-        },
-      ]);
+    ensureProvidersReadyMock.mockResolvedValue([openaiProvider]);
     ensureProviderModelsReadyMock.mockImplementation(async (providerId: string) => {
       if (providerId === "openai") {
         return openaiModels;
@@ -268,12 +256,69 @@ describe("ModelsSetting", () => {
     removeModelMock.mockResolvedValue(undefined);
   });
 
+  it("renders the models workflow inside the shared settings shell hierarchy", async () => {
+    render(<ModelsSetting />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("settings-section-shell")).toHaveAttribute(
+        "data-material-role",
+        "floating",
+      );
+      expect(screen.getAllByTestId("settings-section-group").length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it("shows guided empty states when no provider has been configured yet", async () => {
+    loadActiveSelectionMock.mockResolvedValue({
+      activeProviderId: "",
+      activeModelId: "",
+    });
+    ensureProvidersReadyMock.mockResolvedValue([]);
+    ensureProviderModelsReadyMock.mockResolvedValue([]);
+    loadModelsByProviderMock.mockResolvedValue([]);
+
+    render(<ModelsSetting />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("models-connection-empty-state")).toBeInTheDocument();
+      expect(screen.getByTestId("models-library-empty-state")).toBeInTheDocument();
+    });
+  });
+
+  it("renders providers as a preference listbox and marks the default model in the detail pane", async () => {
+    render(<ModelsSetting />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("models-preferences-toolbar")).toBeInTheDocument();
+    });
+
+    const providerListbox = screen.getByRole("listbox", { name: "模型平台" });
+    const activeProviderOption = within(providerListbox).getByRole("option", { name: "OpenAI" });
+
+    expect(activeProviderOption).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("默认模型")).toBeInTheDocument();
+  });
+
   it("creates a provider with the correct default base url and selects it", async () => {
+    ensureProvidersReadyMock.mockReset();
+    ensureProvidersReadyMock.mockResolvedValue([openaiProvider]);
+
     render(<ModelsSetting />);
 
     await waitFor(() => {
       expect(ensureProviderModelsReadyMock).toHaveBeenCalledWith("openai");
     });
+    ensureProvidersReadyMock.mockResolvedValue([
+      openaiProvider,
+      {
+        id: "nvidia",
+        name: "NVIDIA",
+        icon: "N",
+        is_enabled: true,
+        provider_type: "anthropic",
+        base_url: "https://api.anthropic.com/v1",
+      },
+    ]);
     fireEvent.click(screen.getAllByRole("button", { name: "添加" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "提交提供商" }));
 

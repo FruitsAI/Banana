@@ -1,12 +1,13 @@
 import React from "react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ThreadsSidebar } from "@/components/layout/threads-sidebar";
 import type { Thread } from "@/domain/chat/types";
 
-const { mockUseChatStore, mockRouterPush } = vi.hoisted(() => ({
+const { mockUseChatStore, mockRouterPush, mockActiveThreadId } = vi.hoisted(() => ({
   mockUseChatStore: vi.fn(),
   mockRouterPush: vi.fn(),
+  mockActiveThreadId: { current: null as string | null },
 }));
 
 function createDeferred<T>() {
@@ -33,7 +34,7 @@ vi.mock("next/navigation", () => ({
     push: mockRouterPush,
   }),
   useSearchParams: () => ({
-    get: () => null,
+    get: () => mockActiveThreadId.current,
   }),
 }));
 
@@ -107,6 +108,7 @@ vi.mock("framer-motion", () => {
 describe("ThreadsSidebar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockActiveThreadId.current = null;
   });
 
   it("does not render a dead quick-actions footer button when no quick action surface exists", () => {
@@ -117,6 +119,11 @@ describe("ThreadsSidebar", () => {
 
     render(<ThreadsSidebar />);
 
+    expect(screen.getByTestId("threads-sidebar-toolbar")).toBeInTheDocument();
+    expect(screen.getByTestId("threads-sidebar-empty-state")).toHaveAttribute(
+      "data-empty-tone",
+      "guided",
+    );
     expect(screen.queryByText("快捷指令")).not.toBeInTheDocument();
   });
 
@@ -169,5 +176,68 @@ describe("ThreadsSidebar", () => {
 
     expect(screen.getByText("new thread")).toBeInTheDocument();
     expect(screen.queryByText("old thread")).not.toBeInTheDocument();
+  });
+
+  it("exposes shell roles and a dedicated selection indicator for the active thread", async () => {
+    mockActiveThreadId.current = "thread-selected";
+
+    mockUseChatStore.mockReturnValue({
+      loadThreads: vi.fn(async () => [
+        {
+          id: "thread-selected",
+          title: "selected thread",
+          model_id: "gpt-4o-mini",
+          created_at: "2026-03-20T10:00:00.000Z",
+          updated_at: "2026-03-20T10:00:00.000Z",
+        },
+      ]),
+      removeChatThread: vi.fn(),
+    });
+
+    render(<ThreadsSidebar />);
+
+    await waitFor(() => {
+      expect(screen.getByText("selected thread")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("threads-sidebar-shell")).toHaveAttribute(
+      "data-material-role",
+      "chrome",
+    );
+    expect(screen.getByText("selected thread").closest("[data-material-role]")).toHaveAttribute(
+      "data-material-role",
+      "content",
+    );
+    expect(screen.getByTestId("thread-selection-indicator")).toBeInTheDocument();
+  });
+
+  it("renders a guided search empty state instead of leaving the thread column blank", async () => {
+    mockUseChatStore.mockReturnValue({
+      loadThreads: vi.fn(async () => [
+        {
+          id: "thread-selected",
+          title: "banana planning",
+          model_id: "gpt-4o-mini",
+          created_at: "2026-03-20T10:00:00.000Z",
+          updated_at: "2026-03-20T10:00:00.000Z",
+        },
+      ]),
+      removeChatThread: vi.fn(),
+    });
+
+    render(<ThreadsSidebar />);
+
+    await waitFor(() => {
+      expect(screen.getByText("banana planning")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("搜索会话记录"), {
+      target: { value: "nothing" },
+    });
+
+    expect(screen.getByTestId("threads-sidebar-search-empty")).toHaveAttribute(
+      "data-empty-tone",
+      "search",
+    );
   });
 });

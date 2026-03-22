@@ -2,6 +2,7 @@ import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Stage } from "@/components/layout/stage";
+import { Titlebar } from "@/components/layout/titlebar";
 import type { ChatMessage } from "@/domain/chat/types";
 import type { ActiveModelSelection, Model, Provider } from "@/domain/models/types";
 
@@ -20,6 +21,7 @@ const {
   mockGetActiveModelSelection,
   mockInferModelCapabilities,
   mockSupportsNativeThinking,
+  mockUseAnimationIntensity,
 } = vi.hoisted(() => ({
   mockEnsureProviderModelsReady: vi.fn<(providerId: string) => Promise<Model[]>>(async () => []),
   mockEnsureProvidersReady: vi.fn(async (): Promise<Provider[]> => []),
@@ -29,6 +31,7 @@ const {
   })),
   mockInferModelCapabilities: vi.fn((): string[] => []),
   mockSupportsNativeThinking: vi.fn((): boolean => false),
+  mockUseAnimationIntensity: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -57,10 +60,7 @@ vi.mock("@/lib/model-settings", () => ({
 }));
 
 vi.mock("@/components/animation-intensity-provider", () => ({
-  useAnimationIntensity: () => ({
-    factors: { duration: 1, distance: 1, scale: 1 },
-    intensity: "medium",
-  }),
+  useAnimationIntensity: mockUseAnimationIntensity,
 }));
 
 vi.mock("@/components/models/model-selector", () => ({
@@ -147,9 +147,26 @@ const userMessage: ChatMessage = {
   createdAt: "2026-03-20T12:00:00.000Z",
 };
 
+describe("Titlebar", () => {
+  it("renders native window controls inside the branded drag region", () => {
+    render(<Titlebar />);
+
+    expect(screen.getByRole("banner")).toHaveAttribute("data-tauri-drag-region", "true");
+    expect(screen.getByTestId("titlebar-window-controls")).toBeInTheDocument();
+    expect(screen.getByLabelText("关闭窗口")).toBeInTheDocument();
+    expect(screen.getByLabelText("最小化窗口")).toBeInTheDocument();
+    expect(screen.getByLabelText("调整窗口")).toBeInTheDocument();
+    expect(screen.getByText("Banana")).toBeInTheDocument();
+  });
+});
+
 describe("Stage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAnimationIntensity.mockReturnValue({
+      factors: { duration: 1, distance: 1, scale: 1 },
+      intensity: "medium",
+    });
     Object.defineProperty(HTMLElement.prototype, "scrollTo", {
       configurable: true,
       value: vi.fn(),
@@ -398,6 +415,92 @@ describe("Stage", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/API Key 未配置/)).toBeInTheDocument();
+    });
+  });
+
+  it("treats the composer as the primary floating surface and quick actions as a secondary lane", async () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [],
+      append: vi.fn(),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    expect(screen.getByTestId("stage-empty-hero")).toHaveAttribute(
+      "data-stage-tone",
+      "workspace-welcome",
+    );
+    expect(screen.getByTestId("stage-composer")).toHaveAttribute(
+      "data-material-role",
+      "floating",
+    );
+    expect(screen.getByTestId("composer-send-control")).toContainElement(
+      screen.getByLabelText("发送消息"),
+    );
+    expect(screen.getByTestId("stage-quick-actions")).toHaveAttribute(
+      "data-stage-priority",
+      "secondary",
+    );
+  });
+
+  it("keeps composer controls reachable when the stage drops into reduced motion", async () => {
+    mockUseAnimationIntensity.mockReturnValue({
+      factors: { duration: 0.82, distance: 0.55, scale: 0.6 },
+      intensity: "low",
+    });
+
+    mockUseBananaChat.mockReturnValue({
+      messages: [],
+      append: vi.fn(),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    expect(screen.getByTestId("stage-composer")).toHaveAttribute(
+      "data-motion-mode",
+      "reduced",
+    );
+    expect(screen.getByTestId("composer-send-control")).toBeInTheDocument();
+    expect(screen.getByLabelText("切换联网搜索")).toBeInTheDocument();
+    expect(screen.getByLabelText("切换深度思考")).toBeInTheDocument();
+    expect(screen.getByLabelText("发送消息")).toBeInTheDocument();
+  });
+
+  it("keeps the composer toggles semantically pressed as their chrome changes", async () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [],
+      append: vi.fn(),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    const searchToggle = screen.getByLabelText("切换联网搜索");
+    const thinkingToggle = screen.getByLabelText("切换深度思考");
+
+    expect(searchToggle).toHaveAttribute("aria-pressed", "true");
+    expect(thinkingToggle).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(searchToggle);
+    await waitFor(() => {
+      expect(screen.getByLabelText("切换联网搜索")).toHaveAttribute("aria-pressed", "false");
+    });
+
+    fireEvent.click(screen.getByLabelText("切换深度思考"));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("切换深度思考")).toHaveAttribute("aria-pressed", "false");
     });
   });
 

@@ -1,16 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { McpServer } from "@/domain/mcp/types";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { NavItem } from "@/components/ui/nav-item";
-import { SidebarLayout } from "@/components/ui/sidebar-layout";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { useAnimationIntensity } from "@/components/animation-intensity-provider";
+import {
+  SettingsSectionGroup,
+  SettingsSectionShell,
+} from "@/components/settings/settings-section-shell";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Search01Icon,
   Refresh01Icon,
   Delete01Icon,
   Settings01Icon,
@@ -24,18 +28,14 @@ import { v4 as uuidv4 } from "uuid";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useToast } from "@/hooks/use-toast";
 import { useMcpStore } from "@/stores/mcp/useMcpStore";
-
-/**
- * McpSetting 组件 (MCP 服务器设置)
- * @description
- *   管理 Model Context Protocol (MCP) 服务器的配置。
- */
+import { createMotionPresets } from "@/lib/motion-presets";
+import { cn } from "@/lib/utils";
 
 interface McpProviderTab {
-  id: string;
+  id: "builtin" | "market";
   name: string;
-  icon: string;
-  type: "discover" | "provider";
+  icon: typeof McpServerIcon | typeof Store01Icon;
+  description: string;
 }
 
 interface McpMarketTemplate {
@@ -51,8 +51,18 @@ interface McpMarketTemplate {
 }
 
 const MCP_STAGES: McpProviderTab[] = [
-  { id: "builtin", name: "MCP 服务器", icon: "box", type: "discover" },
-  { id: "market", name: "市场", icon: "store", type: "discover" },
+  {
+    id: "builtin",
+    name: "MCP 服务器",
+    icon: McpServerIcon,
+    description: "管理已经接入 Banana 的工具服务器。",
+  },
+  {
+    id: "market",
+    name: "市场",
+    icon: Store01Icon,
+    description: "从内置模板快速创建新的 MCP 配置。",
+  },
 ];
 
 const MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
@@ -143,23 +153,33 @@ export function McpSetting() {
   const { loadServers: loadServersFromStore, removeServer, saveServer } = useMcpStore();
   const confirm = useConfirm();
   const toast = useToast();
+  const shouldReduceMotion = useReducedMotion();
+  const { factors, intensity } = useAnimationIntensity();
+
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
-  const [activeTabId, setActiveTabId] = useState("builtin");
-  
-  // 当前编辑的服务器状态
+  const [activeTabId, setActiveTabId] = useState<"builtin" | "market">("builtin");
   const [editingServer, setEditingServer] = useState<Partial<McpServer>>({});
+
+  const motionReduced = shouldReduceMotion || intensity === "low";
+  const motionDuration = (value: number) => Number((value * factors.duration).toFixed(3));
+  const motionDistance = (value: number) => Number((value * factors.distance).toFixed(3));
+  const motionScale = (value: number) =>
+    Number((1 - (1 - value) * factors.scale).toFixed(3));
+  const motionPresets = createMotionPresets({
+    reduced: motionReduced,
+    duration: motionDuration,
+    distance: motionDistance,
+    scale: motionScale,
+    scaleFactor: factors.scale,
+  });
 
   const loadServers = useCallback(async () => {
     try {
       setLoading(true);
-      // 添加人为延迟以确保动画可见
-      const [data] = await Promise.all([
-        loadServersFromStore(),
-        new Promise(resolve => setTimeout(resolve, 600))
-      ]);
+      const data = await loadServersFromStore();
       setServers(data);
     } catch (error) {
       console.error("Failed to load MCP servers:", error);
@@ -170,14 +190,14 @@ export function McpSetting() {
   }, [loadServersFromStore, toast]);
 
   useEffect(() => {
-    loadServers();
+    void loadServers();
   }, [loadServers]);
 
   const handleToggleEnable = async (server: McpServer, enabled: boolean) => {
     try {
       const updated = { ...server, is_enabled: enabled };
       await saveServer(updated);
-      setServers(prev => prev.map(s => s.id === server.id ? updated : s));
+      setServers((prev) => prev.map((item) => (item.id === server.id ? updated : item)));
     } catch (error) {
       console.error("Failed to toggle MCP server:", error);
       toast.error("更新服务器状态失败");
@@ -210,9 +230,9 @@ export function McpSetting() {
       const serverToSave = {
         ...editingServer,
         is_enabled: editingServer.is_enabled ?? true,
-        type: editingServer.type ?? "stdio"
+        type: editingServer.type ?? "stdio",
       } as McpServer;
-      
+
       await saveServer(serverToSave);
       await loadServers();
       setViewMode("list");
@@ -237,10 +257,10 @@ export function McpSetting() {
     });
 
     if (!accepted) return;
-    
+
     try {
       await removeServer(id);
-      setServers(prev => prev.filter(s => s.id !== id));
+      setServers((prev) => prev.filter((item) => item.id !== id));
       if (editingServer.id === id) {
         setEditingServer({});
         setViewMode("list");
@@ -252,229 +272,337 @@ export function McpSetting() {
     }
   };
 
-  // 左侧导航栏内容
-  const sidebar = (
-    <div className="flex-1 overflow-y-auto p-3 space-y-6 custom-scroll">
-      <div className="space-y-0.5">
-        {MCP_STAGES.map((cat) => (
-          <NavItem
-            key={cat.id}
-            icon={cat.icon === "box" ? McpServerIcon : Store01Icon}
-            label={cat.name}
-            isActive={activeTabId === cat.id}
-            onClick={() => { setActiveTabId(cat.id); setViewMode("list"); }}
-            layoutId="mcpNav"
-          />
-        ))}
-      </div>
+  const isDetailView = viewMode === "detail";
+  const isMarketView = activeTabId === "market";
+  const shellTitle = isDetailView
+    ? editingServer.name || "新建 MCP 服务器"
+    : isMarketView
+      ? "MCP 模板与市场"
+      : "MCP 服务器";
+  const shellDescription = isDetailView
+    ? "使用更像原生偏好设置的方式编辑启动命令、参数和环境变量，让工具配置保持清晰、安静且易于回溯。"
+    : isMarketView
+      ? "从内置模板开始，再在详情页按你的本机环境微调命令、目录和环境变量。"
+      : "把工具服务器整理进统一的偏好设置层级中，保留状态、命令和默认启用策略的清晰边界。";
+
+  const headerAccessory = isDetailView ? (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-8 rounded-xl px-3 text-xs"
+      onClick={() => setViewMode("list")}
+    >
+      <HugeiconsIcon icon={ArrowLeft01Icon} size={14} className="mr-1.5" />
+      返回列表
+    </Button>
+  ) : (
+    <div
+      className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium"
+      style={{
+        ...getMaterialSurfaceStyle("content", "sm"),
+        color: "var(--text-secondary)",
+      }}
+    >
+      {isMarketView ? `内置模板 ${MCP_MARKET_TEMPLATES.length}` : `已配置 ${servers.length}`}
     </div>
   );
 
-  // 右侧工作区内容
-  const content = viewMode === "list" ? (
-    activeTabId === "builtin" ? (
-      <div className="flex-1 flex flex-col h-full p-6">
-        <div className="flex flex-col gap-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
+  const detailStage = (
+    <>
+      <SettingsSectionGroup>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                MCP 服务器
-              </h2>
-              <HugeiconsIcon icon={Search01Icon} size={16} className="cursor-pointer" style={{ color: "var(--text-tertiary)" }} />
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                概览
+              </h3>
+              <HugeiconsIcon
+                icon={Settings01Icon}
+                size={16}
+                style={{ color: "var(--text-tertiary)" }}
+              />
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                aria-label="刷新 MCP 服务器"
-                className="flex items-center justify-center h-8 w-8 rounded-xl border cursor-pointer hover:bg-glass-hover transition-colors"
-                style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}
-                onClick={loadServers}
-                title="刷新服务器状态"
-              >
-                <HugeiconsIcon icon={Refresh01Icon} size={18} className={loading ? "animate-spin" : ""} style={{ color: "var(--text-tertiary)" }} />
-              </button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-xl px-4 text-xs font-medium border"
-                style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}
-                onClick={handleAddNew}
-              >
-                添加
-              </Button>
-            </div>
+            <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+              设置名称、启用状态和保存操作。当前版本仅支持本地 `stdio` 型 MCP 服务。
+            </p>
           </div>
 
-          {/* Server Card List */}
-          <div className="grid grid-cols-1 gap-4 overflow-y-auto h-full pb-10 custom-scroll">
-            {loading ? (
-              <div className="text-center py-20 text-sm text-[var(--text-tertiary)]">加载中...</div>
-            ) : servers.length === 0 ? (
-              <div className="text-center py-20 text-sm text-[var(--text-tertiary)] border border-dashed rounded-2xl">
-                暂无配置服务器，点击“添加”开始。
-              </div>
-            ) : (
-              servers.map((server) => (
-                <div
-                  key={server.id}
-                  className="rounded-xl p-5 border group relative"
-                  style={{ background: "var(--glass-surface)", borderColor: "var(--glass-border)" }}
-                >
-                  <div className="flex items-center justify-between">
-                    <h3
-                      className="text-base font-semibold cursor-pointer hover:underline truncate mr-2"
-                      style={{ color: "var(--text-primary)" }}
-                      onClick={() => handleEdit(server)}
-                    >
-                      {server.name}
-                    </h3>
-                    <div className="flex items-center gap-4">
-                      {/* 运行状态图标 */}
-                      <div 
-                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border transition-colors"
-                        style={{ 
-                          background: server.is_enabled ? "var(--success-lightest)" : "var(--glass-subtle)", 
-                          borderColor: server.is_enabled ? "var(--success)" : "var(--glass-border)",
-                          opacity: server.is_enabled ? 1 : 0.6
-                        }}
-                      >
-                        <HugeiconsIcon 
-                          icon={server.is_enabled ? CheckmarkCircle02Icon : UnavailableIcon} 
-                          size={12} 
-                          style={{ color: server.is_enabled ? "var(--success)" : "var(--text-quaternary)" }} 
-                        />
-                        <span className="text-[10px] font-semibold" style={{ color: server.is_enabled ? "var(--success)" : "var(--text-tertiary)" }}>
-                          {server.is_enabled ? "已运行" : "未启用"}
-                        </span>
-                      </div>
-
-                      <Switch 
-                        checked={server.is_enabled} 
-                        onCheckedChange={(checked) => handleToggleEnable(server, checked)}
-                      />
-                      <button
-                        type="button"
-                        aria-label={`删除 MCP 服务器 ${server.name}`}
-                        className="transition-colors hover:text-[var(--danger)]"
-                        style={{ color: "var(--danger)" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleDelete(server.id, server.name);
-                        }}
-                      >
-                        <HugeiconsIcon icon={Delete01Icon} size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`编辑 MCP 服务器 ${server.name}`}
-                        className="hover:text-[var(--brand-primary)]"
-                        style={{ color: "var(--text-tertiary)" }}
-                        onClick={() => handleEdit(server)}
-                      >
-                        <HugeiconsIcon icon={Settings01Icon} size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs mt-1 text-[var(--text-tertiary)] truncate">
-                    {server.description || "没有描述"}
-                  </p>
-                  <div className="flex gap-2 mt-4">
-                    <div
-                      className="text-[10px] flex items-center justify-center px-2 py-[2px] rounded-full font-mono font-medium border"
-                      style={{
-                        borderColor: "var(--brand-primary)",
-                        color: "var(--brand-primary)",
-                        background: "var(--brand-primary-lightest)",
-                      }}
-                    >
-                      {server.type.toUpperCase()}
-                    </div>
-                    <div className="text-[10px] flex items-center text-[var(--text-quaternary)] font-mono truncate max-w-[200px]">
-                      {server.command}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+          <div className="flex flex-col items-stretch gap-3 sm:items-end">
+            <label
+              className="inline-flex items-center justify-end gap-2 text-xs font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <span>启用</span>
+              <Switch
+                checked={editingServer.is_enabled ?? true}
+                onCheckedChange={(value) =>
+                  setEditingServer({ ...editingServer, is_enabled: value })
+                }
+              />
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 rounded-xl px-6"
+              onClick={() => {
+                void handleSave();
+              }}
+              disabled={saving}
+            >
+              {saving ? "保存中..." : "保存"}
+            </Button>
           </div>
         </div>
-      </div>
-    ) : (
-      <div className="flex-1 flex flex-col h-full p-6">
-        <div className="flex flex-col gap-6 h-full">
-          <div className="flex items-end justify-between gap-6">
-            <div className="space-y-1">
-              <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                MCP 市场
-              </h2>
-              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-                从内置模板快速创建服务器，随后仍可在详情页继续调整命令、参数和环境变量。
-              </p>
-            </div>
-            <div
-              className="shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium"
-              style={{
-                color: "var(--text-secondary)",
-                borderColor: "var(--glass-border)",
-                background: "var(--glass-surface)",
+
+        {editingServer.id ? (
+          <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--divider)" }}>
+            <button
+              type="button"
+              aria-label={`删除 MCP 服务器 ${editingServer.name || "当前服务器"}`}
+              className="inline-flex items-center gap-2 text-sm font-medium transition-colors"
+              style={{ color: "var(--danger)" }}
+              onClick={() => {
+                if (editingServer.id) {
+                  void handleDelete(editingServer.id, editingServer.name);
+                }
               }}
             >
-              内置模板 {MCP_MARKET_TEMPLATES.length}
-            </div>
+              <HugeiconsIcon icon={Delete01Icon} size={16} />
+              删除当前配置
+            </button>
+          </div>
+        ) : null}
+      </SettingsSectionGroup>
+
+      <SettingsSectionGroup>
+        <div className="mb-5">
+          <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            基础信息
+          </h3>
+          <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+            用清晰的名称和描述标记服务器的职责，减少之后在聊天或工具调用时的辨识成本。
+          </p>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-2">
+          <div className="space-y-2">
+            <Label
+              className="text-[13px] font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <span className="mr-1" style={{ color: "var(--danger)" }}>
+                *
+              </span>
+              名称
+            </Label>
+            <Input
+              value={editingServer.name || ""}
+              onChange={(event) =>
+                setEditingServer({ ...editingServer, name: event.target.value })
+              }
+              placeholder="例如：My Local Tools"
+              className="h-9"
+            />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 overflow-y-auto h-full pb-10 custom-scroll">
-            {MCP_MARKET_TEMPLATES.map((template) => (
-              <article
-                key={template.id}
-                className="group rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5"
-                style={{
-                  background: "var(--glass-surface)",
-                  borderColor: "var(--glass-border)",
-                  boxShadow: "0 20px 60px rgba(15, 23, 42, 0.04)",
-                }}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-3 min-w-0">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
-                        style={{
-                          background: "var(--brand-primary-lightest)",
-                          borderColor: "var(--brand-primary-border)",
-                        }}
-                      >
-                        <HugeiconsIcon icon={McpServerIcon} size={18} style={{ color: "var(--brand-primary)" }} />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-base font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-                          {template.name}
-                        </h3>
-                        <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--text-quaternary)" }}>
-                          {template.type}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                      {template.description}
-                    </p>
+          <div className="space-y-2">
+            <Label className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+              描述
+            </Label>
+            <Input
+              value={editingServer.description || ""}
+              onChange={(event) =>
+                setEditingServer({ ...editingServer, description: event.target.value })
+              }
+              placeholder="简单描述一下这个服务器的功能"
+              className="h-9"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-2">
+          <Label className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+            连接方式
+          </Label>
+          <div
+            className="rounded-2xl border px-4 py-4"
+            style={{
+              background: "var(--glass-subtle)",
+              borderColor: "var(--glass-border)",
+            }}
+          >
+            <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              标准输入 / 输出 (stdio)
+            </div>
+            <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-tertiary)" }}>
+              当前版本仅支持本地 `stdio` 型 MCP 服务，暂不提供 SSE 连接配置。
+            </p>
+          </div>
+        </div>
+      </SettingsSectionGroup>
+
+      <SettingsSectionGroup>
+        <div className="mb-5">
+          <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            启动命令
+          </h3>
+          <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+            把命令、参数和环境变量集中在一处编辑，让实际运行方式和可维护性保持一致。
+          </p>
+        </div>
+
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <Label className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+              <span className="mr-1" style={{ color: "var(--danger)" }}>
+                *
+              </span>
+              命令
+            </Label>
+            <Input
+              value={editingServer.command || ""}
+              onChange={(event) =>
+                setEditingServer({ ...editingServer, command: event.target.value })
+              }
+              placeholder="uvx, npx, node 或 可执行文件路径"
+              className="h-9 font-mono"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label
+              className="text-[13px] font-medium flex items-center gap-1.5"
+              style={{ color: "var(--text-primary)" }}
+            >
+              参数
+              <span className="cursor-help opacity-50" style={{ color: "var(--text-tertiary)" }}>
+                ⓘ
+              </span>
+            </Label>
+            <textarea
+              value={editingServer.args || ""}
+              onChange={(event) =>
+                setEditingServer({ ...editingServer, args: event.target.value })
+              }
+              className="custom-scroll min-h-[104px] w-full rounded-2xl border px-3 py-2 text-sm font-mono outline-none"
+              style={{
+                background: "var(--glass-subtle)",
+                borderColor: "var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+              placeholder={"arg1\narg2"}
+              spellCheck={false}
+              autoComplete="off"
+              autoCorrect="off"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label
+              className="text-[13px] font-medium flex items-center gap-1.5"
+              style={{ color: "var(--text-primary)" }}
+            >
+              环境变量
+              <span className="cursor-help opacity-50" style={{ color: "var(--text-tertiary)" }}>
+                ⓘ
+              </span>
+            </Label>
+            <textarea
+              value={editingServer.env_vars || ""}
+              onChange={(event) =>
+                setEditingServer({ ...editingServer, env_vars: event.target.value })
+              }
+              className="custom-scroll min-h-[104px] w-full rounded-2xl border px-3 py-2 text-sm font-mono outline-none"
+              style={{
+                background: "var(--glass-subtle)",
+                borderColor: "var(--glass-border)",
+                color: "var(--text-primary)",
+              }}
+              placeholder={"KEY1=value1\nKEY2=value2"}
+              spellCheck={false}
+              autoComplete="off"
+              autoCorrect="off"
+            />
+          </div>
+        </div>
+      </SettingsSectionGroup>
+    </>
+  );
+
+  const marketStage = (
+    <>
+      <SettingsSectionGroup>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              模板概览
+            </h3>
+            <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+              使用内置模板作为起点，随后进入详情页继续按本地路径、密钥和工具边界进行调整。
+            </p>
+          </div>
+
+          <div
+            className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium"
+            style={{
+              background: "var(--glass-subtle)",
+              borderColor: "var(--glass-border)",
+              color: "var(--text-tertiary)",
+            }}
+          >
+            stdio only
+          </div>
+        </div>
+      </SettingsSectionGroup>
+
+      <SettingsSectionGroup className="overflow-hidden p-0">
+        {MCP_MARKET_TEMPLATES.map((template, index) => (
+          <div
+            key={template.id}
+            className="px-5 py-5 sm:px-6"
+            style={{
+              borderTop: index === 0 ? "none" : "1px solid var(--divider)",
+            }}
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
+                    style={{
+                      background: "var(--brand-primary-lightest)",
+                      borderColor: "var(--brand-primary-border)",
+                    }}
+                  >
+                    <HugeiconsIcon
+                      icon={McpServerIcon}
+                      size={18}
+                      style={{ color: "var(--brand-primary)" }}
+                    />
                   </div>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 shrink-0 rounded-xl px-4 text-xs font-medium"
-                    style={{ background: "var(--glass-elevated)", borderColor: "var(--glass-border)" }}
-                    aria-label={`使用 ${template.name} 模板`}
-                    onClick={() => handleUseTemplate(template)}
-                  >
-                    使用模板
-                  </Button>
+                  <div className="min-w-0">
+                    <h3
+                      className="truncate text-sm font-semibold"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {template.name}
+                    </h3>
+                    <p
+                      className="text-[11px] uppercase tracking-[0.12em]"
+                      style={{ color: "var(--text-quaternary)" }}
+                    >
+                      {template.type}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <p className="mt-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                  {template.description}
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
                   {template.tags.map((tag) => (
                     <span
                       key={tag}
@@ -491,7 +619,7 @@ export function McpSetting() {
                 </div>
 
                 <div
-                  className="mt-4 rounded-xl border p-3 space-y-2"
+                  className="mt-4 rounded-2xl border px-4 py-3"
                   style={{
                     background: "var(--glass-subtle)",
                     borderColor: "var(--glass-border)",
@@ -500,186 +628,353 @@ export function McpSetting() {
                   <div className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
                     启动命令
                   </div>
-                  <div className="text-xs font-mono break-all" style={{ color: "var(--text-primary)" }}>
+                  <div className="mt-1 break-all text-xs font-mono" style={{ color: "var(--text-primary)" }}>
                     {getTemplateCommandPreview(template)}
                   </div>
                   {template.setupNote ? (
-                    <p className="text-[11px] leading-5" style={{ color: "var(--text-tertiary)" }}>
+                    <p className="mt-2 text-[11px] leading-5" style={{ color: "var(--text-tertiary)" }}>
                       {template.setupNote}
                     </p>
                   ) : null}
                 </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  ) : (
-    /* 详情表单视图 */
-    <div className="flex-1 flex flex-col h-full overflow-y-auto custom-scroll relative">
-      <div
-        className="sticky top-0 z-10 border-b p-4 px-6 flex items-center justify-between"
-        style={{
-          background: "var(--glass-surface)",
-          backdropFilter: "blur(20px) saturate(180%)",
-          borderColor: "var(--divider)",
-        }}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 rounded-full"
-          onClick={() => setViewMode("list")}
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={16} style={{ color: "var(--text-secondary)" }} />
-        </Button>
-      </div>
+              </div>
 
-      <div className="p-8 pt-6 max-w-4xl mx-auto w-full space-y-8 pb-20">
-        {/* Form Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-              {editingServer.name || "新建服务器"}
-            </h2>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0 rounded-xl px-4 text-xs font-medium"
+                aria-label={`使用 ${template.name} 模板`}
+                onClick={() => handleUseTemplate(template)}
+              >
+                使用模板
+              </Button>
+            </div>
+          </div>
+        ))}
+      </SettingsSectionGroup>
+    </>
+  );
+
+  const listStage = (
+    <>
+      <SettingsSectionGroup>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              已连接服务器
+            </h3>
+            <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+              用更克制的列表层级查看每个服务器的状态、命令和可编辑入口，让设置页更像原生工具偏好设置。
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              aria-label={`删除 MCP 服务器 ${editingServer.name || "当前服务器"}`}
-              className="hover:text-[var(--danger)]"
-              style={{ color: "var(--danger)" }}
-              onClick={() => {
-                if (editingServer.id) {
-                  void handleDelete(editingServer.id, editingServer.name);
-                }
+              aria-label="刷新 MCP 服务器"
+              className="flex h-8 w-8 items-center justify-center rounded-xl border transition-colors"
+              style={{
+                background: "var(--glass-surface)",
+                borderColor: "var(--glass-border)",
               }}
+              onClick={() => {
+                void loadServers();
+              }}
+              title="刷新服务器状态"
             >
-              <HugeiconsIcon icon={Delete01Icon} size={16} />
-            </button>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-[var(--text-tertiary)]">启用</span>
-              <Switch 
-                checked={editingServer.is_enabled} 
-                onCheckedChange={(v) => setEditingServer({...editingServer, is_enabled: v})}
+              <HugeiconsIcon
+                icon={Refresh01Icon}
+                size={18}
+                className={loading ? "animate-spin" : ""}
+                style={{ color: "var(--text-tertiary)" }}
               />
-            </div>
+            </button>
+
             <Button
-              onClick={handleSave}
-              disabled={saving}
+              type="button"
+              variant="outline"
               size="sm"
-              className="h-8 px-6 rounded-xl font-medium border-0"
-              style={{ background: "var(--brand-primary)", color: "white" }}
+              className="h-8 rounded-xl px-4 text-xs font-medium"
+              onClick={handleAddNew}
             >
-              {saving ? "保存中..." : "保存"}
+              添加
             </Button>
           </div>
         </div>
+      </SettingsSectionGroup>
 
-        {/* Navigation Tabs */}
-        <div className="border-b" style={{ borderColor: "var(--divider)" }}>
-          <div className="flex items-center gap-6">
-            <button
-              className="text-[13px] font-medium pb-3 px-1 border-b-2"
-              style={{ color: "var(--brand-primary)", borderColor: "var(--brand-primary)" }}
-            >
-              通用
-            </button>
+      <SettingsSectionGroup className="overflow-hidden p-0">
+        {loading ? (
+          <div className="px-5 py-14 text-center text-sm" style={{ color: "var(--text-tertiary)" }}>
+            加载中...
           </div>
-        </div>
-
-        {/* Form Fields */}
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <Label className="text-[13px] font-medium" style={{ color: "var(--text-secondary)" }}>
-              <span style={{ color: "var(--danger)" }} className="mr-1">*</span>名称
-            </Label>
-            <Input 
-              value={editingServer.name || ""} 
-              onChange={(e) => setEditingServer({...editingServer, name: e.target.value})}
-              placeholder="例如：My Local Tools" 
-              className="h-9" 
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>描述</Label>
-            <Input 
-              value={editingServer.description || ""} 
-              onChange={(e) => setEditingServer({...editingServer, description: e.target.value})}
-              placeholder="简单描述一下这个服务器的功能" 
-              className="h-9" 
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
-              连接方式
-            </Label>
-            <div
-              className="rounded-xl border px-3 py-3"
-              style={{
-                background: "var(--glass-subtle)",
-                borderColor: "var(--glass-border)",
-              }}
-            >
-              <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                标准输入 / 输出 (stdio)
+        ) : servers.length === 0 ? (
+          <div className="px-5 py-12 sm:px-6 sm:py-14">
+            <div className="mx-auto flex max-w-md flex-col items-center text-center">
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-[22px] border"
+                style={{
+                  background: "var(--brand-primary-lightest)",
+                  borderColor: "var(--brand-primary-border)",
+                }}
+              >
+                <HugeiconsIcon
+                  icon={McpServerIcon}
+                  size={24}
+                  style={{ color: "var(--brand-primary)" }}
+                />
               </div>
-              <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-tertiary)" }}>
-                当前版本仅支持本地 `stdio` 型 MCP 服务，暂不提供 SSE 连接配置。
+              <h4
+                className="mt-5 text-base font-semibold tracking-[-0.01em]"
+                style={{ color: "var(--text-primary)" }}
+              >
+                还没有 MCP 服务器
+              </h4>
+              <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                可以先创建一个空白配置，或者从市场模板开始，再把命令、路径和环境变量调整成你本机的实际工作方式。
               </p>
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9 rounded-xl px-4 text-sm"
+                  aria-label="添加空白配置"
+                  onClick={handleAddNew}
+                >
+                  添加空白配置
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-9 rounded-xl px-4 text-sm"
+                  aria-label="浏览模板"
+                  onClick={() => setActiveTabId("market")}
+                >
+                  浏览模板
+                </Button>
+              </div>
             </div>
           </div>
+        ) : (
+          servers.map((server, index) => (
+            <div
+              key={server.id}
+              className="px-5 py-4 sm:px-6"
+              style={{
+                borderTop: index === 0 ? "none" : "1px solid var(--divider)",
+              }}
+            >
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    className="min-w-0 text-left"
+                    onClick={() => handleEdit(server)}
+                  >
+                    <div
+                      className="truncate text-sm font-semibold transition-colors"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {server.name}
+                    </div>
+                    <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                      {server.description || "没有描述"}
+                    </p>
+                  </button>
 
-          <div className="space-y-2">
-            <Label className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
-              <span style={{ color: "var(--danger)" }} className="mr-1">*</span>命令
-            </Label>
-            <Input 
-              value={editingServer.command || ""} 
-              onChange={(e) => setEditingServer({...editingServer, command: e.target.value})}
-              placeholder="uvx, npx, node 或 可执行文件路径" 
-              className="h-9 font-mono" 
-            />
-          </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span
+                      className="rounded-full border px-2.5 py-1 text-[11px] font-medium"
+                      style={{
+                        borderColor: "var(--brand-primary-border)",
+                        color: "var(--brand-primary)",
+                        background: "var(--brand-primary-lightest)",
+                      }}
+                    >
+                      {server.type.toUpperCase()}
+                    </span>
+                    <span
+                      className="truncate text-[11px] font-mono"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {server.command}
+                    </span>
+                  </div>
+                </div>
 
-          <div className="space-y-2">
-            <Label className="text-[13px] font-medium flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-              参数 <span style={{ color: "var(--text-tertiary)" }} className="cursor-help opacity-50">ⓘ</span>
-            </Label>
-            <textarea
-              value={editingServer.args || ""}
-              onChange={(e) => setEditingServer({...editingServer, args: e.target.value})}
-              className="flex min-h-[80px] w-full rounded-xl border border-[var(--glass-border)] bg-[var(--glass-subtle)] px-3 py-2 text-sm custom-scroll font-mono outline-none"
-              style={{ background: "var(--glass-subtle)", color: "var(--text-primary)" }}
-              placeholder={"arg1\narg2"}
-              spellCheck={false}
-              autoComplete="off"
-              autoCorrect="off"
-            />
-          </div>
+                <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium"
+                    style={{
+                      background: server.is_enabled
+                        ? "var(--success-lightest)"
+                        : "var(--glass-subtle)",
+                      borderColor: server.is_enabled ? "var(--success)" : "var(--glass-border)",
+                      color: server.is_enabled ? "var(--success)" : "var(--text-tertiary)",
+                    }}
+                  >
+                    <HugeiconsIcon
+                      icon={server.is_enabled ? CheckmarkCircle02Icon : UnavailableIcon}
+                      size={12}
+                    />
+                    <span>{server.is_enabled ? "已运行" : "未启用"}</span>
+                  </div>
 
-          <div className="space-y-2">
-            <Label className="text-[13px] font-medium flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-              环境变量 <span style={{ color: "var(--text-tertiary)" }} className="cursor-help opacity-50">ⓘ</span>
-            </Label>
-            <textarea
-              value={editingServer.env_vars || ""}
-              onChange={(e) => setEditingServer({...editingServer, env_vars: e.target.value})}
-              className="flex min-h-[80px] w-full rounded-xl border border-[var(--glass-border)] bg-[var(--glass-subtle)] px-3 py-2 text-sm custom-scroll font-mono placeholder:text-muted-foreground/40 outline-none"
-              style={{ background: "var(--glass-subtle)", color: "var(--text-primary)" }}
-              placeholder={"KEY1=value1\nKEY2=value2"}
-              spellCheck={false}
-              autoComplete="off"
-              autoCorrect="off"
-            />
+                  <Switch
+                    checked={server.is_enabled}
+                    onCheckedChange={(checked) => {
+                      void handleToggleEnable(server, checked);
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    aria-label={`编辑 MCP 服务器 ${server.name}`}
+                    className="transition-colors"
+                    style={{ color: "var(--text-tertiary)" }}
+                    onClick={() => handleEdit(server)}
+                  >
+                    <HugeiconsIcon icon={Settings01Icon} size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label={`删除 MCP 服务器 ${server.name}`}
+                    className="transition-colors"
+                    style={{ color: "var(--danger)" }}
+                    onClick={() => {
+                      void handleDelete(server.id, server.name);
+                    }}
+                  >
+                    <HugeiconsIcon icon={Delete01Icon} size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </SettingsSectionGroup>
+    </>
+  );
+
+  const activeStageContent = isDetailView
+    ? detailStage
+    : isMarketView
+      ? marketStage
+      : listStage;
+
+  return (
+    <div className="h-full overflow-y-auto custom-scroll">
+      <div className="mx-auto max-w-5xl px-6 py-6">
+        <SettingsSectionShell
+          sectionId="mcp"
+          eyebrow="MCP"
+          title={shellTitle}
+          description={shellDescription}
+          headerAccessory={headerAccessory}
+        >
+          <div className="grid items-start gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
+            <SettingsSectionGroup className="overflow-hidden p-0">
+              <div className="px-5 pb-3 pt-5">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  浏览
+                </h3>
+                <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                  在已连接服务器和内置模板之间切换，保持工具入口和编辑工作区属于同一偏好设置场景。
+                </p>
+              </div>
+
+              <div className="border-t p-3" style={{ borderColor: "var(--divider)" }}>
+                <div className="space-y-1">
+                  {MCP_STAGES.map((stage) => {
+                    const isActive = activeTabId === stage.id;
+
+                    return (
+                      <button
+                        key={stage.id}
+                        aria-label={stage.name}
+                        type="button"
+                        className={cn(
+                          "material-interactive flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition-all duration-200",
+                          isActive ? "shadow-sm" : "",
+                        )}
+                        data-hover-surface={isActive ? "accent" : "content"}
+                        onClick={() => {
+                          setActiveTabId(stage.id as "builtin" | "market");
+                          setViewMode("list");
+                        }}
+                        style={{
+                          background: isActive ? "var(--brand-primary-lighter)" : "transparent",
+                          borderColor: isActive ? "var(--brand-primary-border)" : "transparent",
+                        }}
+                      >
+                        <div
+                          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
+                          style={{
+                            background: isActive ? "var(--brand-primary-lightest)" : "var(--glass-subtle)",
+                            borderColor: isActive ? "var(--brand-primary-border)" : "var(--glass-border)",
+                          }}
+                        >
+                          <HugeiconsIcon
+                            icon={stage.icon}
+                            size={18}
+                            style={{
+                              color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)",
+                            }}
+                          />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div
+                            className="text-sm font-medium"
+                            style={{
+                              color: isActive ? "var(--brand-primary)" : "var(--text-primary)",
+                            }}
+                          >
+                            {stage.name}
+                          </div>
+                          <p
+                            className="mt-1 text-xs leading-5"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            {stage.description}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </SettingsSectionGroup>
+
+            <div
+              data-testid="mcp-content-stage"
+              data-mcp-stage={activeTabId}
+              data-mcp-view-mode={viewMode}
+            >
+              <AnimatePresence initial={false} mode="wait">
+                <motion.div
+                  key={`${activeTabId}-${viewMode}`}
+                  className="space-y-5"
+                  data-motion-preset="panel"
+                  initial={motionPresets.panel.initial}
+                  animate={motionPresets.panel.animate}
+                  exit={
+                    motionReduced
+                      ? { opacity: 0.999, y: 0, scale: 1 }
+                      : { opacity: 0, y: motionDistance(-8), scale: motionScale(0.992) }
+                  }
+                  transition={motionPresets.panel.transition}
+                >
+                  {activeStageContent}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
+        </SettingsSectionShell>
       </div>
     </div>
   );
-
-  return <SidebarLayout sidebar={sidebar} content={content} />;
 }

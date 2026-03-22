@@ -10,7 +10,9 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
+import { SettingsSectionGroup, SettingsSectionShell } from "@/components/settings/settings-section-shell";
 import { SelectionCard } from "@/components/ui/selection-card";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 import type { AnimationIntensity } from "@/lib/animation-intensity";
 
 const THEME_OPTIONS = [
@@ -50,112 +52,161 @@ export function ThemeSetting() {
 
   if (!mounted) {
     return (
-      <div className="p-6">
-        <h2 className="text-lg font-semibold mb-6" style={{ color: "var(--text-primary)" }}>
-          外观设置
-        </h2>
-        <div className="flex gap-3">
-          {THEME_OPTIONS.map((item) => (
-            <div
-              key={item.id}
-              className="flex-1 min-h-[100px] rounded-xl border"
-              style={{
-                background: "var(--glass-surface)",
-                borderColor: "var(--glass-border)",
-              }}
-            />
-          ))}
+      <div className="h-full overflow-y-auto custom-scroll">
+        <div className="max-w-4xl mx-auto px-6 py-6">
+          <SettingsSectionShell
+            sectionId="theme"
+            eyebrow="Appearance"
+            title="外观设置"
+            description="根据当前环境切换主题与动效密度，让界面层级、亮度和反馈节奏更贴近系统。"
+          >
+            <SettingsSectionGroup>
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  主题
+                </h3>
+                <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                  选择浅色、深色或跟随系统。
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {THEME_OPTIONS.map((item) => (
+                  <div
+                    key={item.id}
+                    className="min-h-[116px] rounded-2xl border"
+                    style={{ ...getMaterialSurfaceStyle("floating", "sm") }}
+                  />
+                ))}
+              </div>
+            </SettingsSectionGroup>
+
+            <SettingsSectionGroup>
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  动画强度
+                </h3>
+                <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                  控制位移、缩放和持续反馈的整体强度。
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {INTENSITY_OPTIONS.map((item) => (
+                  <div
+                    key={item.id}
+                    className="min-h-[112px] rounded-2xl border"
+                    style={{ ...getMaterialSurfaceStyle("floating", "sm") }}
+                  />
+                ))}
+              </div>
+            </SettingsSectionGroup>
+          </SettingsSectionShell>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-8">
-      <section>
-        <h2 className="text-lg font-semibold mb-6" style={{ color: "var(--text-primary)" }}>
-          外观设置
-        </h2>
+    <div className="h-full overflow-y-auto custom-scroll">
+      <div className="max-w-4xl mx-auto px-6 py-6">
+        <SettingsSectionShell
+          sectionId="theme"
+          eyebrow="Appearance"
+          title="外观设置"
+          description="选择更适合当前环境的界面主题，让 Banana 的层级、亮度与材质反馈和系统节奏保持一致。"
+        >
+          <SettingsSectionGroup>
+            <div className="mb-5">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                主题
+              </h3>
+              <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                在浅色、深色和系统外观之间切换，让窗口材质与桌面环境自然融合。
+              </p>
+            </div>
 
-        <div className="flex gap-3">
-          {THEME_OPTIONS.map((item) => {
-            const isActive = theme === item.id;
-            return (
-              <SelectionCard
-                key={item.id}
-                isActive={isActive}
-                onClick={() => setTheme(item.id)}
-                className="flex-1 flex flex-col items-center justify-center gap-2 min-h-[100px]"
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{
-                    background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
-                  }}
-                >
-                  <HugeiconsIcon
-                    icon={item.icon}
-                    size={20}
-                    style={{
-                      color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)",
-                    }}
-                  />
-                </div>
-                <span
-                  className="text-xs font-medium"
-                  style={{
-                    color: isActive ? "var(--brand-primary)" : "var(--text-primary)",
-                  }}
-                >
-                  {item.label}
-                </span>
-              </SelectionCard>
-            );
-          })}
-        </div>
-      </section>
-
-      <section>
-        <h3 className="text-base font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-          动画强度
-        </h3>
-        <p className="text-xs mb-4" style={{ color: "var(--text-tertiary)" }}>
-          影响全局过渡、交互动效和动态反馈。
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {INTENSITY_OPTIONS.map((item) => {
-            const isActive = intensity === item.id;
-            const isSaving = savingIntensity === item.id;
-
-            return (
-              <SelectionCard
-                key={item.id}
-                isActive={isActive}
-                onClick={() => void handleIntensityChange(item.id)}
-                className="text-left min-h-[100px]"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span
-                    className="text-sm font-semibold"
-                    style={{ color: isActive ? "var(--brand-primary)" : "var(--text-primary)" }}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {THEME_OPTIONS.map((item) => {
+                const isActive = theme === item.id;
+                return (
+                  <SelectionCard
+                    key={item.id}
+                    isActive={isActive}
+                    onClick={() => setTheme(item.id)}
+                    className="flex min-h-[116px] flex-col items-center justify-center gap-3 rounded-2xl"
                   >
-                    {item.label}
-                  </span>
-                </div>
-                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                  {item.description}
-                </p>
-                {isSaving && (
-                  <span className="mt-2 inline-block text-[11px]" style={{ color: "var(--brand-primary)" }}>
-                    正在保存...
-                  </span>
-                )}
-              </SelectionCard>
-            );
-          })}
-        </div>
-      </section>
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-lg"
+                      style={{
+                        background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
+                      }}
+                    >
+                      <HugeiconsIcon
+                        icon={item.icon}
+                        size={20}
+                        style={{
+                          color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)",
+                        }}
+                      />
+                    </div>
+                    <span
+                      className="text-xs font-medium"
+                      style={{
+                        color: isActive ? "var(--brand-primary)" : "var(--text-primary)",
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                  </SelectionCard>
+                );
+              })}
+            </div>
+          </SettingsSectionGroup>
+
+          <SettingsSectionGroup>
+            <div className="mb-5">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                动画强度
+              </h3>
+              <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                影响全局过渡、交互动效和动态反馈。较低强度会减少位移与持续装饰动画，更适合长时间专注。
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {INTENSITY_OPTIONS.map((item) => {
+                const isActive = intensity === item.id;
+                const isSaving = savingIntensity === item.id;
+
+                return (
+                  <SelectionCard
+                    key={item.id}
+                    isActive={isActive}
+                    onClick={() => void handleIntensityChange(item.id)}
+                    className="min-h-[112px] rounded-2xl text-left"
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <span
+                        className="text-sm font-semibold"
+                        style={{ color: isActive ? "var(--brand-primary)" : "var(--text-primary)" }}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+                    <p className="text-xs leading-5" style={{ color: "var(--text-tertiary)" }}>
+                      {item.description}
+                    </p>
+                    {isSaving ? (
+                      <span className="mt-2 inline-block text-[11px]" style={{ color: "var(--brand-primary)" }}>
+                        正在保存...
+                      </span>
+                    ) : null}
+                  </SelectionCard>
+                );
+              })}
+            </div>
+          </SettingsSectionGroup>
+        </SettingsSectionShell>
+      </div>
     </div>
   );
 }

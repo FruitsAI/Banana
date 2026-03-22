@@ -11,6 +11,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 
 const navItems = [
   { id: "chats", icon: AiChat02Icon, label: "会话", path: "/" },
@@ -31,23 +32,20 @@ interface RailButtonProps {
 function RailButton({ icon, label, isActive = false, onClick, children }: RailButtonProps) {
   return (
     <motion.button
-      className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl relative overflow-hidden"
+      className="rail-button material-interactive w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-2xl relative overflow-hidden border"
+      data-active={isActive ? "true" : "false"}
+      data-hover-surface={isActive ? "accent" : "floating"}
       style={{
         background: isActive
-          ? "var(--brand-primary-light)"
+          ? "var(--material-accent-background)"
           : "transparent",
         color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)",
         boxShadow: isActive
-          ? "0 0 0 1px var(--brand-primary-border), 0 4px 12px var(--brand-primary-glow)"
+          ? "0 14px 34px var(--brand-primary-glow)"
           : "none",
+        borderColor: isActive ? "var(--material-accent-border)" : "transparent",
       }}
-      whileHover={{
-        background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
-        color: isActive ? "var(--brand-primary)" : "var(--text-secondary)",
-        boxShadow: isActive
-          ? "0 0 0 1px var(--brand-primary-border-strong), 0 6px 18px var(--brand-primary-glow)"
-          : "0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.4)",
-      }}
+      whileHover={{ y: -1 }}
       whileTap={{ scale: 0.93 }}
       title={label}
       aria-label={label}
@@ -68,7 +66,8 @@ function RailButton({ icon, label, isActive = false, onClick, children }: RailBu
       {/* 激活指示条：通过 layoutId 在多个按钮间共享平滑位移动画 */}
       {isActive && (
         <motion.div
-          className="absolute left-0 w-0.5 sm:w-1 h-4 sm:h-5 rounded-r-full"
+          className="absolute -bottom-1 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full"
+          data-active-indicator="true"
           style={{
             background: "var(--brand-primary)",
             boxShadow: "0 0 6px var(--brand-primary-glow)",
@@ -103,18 +102,27 @@ export function Rail() {
 
   return (
     <aside
-      className="w-14 sm:w-16 flex-shrink-0 flex flex-col items-center py-4 gap-2 relative"
+      className="w-16 sm:w-[72px] flex-shrink-0 flex flex-col items-center py-5 gap-3 relative"
+      data-material-role="chrome"
       style={{
-        background: "var(--glass-surface)",
-        backdropFilter: "blur(40px) saturate(200%) brightness(1.02)",
-        WebkitBackdropFilter: "blur(40px) saturate(200%) brightness(1.02)",
+        ...getMaterialSurfaceStyle("chrome", "md"),
         borderRight: "1px solid var(--divider)",
-        boxShadow: "2px 0 12px rgba(0,0,0,0.05)",
       }}
       aria-label="主导航"
     >
       {/* 主导航项 */}
-      <div className="flex flex-col gap-1 w-full items-center">
+      <div
+        className="flex w-full flex-col items-center gap-1.5 px-2"
+        data-testid="rail-primary-dock"
+      >
+        <div
+          className="flex w-full flex-col items-center gap-1.5 rounded-[24px] border px-2 py-2"
+          style={{
+            ...getMaterialSurfaceStyle("floating", "sm"),
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 100%), rgba(255,255,255,0.04)",
+          }}
+        >
         {navItems.map((item) => {
           const isActive =
             pathname === item.path || (item.path === "/" && pathname === "");
@@ -128,12 +136,22 @@ export function Rail() {
             />
           );
         })}
+        </div>
       </div>
 
       {/* Spacer */}
       <div className="flex-1" />
 
-      <div className="flex flex-col gap-2 w-full items-center">
+      <div className="flex w-full flex-col gap-2 items-center px-2">
+        <div
+          className="flex w-full flex-col items-center gap-2 rounded-[24px] border px-2 py-2"
+          data-testid="rail-utility-dock"
+          style={{
+            ...getMaterialSurfaceStyle("floating", "sm"),
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%), rgba(255,255,255,0.03)",
+          }}
+        >
         {/* 主题切换按钮 */}
         {mounted && (
           <RailButton
@@ -162,6 +180,7 @@ export function Rail() {
           isActive={isSettingsActive}
           onClick={() => router.push("/settings")}
         />
+        </div>
       </div>
     </aside>
   );

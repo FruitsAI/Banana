@@ -9,6 +9,16 @@ export interface MotionFactors {
   scale: number;
 }
 
+export interface MotionState {
+  intensity: AnimationIntensity;
+  factors: MotionFactors;
+  reduced: boolean;
+  mode: "standard" | "reduced";
+  decorativeLoops: boolean;
+  decorativeLoopPlayState: "running" | "paused";
+  decorativeOpacity: number;
+}
+
 export function normalizeAnimationIntensity(
   value: string | null | undefined
 ): AnimationIntensity {
@@ -30,3 +40,31 @@ export function getMotionFactors(intensity: AnimationIntensity): MotionFactors {
   }
 }
 
+export function isReducedMotionMode(
+  intensity: AnimationIntensity,
+  prefersReducedMotion = false
+): boolean {
+  return prefersReducedMotion || intensity === "low";
+}
+
+export function getMotionState(
+  intensity: AnimationIntensity,
+  prefersReducedMotion = false
+): MotionState {
+  const reduced = isReducedMotionMode(intensity, prefersReducedMotion);
+
+  return {
+    intensity,
+    factors: getMotionFactors(intensity),
+    reduced,
+    mode: reduced ? "reduced" : "standard",
+    decorativeLoops: !reduced,
+    decorativeLoopPlayState: reduced ? "paused" : "running",
+    decorativeOpacity:
+      intensity === "high"
+        ? 1.08
+        : intensity === "low" || reduced
+          ? 0.45
+          : 0.84,
+  };
+}

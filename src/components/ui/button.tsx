@@ -1,8 +1,16 @@
+"use client"
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { IridescentBorder } from "@/components/ui/iridescent-border"
+import {
+  getMaterialSurfaceStyle,
+  type MaterialRole,
+} from "@/components/ui/material-surface"
+import { useAnimationIntensity } from "@/components/animation-intensity-provider"
 
 /**
  * Button Component
@@ -51,59 +59,46 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  surface,
+  iridescent = false,
+  iridescentAnimated = false,
   children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    surface?: Exclude<MaterialRole, "chrome">
+    iridescent?: boolean
+    iridescentAnimated?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
   const isGlassEffect = variant === "glass" || variant === "outline" || variant === "secondary"
-  const glassBackground =
-    variant === "glass"
-      ? "var(--glass-elevated)"
-      : variant === "secondary"
-        ? "var(--glass-subtle)"
-        : "var(--glass-surface)"
+  const { intensity } = useAnimationIntensity()
+  const role =
+    surface ?? (variant === "glass" ? "floating" : variant === "secondary" ? "content" : "content")
+  const allowAnimatedIridescence = iridescent && iridescentAnimated && intensity !== "low"
 
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      data-material-role={isGlassEffect ? role : undefined}
+      data-iridescent={isGlassEffect ? String(iridescent) : undefined}
+      data-iridescent-animated={isGlassEffect ? String(allowAnimatedIridescence) : undefined}
       className={cn(buttonVariants({ variant, size, className }))}
       style={
         isGlassEffect
           ? {
-              background: glassBackground,
-              borderColor: "var(--glass-border)",
-              backdropFilter: "blur(20px) saturate(180%)",
-              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              ...getMaterialSurfaceStyle(role, variant === "glass" ? "md" : "sm"),
             }
           : undefined
       }
       {...props}
     >
-      {isGlassEffect && (
-        <>
-          <span 
-            className="absolute inset-0 rounded-[inherit] pointer-events-none opacity-30"
-            style={{
-              padding: "1px",
-              background: "var(--iridescent-border)",
-              WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-              WebkitMaskComposite: "xor",
-              maskComposite: "exclude",
-            }}
-          />
-          <span 
-            className="absolute inset-x-0 top-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-            style={{
-              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)",
-            }}
-          />
-        </>
-      )}
+      {isGlassEffect && iridescent ? (
+        <IridescentBorder opacity={0.28} animated={allowAnimatedIridescence} />
+      ) : null}
       <span className="relative z-10 inline-flex items-center gap-2">{children}</span>
     </Comp>
   )
