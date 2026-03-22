@@ -5,6 +5,7 @@ import { FeedbackProvider } from "@/components/feedback/feedback-provider";
 import { PlatformMarker } from "@/components/layout/platform-marker";
 import { Rail } from "@/components/layout/rail";
 import { Titlebar } from "@/components/layout/titlebar";
+import { LiquidGlassRuntimeProvider } from "@/components/liquid-glass-runtime-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FluidBackground } from "@/components/ui/fluid-background";
 import { buildPlatformMarkerScript } from "@/lib/platform";
@@ -35,16 +36,18 @@ export default function RootLayout({
           storageKey="banana-theme"
         >
           <AnimationIntensityProvider>
-            <FeedbackProvider>
-              <div className="window theme-transition" id="window">
-                <FluidBackground />
-                <Titlebar />
-                <div className="content">
-                  <Rail />
-                  {children}
+            <LiquidGlassRuntimeProvider>
+              <FeedbackProvider>
+                <div className="window theme-transition" id="window">
+                  <FluidBackground />
+                  <Titlebar />
+                  <div className="content">
+                    <Rail />
+                    {children}
+                  </div>
                 </div>
-              </div>
-            </FeedbackProvider>
+              </FeedbackProvider>
+            </LiquidGlassRuntimeProvider>
           </AnimationIntensityProvider>
         </ThemeProvider>
       </body>

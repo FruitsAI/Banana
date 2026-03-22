@@ -35,7 +35,7 @@ function GuidedEmptyState({
       style={{
         ...getMaterialSurfaceStyle("content", "sm"),
         background:
-          "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), rgba(255,255,255,0.04)",
+          "linear-gradient(180deg, color-mix(in srgb, var(--material-content-background) 94%, transparent) 0%, color-mix(in srgb, var(--material-floating-background) 92%, transparent) 100%)",
       }}
     >
       <div className="text-[10px] font-medium uppercase tracking-[0.18em]" style={{ color: "var(--text-tertiary)" }}>
@@ -125,7 +125,7 @@ export function ModelsSetting() {
                 style={{
                   ...getMaterialSurfaceStyle("content", "sm"),
                   background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 100%), var(--material-content-background)",
+                    "linear-gradient(180deg, color-mix(in srgb, var(--material-floating-background) 94%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 92%, transparent) 100%)",
                 }}
               >
                 <div className="pr-3 sm:border-r" style={{ borderColor: "var(--divider)" }}>
@@ -193,8 +193,8 @@ export function ModelsSetting() {
                       <div
                         className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em]"
                         style={{
-                          background: "var(--glass-subtle)",
-                          borderColor: "var(--glass-border)",
+                          background: "var(--material-floating-background)",
+                          borderColor: "var(--material-content-border)",
                           color: "var(--text-tertiary)",
                         }}
                       >
@@ -248,8 +248,8 @@ export function ModelsSetting() {
                     <div
                       className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium"
                       style={{
-                        background: "var(--glass-subtle)",
-                        borderColor: "var(--glass-border)",
+                        background: "var(--material-floating-background)",
+                        borderColor: "var(--material-content-border)",
                         color: "var(--text-tertiary)",
                       }}
                     >

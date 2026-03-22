@@ -187,11 +187,12 @@ export function AddModelDialog({
           }
           className="relative rounded-2xl border"
           style={{
-            background: "linear-gradient(145deg, var(--glass-overlay), var(--glass-surface))",
-            borderColor: "var(--glass-border-strong)",
-            boxShadow: "0 16px 48px var(--brand-primary-light)",
-            backdropFilter: "blur(20px) saturate(180%)",
-            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            background:
+              "linear-gradient(145deg, color-mix(in srgb, var(--material-floating-background) 96%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 94%, transparent) 100%)",
+            borderColor: "var(--material-content-border)",
+            boxShadow: "0 22px 54px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255,255,255,0.42)",
+            backdropFilter: "blur(24px) saturate(190%)",
+            WebkitBackdropFilter: "blur(24px) saturate(190%)",
           }}
         >
           <motion.div
@@ -207,20 +208,32 @@ export function AddModelDialog({
 
           <form className="relative space-y-6 px-6 pb-5 pt-6" onSubmit={(event) => void handleSubmit(event)}>
             <DialogHeader className="space-y-2 text-left">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border"
+                    style={{
+                      background: "var(--material-floating-background)",
+                      borderColor: "var(--material-content-border)",
+                      color: "var(--brand-primary)",
+                    }}
+                  >
+                    <HugeiconsIcon icon={Add01Icon} size={15} />
+                  </span>
+                  <DialogTitle className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+                    {dialogTitle}
+                  </DialogTitle>
+                </div>
                 <span
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border"
+                  className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
                   style={{
-                    background: "var(--glass-subtle)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--brand-primary)",
+                    background: "var(--material-floating-background)",
+                    borderColor: "var(--material-content-border)",
+                    color: "var(--text-tertiary)",
                   }}
                 >
-                  <HugeiconsIcon icon={Add01Icon} size={15} />
+                  Model
                 </span>
-                <DialogTitle className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-                  {dialogTitle}
-                </DialogTitle>
               </div>
               <DialogDescription
                 className="text-[13px]"
@@ -231,7 +244,12 @@ export function AddModelDialog({
             </DialogHeader>
 
             <motion.div
-              className="space-y-4"
+              className="space-y-4 rounded-2xl border px-4 py-4"
+              style={{
+                background:
+                  "linear-gradient(180deg, color-mix(in srgb, var(--material-floating-background) 92%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 94%, transparent) 100%)",
+                borderColor: "var(--material-content-border)",
+              }}
               initial={prefersReducedMotion ? false : "hidden"}
               animate={prefersReducedMotion ? undefined : "visible"}
               variants={{
@@ -260,6 +278,7 @@ export function AddModelDialog({
                   onChange={(event) => handleModelIdChange(event.target.value)}
                   placeholder="必填，例如 gpt-4o-mini"
                   className="h-10 text-sm md:text-sm"
+                  surface="floating"
                 />
               </motion.div>
 
@@ -281,6 +300,7 @@ export function AddModelDialog({
                   }}
                   placeholder="例如 GPT-4o Mini"
                   className="h-10 text-sm md:text-sm"
+                  surface="floating"
                 />
               </motion.div>
 
@@ -302,6 +322,7 @@ export function AddModelDialog({
                   }}
                   placeholder="例如 OpenAI"
                   className="h-10 text-sm md:text-sm"
+                  surface="floating"
                 />
               </motion.div>
             </motion.div>
@@ -310,7 +331,10 @@ export function AddModelDialog({
               <p className="text-xs font-medium text-[var(--danger)]">{errorMessage}</p>
             ) : null}
 
-            <DialogFooter className="pt-1 sm:justify-end">
+            <DialogFooter
+              className="border-t pt-4 sm:justify-end"
+              style={{ borderColor: "var(--divider)" }}
+            >
               <motion.div
                 whileHover={prefersReducedMotion ? undefined : { y: -1 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.985 }}
@@ -321,6 +345,7 @@ export function AddModelDialog({
                   variant="outline"
                   size="sm"
                   className="h-9 rounded-xl px-4 text-xs"
+                  surface="floating"
                   onClick={() => handleDialogOpenChange(false)}
                   disabled={isSubmitting}
                 >

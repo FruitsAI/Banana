@@ -56,57 +56,61 @@ export function ModelIcon({
   showBackground = true,
 }: ModelIconProps) {
   const n = modelName.toLowerCase();
+  const blendSurface = (color: string) =>
+    `color-mix(in srgb, ${color} 18%, var(--material-content-background))`;
 
-  let brandColor = "var(--glass-border)";
-  let bg = "transparent";
+  let brandColor = "var(--material-content-border)";
+  let bg = "var(--material-content-background)";
 
   // 色彩配置：定义品牌主色与背景辅助色
   if (n.includes("ollama")) {
     brandColor = "#222222";
-    bg = "#2222221a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("nvidia")) {
     brandColor = "#76B900";
-    bg = "#76B9001a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("qwen") || n.includes("tongyi")) {
     brandColor = "#615ced";
-    bg = "#615ced1a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("glm") || n.includes("zhipu") || n.includes("z-ai")) {
     brandColor = "#345ff0";
-    bg = "#345ff01a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("kimi") || n.includes("moonshot")) {
     brandColor = "#8b5cf6";
-    bg = "#8b5cf61a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("minimax") || n.includes("abab")) {
     brandColor = "#ff4d4f";
-    bg = "#ff4d4f1a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("llama") || n.includes("meta")) {
     brandColor = "#0668E1";
-    bg = "#0668E11a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("mistral")) {
     brandColor = "#f36900";
-    bg = "#f369001a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("doubao")) {
     brandColor = "#0066ff";
-    bg = "#0066ff1a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("deepseek")) {
     brandColor = "#4d6bfe";
-    bg = "#4d6bfe1a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("yi") || n.includes("01.ai") || n.includes("lingyi")) {
     brandColor = "#0033ff";
-    bg = "#0033ff1a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("openai")) {
     brandColor = "#10a37f";
-    bg = "#10a37f1a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("claude") || n.includes("anthropic")) {
     brandColor = "#d97757";
-    bg = "#d977571a";
+    bg = blendSurface(brandColor);
   } else if (n.includes("gemini") || n.includes("google")) {
     brandColor = "#4285f4";
-    bg = "#4285f41a";
+    bg = blendSurface(brandColor);
   }
 
   const containerSize = size + 12;
   const providerKey = getProviderIcon(modelName);
+  const defaultBorder = "color-mix(in srgb, var(--material-content-border) 72%, rgba(255,255,255,0.7))";
+  const highlightShadow = `0 0 0 1px color-mix(in srgb, ${brandColor} 40%, rgba(0,0,0,0.12))`;
 
   return (
     <div
@@ -117,15 +121,9 @@ export function ModelIcon({
       style={{
         width: containerSize,
         height: containerSize,
-        backgroundColor: showBackground
-          ? bg !== "transparent"
-            ? bg
-            : "var(--glass-surface)"
-          : "transparent",
-        border: showBorder 
-          ? `2px solid ${brandColor}` 
-          : "1px solid var(--glass-border)",
-        boxShadow: showBorder ? `0 0 0 1px ${brandColor}40` : "none",
+        backgroundColor: showBackground ? bg : "transparent",
+        border: showBorder ? `2px solid ${brandColor}` : `1px solid ${defaultBorder}`,
+        boxShadow: showBorder ? highlightShadow : "none",
       }}
     >
       {providerKey ? (
@@ -290,10 +288,15 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                 }
 
                 return (
-                  <div
+                <div
                     key={capability}
                     className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px]"
-                    style={{ background: "var(--glass-subtle)", color: "var(--text-secondary)" }}
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--material-content-background) 94%, rgba(15, 23, 42, 0.12))",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--material-content-border)",
+                    }}
                   >
                     <HugeiconsIcon icon={config.icon} size={12} /> {CAPABILITY_LABELS[capability] ?? capability}
                   </div>
@@ -361,14 +364,17 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                                       return null;
                                     }
                                     return (
-                                      <div
-                                        key={capability}
-                                        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
-                                        style={{
-                                          background: isSelected ? "var(--bg-white)" : "var(--glass-subtle)",
-                                          color: config.color,
-                                        }}
-                                      >
+                                        <div
+                                          key={capability}
+                                          className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
+                                          style={{
+                                            background: isSelected
+                                              ? "var(--bg-white)"
+                                              : "color-mix(in srgb, var(--material-content-background) 96%, rgba(15, 23, 42, 0.08))",
+                                            color: config.color,
+                                            border: "1px solid var(--material-content-border)",
+                                          }}
+                                        >
                                         <HugeiconsIcon icon={config.icon} size={12} />
                                       </div>
                                     );

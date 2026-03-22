@@ -6,6 +6,7 @@ import type { McpServer } from "@/domain/mcp/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NavItem } from "@/components/ui/nav-item";
 import { Switch } from "@/components/ui/switch";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
@@ -29,7 +30,6 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { useToast } from "@/hooks/use-toast";
 import { useMcpStore } from "@/stores/mcp/useMcpStore";
 import { createMotionPresets } from "@/lib/motion-presets";
-import { cn } from "@/lib/utils";
 
 interface McpProviderTab {
   id: "builtin" | "market";
@@ -291,6 +291,7 @@ export function McpSetting() {
       variant="outline"
       size="sm"
       className="h-8 rounded-xl px-3 text-xs"
+      surface="floating"
       onClick={() => setViewMode("list")}
     >
       <HugeiconsIcon icon={ArrowLeft01Icon} size={14} className="mr-1.5" />
@@ -301,6 +302,8 @@ export function McpSetting() {
       className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium"
       style={{
         ...getMaterialSurfaceStyle("content", "sm"),
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 100%), var(--material-content-background)",
         color: "var(--text-secondary)",
       }}
     >
@@ -330,8 +333,13 @@ export function McpSetting() {
 
           <div className="flex flex-col items-stretch gap-3 sm:items-end">
             <label
-              className="inline-flex items-center justify-end gap-2 text-xs font-medium"
-              style={{ color: "var(--text-secondary)" }}
+              className="inline-flex items-center justify-end gap-3 rounded-full border px-3 py-2 text-xs font-medium"
+              style={{
+                ...getMaterialSurfaceStyle("floating", "sm"),
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
+                color: "var(--text-secondary)",
+              }}
             >
               <span>启用</span>
               <Switch
@@ -344,7 +352,7 @@ export function McpSetting() {
             <Button
               type="button"
               size="sm"
-              className="h-8 rounded-xl px-6"
+              className="h-9 rounded-xl px-6"
               onClick={() => {
                 void handleSave();
               }}
@@ -357,10 +365,12 @@ export function McpSetting() {
 
         {editingServer.id ? (
           <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--divider)" }}>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              surface="floating"
               aria-label={`删除 MCP 服务器 ${editingServer.name || "当前服务器"}`}
-              className="inline-flex items-center gap-2 text-sm font-medium transition-colors"
+              className="h-9 rounded-xl px-4 text-sm font-medium"
               style={{ color: "var(--danger)" }}
               onClick={() => {
                 if (editingServer.id) {
@@ -370,7 +380,7 @@ export function McpSetting() {
             >
               <HugeiconsIcon icon={Delete01Icon} size={16} />
               删除当前配置
-            </button>
+            </Button>
           </div>
         ) : null}
       </SettingsSectionGroup>
@@ -403,6 +413,7 @@ export function McpSetting() {
               }
               placeholder="例如：My Local Tools"
               className="h-9"
+              surface="floating"
             />
           </div>
 
@@ -417,6 +428,7 @@ export function McpSetting() {
               }
               placeholder="简单描述一下这个服务器的功能"
               className="h-9"
+              surface="floating"
             />
           </div>
         </div>
@@ -428,9 +440,11 @@ export function McpSetting() {
           <div
             className="rounded-2xl border px-4 py-4"
             style={{
-              background: "var(--glass-subtle)",
-              borderColor: "var(--glass-border)",
+              ...getMaterialSurfaceStyle("content", "sm"),
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
             }}
+            data-surface-tone="liquid-mcp-transport-card"
           >
             <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
               标准输入 / 输出 (stdio)
@@ -467,6 +481,7 @@ export function McpSetting() {
               }
               placeholder="uvx, npx, node 或 可执行文件路径"
               className="h-9 font-mono"
+              surface="floating"
             />
           </div>
 
@@ -485,16 +500,17 @@ export function McpSetting() {
               onChange={(event) =>
                 setEditingServer({ ...editingServer, args: event.target.value })
               }
-              className="custom-scroll min-h-[104px] w-full rounded-2xl border px-3 py-2 text-sm font-mono outline-none"
+              className="custom-scroll min-h-[112px] w-full rounded-[24px] border px-4 py-3 text-sm font-mono text-[var(--text-primary)] outline-none transition-[border-color,box-shadow,background-color] duration-200 focus:border-[var(--material-accent-border)] focus:ring-[3px] focus:ring-[var(--brand-primary-light)]"
               style={{
-                background: "var(--glass-subtle)",
-                borderColor: "var(--glass-border)",
-                color: "var(--text-primary)",
+                ...getMaterialSurfaceStyle("content", "sm"),
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 100%), var(--material-content-background)",
               }}
               placeholder={"arg1\narg2"}
               spellCheck={false}
               autoComplete="off"
               autoCorrect="off"
+              data-surface-tone="liquid-mcp-textarea"
             />
           </div>
 
@@ -513,16 +529,17 @@ export function McpSetting() {
               onChange={(event) =>
                 setEditingServer({ ...editingServer, env_vars: event.target.value })
               }
-              className="custom-scroll min-h-[104px] w-full rounded-2xl border px-3 py-2 text-sm font-mono outline-none"
+              className="custom-scroll min-h-[112px] w-full rounded-[24px] border px-4 py-3 text-sm font-mono text-[var(--text-primary)] outline-none transition-[border-color,box-shadow,background-color] duration-200 focus:border-[var(--material-accent-border)] focus:ring-[3px] focus:ring-[var(--brand-primary-light)]"
               style={{
-                background: "var(--glass-subtle)",
-                borderColor: "var(--glass-border)",
-                color: "var(--text-primary)",
+                ...getMaterialSurfaceStyle("content", "sm"),
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 100%), var(--material-content-background)",
               }}
               placeholder={"KEY1=value1\nKEY2=value2"}
               spellCheck={false}
               autoComplete="off"
               autoCorrect="off"
+              data-surface-tone="liquid-mcp-textarea"
             />
           </div>
         </div>
@@ -546,8 +563,9 @@ export function McpSetting() {
           <div
             className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium"
             style={{
-              background: "var(--glass-subtle)",
-              borderColor: "var(--glass-border)",
+              ...getMaterialSurfaceStyle("floating", "sm"),
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
               color: "var(--text-tertiary)",
             }}
           >
@@ -556,23 +574,28 @@ export function McpSetting() {
         </div>
       </SettingsSectionGroup>
 
-      <SettingsSectionGroup className="overflow-hidden p-0">
-        {MCP_MARKET_TEMPLATES.map((template, index) => (
-          <div
-            key={template.id}
-            className="px-5 py-5 sm:px-6"
-            style={{
-              borderTop: index === 0 ? "none" : "1px solid var(--divider)",
-            }}
-          >
+      <SettingsSectionGroup className="p-3 sm:p-4">
+        <div className="space-y-3">
+          {MCP_MARKET_TEMPLATES.map((template) => (
+            <div
+              key={template.id}
+              className="rounded-[24px] border px-5 py-5 sm:px-6"
+              style={{
+                ...getMaterialSurfaceStyle("content", "sm"),
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
+              }}
+              data-surface-tone="liquid-mcp-template-card"
+            >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3">
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
                     style={{
-                      background: "var(--brand-primary-lightest)",
-                      borderColor: "var(--brand-primary-border)",
+                      ...getMaterialSurfaceStyle("accent", "sm"),
+                      background:
+                        "linear-gradient(180deg, rgba(59,130,246,0.18) 0%, rgba(255,255,255,0.08) 100%), var(--material-accent-background)",
                     }}
                   >
                     <HugeiconsIcon
@@ -608,9 +631,10 @@ export function McpSetting() {
                       key={tag}
                       className="rounded-full border px-2.5 py-1 text-[11px] font-medium"
                       style={{
+                        ...getMaterialSurfaceStyle("floating", "sm"),
                         color: "var(--text-secondary)",
-                        borderColor: "var(--glass-border)",
-                        background: "var(--glass-subtle)",
+                        background:
+                          "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
                       }}
                     >
                       {tag}
@@ -621,8 +645,9 @@ export function McpSetting() {
                 <div
                   className="mt-4 rounded-2xl border px-4 py-3"
                   style={{
-                    background: "var(--glass-subtle)",
-                    borderColor: "var(--glass-border)",
+                    ...getMaterialSurfaceStyle("floating", "sm"),
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
                   }}
                 >
                   <div className="text-[11px] font-medium" style={{ color: "var(--text-tertiary)" }}>
@@ -644,14 +669,16 @@ export function McpSetting() {
                 size="sm"
                 variant="outline"
                 className="h-8 shrink-0 rounded-xl px-4 text-xs font-medium"
+                surface="floating"
                 aria-label={`使用 ${template.name} 模板`}
                 onClick={() => handleUseTemplate(template)}
               >
                 使用模板
               </Button>
             </div>
-          </div>
-        ))}
+            </div>
+          ))}
+        </div>
       </SettingsSectionGroup>
     </>
   );
@@ -673,10 +700,11 @@ export function McpSetting() {
             <button
               type="button"
               aria-label="刷新 MCP 服务器"
-              className="flex h-8 w-8 items-center justify-center rounded-xl border transition-colors"
+              className="material-interactive flex h-8 w-8 items-center justify-center rounded-xl border transition-[transform,box-shadow]"
               style={{
-                background: "var(--glass-surface)",
-                borderColor: "var(--glass-border)",
+                ...getMaterialSurfaceStyle("floating", "sm"),
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
               }}
               onClick={() => {
                 void loadServers();
@@ -696,6 +724,7 @@ export function McpSetting() {
               variant="outline"
               size="sm"
               className="h-8 rounded-xl px-4 text-xs font-medium"
+              surface="floating"
               onClick={handleAddNew}
             >
               添加
@@ -704,7 +733,7 @@ export function McpSetting() {
         </div>
       </SettingsSectionGroup>
 
-      <SettingsSectionGroup className="overflow-hidden p-0">
+      <SettingsSectionGroup className="p-3 sm:p-4">
         {loading ? (
           <div className="px-5 py-14 text-center text-sm" style={{ color: "var(--text-tertiary)" }}>
             加载中...
@@ -715,8 +744,9 @@ export function McpSetting() {
               <div
                 className="flex h-16 w-16 items-center justify-center rounded-[22px] border"
                 style={{
-                  background: "var(--brand-primary-lightest)",
-                  borderColor: "var(--brand-primary-border)",
+                  ...getMaterialSurfaceStyle("accent", "sm"),
+                  background:
+                    "linear-gradient(180deg, rgba(59,130,246,0.18) 0%, rgba(255,255,255,0.08) 100%), var(--material-accent-background)",
                 }}
               >
                 <HugeiconsIcon
@@ -749,6 +779,7 @@ export function McpSetting() {
                   size="sm"
                   variant="outline"
                   className="h-9 rounded-xl px-4 text-sm"
+                  surface="floating"
                   aria-label="浏览模板"
                   onClick={() => setActiveTabId("market")}
                 >
@@ -758,13 +789,17 @@ export function McpSetting() {
             </div>
           </div>
         ) : (
-          servers.map((server, index) => (
+          <div className="space-y-3">
+            {servers.map((server) => (
             <div
               key={server.id}
-              className="px-5 py-4 sm:px-6"
+              className="rounded-[24px] border px-5 py-4 sm:px-6"
               style={{
-                borderTop: index === 0 ? "none" : "1px solid var(--divider)",
+                ...getMaterialSurfaceStyle("content", "sm"),
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
               }}
+              data-surface-tone="liquid-mcp-server-card"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0 flex-1">
@@ -788,9 +823,10 @@ export function McpSetting() {
                     <span
                       className="rounded-full border px-2.5 py-1 text-[11px] font-medium"
                       style={{
-                        borderColor: "var(--brand-primary-border)",
+                        ...getMaterialSurfaceStyle("accent", "sm"),
                         color: "var(--brand-primary)",
-                        background: "var(--brand-primary-lightest)",
+                        background:
+                          "linear-gradient(180deg, rgba(59,130,246,0.16) 0%, rgba(255,255,255,0.08) 100%), var(--material-accent-background)",
                       }}
                     >
                       {server.type.toUpperCase()}
@@ -808,10 +844,13 @@ export function McpSetting() {
                   <div
                     className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium"
                     style={{
+                      ...getMaterialSurfaceStyle(server.is_enabled ? "accent" : "floating", "sm"),
                       background: server.is_enabled
-                        ? "var(--success-lightest)"
-                        : "var(--glass-subtle)",
-                      borderColor: server.is_enabled ? "var(--success)" : "var(--glass-border)",
+                        ? "linear-gradient(180deg, rgba(34,197,94,0.16) 0%, rgba(255,255,255,0.06) 100%), color-mix(in srgb, var(--success) 12%, var(--material-content-background))"
+                        : "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
+                      borderColor: server.is_enabled
+                        ? "color-mix(in srgb, var(--success) 40%, var(--material-accent-border))"
+                        : "var(--material-floating-border)",
                       color: server.is_enabled ? "var(--success)" : "var(--text-tertiary)",
                     }}
                   >
@@ -829,31 +868,38 @@ export function McpSetting() {
                     }}
                   />
 
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    surface="floating"
                     aria-label={`编辑 MCP 服务器 ${server.name}`}
-                    className="transition-colors"
+                    className="rounded-xl"
                     style={{ color: "var(--text-tertiary)" }}
                     onClick={() => handleEdit(server)}
                   >
                     <HugeiconsIcon icon={Settings01Icon} size={16} />
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    surface="floating"
                     aria-label={`删除 MCP 服务器 ${server.name}`}
-                    className="transition-colors"
+                    className="rounded-xl"
                     style={{ color: "var(--danger)" }}
                     onClick={() => {
                       void handleDelete(server.id, server.name);
                     }}
                   >
                     <HugeiconsIcon icon={Delete01Icon} size={16} />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
-          ))
+            ))}
+          </div>
         )}
       </SettingsSectionGroup>
     </>
@@ -887,62 +933,43 @@ export function McpSetting() {
               </div>
 
               <div className="border-t p-3" style={{ borderColor: "var(--divider)" }}>
-                <div className="space-y-1">
+                <div className="space-y-2" role="tablist" aria-label="MCP 分组">
                   {MCP_STAGES.map((stage) => {
                     const isActive = activeTabId === stage.id;
 
                     return (
-                      <button
+                      <NavItem
                         key={stage.id}
-                        aria-label={stage.name}
-                        type="button"
-                        className={cn(
-                          "material-interactive flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition-all duration-200",
-                          isActive ? "shadow-sm" : "",
-                        )}
-                        data-hover-surface={isActive ? "accent" : "content"}
+                        icon={stage.icon}
+                        label={stage.name}
+                        description={stage.description}
+                        isActive={isActive}
+                        layoutId="mcpStageNav"
                         onClick={() => {
                           setActiveTabId(stage.id as "builtin" | "market");
                           setViewMode("list");
                         }}
-                        style={{
-                          background: isActive ? "var(--brand-primary-lighter)" : "transparent",
-                          borderColor: isActive ? "var(--brand-primary-border)" : "transparent",
+                        semanticProps={{
+                          "aria-selected": isActive,
+                          role: "tab",
+                          type: "button",
                         }}
-                      >
-                        <div
-                          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
-                          style={{
-                            background: isActive ? "var(--brand-primary-lightest)" : "var(--glass-subtle)",
-                            borderColor: isActive ? "var(--brand-primary-border)" : "var(--glass-border)",
-                          }}
-                        >
-                          <HugeiconsIcon
-                            icon={stage.icon}
-                            size={18}
-                            style={{
-                              color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)",
-                            }}
-                          />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div
-                            className="text-sm font-medium"
-                            style={{
-                              color: isActive ? "var(--brand-primary)" : "var(--text-primary)",
-                            }}
-                          >
-                            {stage.name}
-                          </div>
-                          <p
-                            className="mt-1 text-xs leading-5"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            {stage.description}
-                          </p>
-                        </div>
-                      </button>
+                        accessory={
+                          isActive ? (
+                            <span
+                              className="inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em]"
+                              style={{
+                                ...getMaterialSurfaceStyle("accent", "sm"),
+                                background:
+                                  "linear-gradient(180deg, rgba(59,130,246,0.16) 0%, rgba(255,255,255,0.08) 100%), var(--material-accent-background)",
+                                color: "var(--brand-primary)",
+                              }}
+                            >
+                              当前
+                            </span>
+                          ) : null
+                        }
+                      />
                     );
                   })}
                 </div>

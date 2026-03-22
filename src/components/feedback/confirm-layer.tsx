@@ -40,19 +40,36 @@ export function ConfirmLayer({
         }
       }}
     >
-      <DialogContent showCloseButton={false}>
-        <DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        className="max-w-[min(32rem,calc(100vw-1.5rem))] gap-5 px-6 py-6 sm:px-7"
+      >
+        <DialogHeader className="gap-3">
+          <div
+            className="inline-flex w-fit items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+            style={{
+              color: "var(--text-tertiary)",
+              borderColor: "rgba(255,255,255,0.18)",
+              background: "rgba(255,255,255,0.08)",
+            }}
+          >
+            Confirm Action
+          </div>
           <DialogTitle>{options?.title ?? "请确认"}</DialogTitle>
           {options?.description ? (
             <DialogDescription>{options.description}</DialogDescription>
           ) : null}
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={onCancel}>
+        <DialogFooter
+          className="gap-2 border-t pt-4 sm:gap-2"
+          style={{ borderColor: "color-mix(in srgb, var(--divider) 78%, rgba(255,255,255,0.14))" }}
+        >
+          <Button variant="glass" surface="floating" onClick={onCancel}>
             {cancelText}
           </Button>
           <Button
             variant={isDestructive ? "destructive" : "default"}
+            className="shadow-[0_16px_36px_rgba(15,23,42,0.14)]"
             onClick={onConfirm}
           >
             {confirmText}
@@ -62,4 +79,3 @@ export function ConfirmLayer({
     </Dialog>
   );
 }
-

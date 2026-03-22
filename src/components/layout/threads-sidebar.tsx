@@ -529,13 +529,14 @@ function ThreadsSidebarContent() {
               style={{
                 ...getMaterialSurfaceStyle("content", "sm"),
                 background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), rgba(255,255,255,0.04)",
+                  "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
               }}
             >
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border" style={{
-                background: "rgba(255,255,255,0.08)",
-                borderColor: "var(--glass-border)",
+                background: "color-mix(in srgb, var(--material-content-background) 90%, rgba(255,255,255,0.08))",
+                borderColor: "var(--material-content-border)",
                 color: "var(--text-tertiary)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
               }}>
                 <HugeiconsIcon icon={Search01Icon} size={24} />
               </div>

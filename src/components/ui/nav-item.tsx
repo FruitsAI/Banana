@@ -4,6 +4,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 
 interface NavItemProps {
   /** HugeIcons 图标组件 */
@@ -59,17 +60,22 @@ export function NavItem({
       onClick={onClick}
       {...semanticProps}
       className={cn(
-        "material-interactive relative w-full border text-sm transition-all duration-200",
+        "material-interactive relative w-full overflow-hidden border text-sm transition-all duration-200",
         description
-          ? "flex items-start gap-3 rounded-2xl px-3.5 py-3 text-left"
-          : "flex items-center gap-3 rounded-xl px-3 py-2.5",
+          ? "flex items-start gap-3 rounded-[24px] px-3.5 py-3.5 text-left"
+          : "flex items-center gap-3 rounded-[20px] px-3.5 py-3",
         className,
       )}
       data-active={isActive ? "true" : "false"}
       data-hover-surface={isActive ? "accent" : "content"}
+      data-material-role="content"
+      data-surface-tone="liquid-nav-item"
       style={{
-        background: isActive ? "var(--brand-primary-lighter)" : "transparent",
-        borderColor: isActive ? "var(--brand-primary-border)" : "transparent",
+        ...getMaterialSurfaceStyle(isActive ? "accent" : "content", "sm"),
+        background: isActive
+          ? "linear-gradient(180deg, rgba(59,130,246,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-accent-background)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.04) 100%), var(--material-content-background)",
+        borderColor: isActive ? "var(--material-accent-border)" : "var(--material-content-border)",
         color: isActive ? "var(--brand-primary)" : "var(--text-secondary)",
       }}
       whileHover={shouldReduceMotion ? undefined : { y: -1 }}
@@ -78,12 +84,21 @@ export function NavItem({
       {/* 激活态边框动画 */}
       {isActive && (
         <motion.div
-          className="absolute inset-0 rounded-xl border pointer-events-none"
-          style={{ borderColor: "var(--brand-primary-border)" }}
+          className="pointer-events-none absolute inset-0 rounded-[inherit] border"
+          style={{ borderColor: "var(--material-accent-border)" }}
           layoutId={`${layoutId}Border`}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />
       )}
+
+      <span
+        className="pointer-events-none absolute inset-x-3 top-0 h-px opacity-75"
+        aria-hidden="true"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 18%, rgba(255,255,255,0.14) 82%, transparent 100%)",
+        }}
+      />
 
       <div
         className={cn(
@@ -91,8 +106,9 @@ export function NavItem({
           description ? "mt-0.5 h-9 w-9" : "h-8 w-8",
         )}
         style={{
-          background: isActive ? "var(--brand-primary-lightest)" : "var(--glass-subtle)",
-          borderColor: isActive ? "var(--brand-primary-border)" : "var(--glass-border)",
+          ...getMaterialSurfaceStyle(isActive ? "accent" : "floating", "sm"),
+          background: isActive ? "var(--material-accent-background)" : "var(--material-floating-background)",
+          borderColor: isActive ? "var(--material-accent-border)" : "var(--material-floating-border)",
         }}
       >
         <HugeiconsIcon
@@ -127,8 +143,8 @@ export function NavItem({
       {/* 左侧激活指示条动画 */}
       {isActive && (
         <motion.div
-          className="absolute left-0 w-1 h-5 rounded-r-full"
-          style={{ background: "var(--brand-primary)" }}
+          className="absolute left-0 h-5 w-1 rounded-r-full"
+          style={{ background: "var(--brand-primary)", boxShadow: "0 0 18px var(--brand-primary-glow)" }}
           layoutId={`${layoutId}Indicator`}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />

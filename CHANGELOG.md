@@ -11,10 +11,15 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 ### Added
 
 - Add reusable platform detection helpers, pre-hydration runtime marking, and targeted desktop QA tests for titlebar and thread-sidebar behavior. 新增可复用的平台检测工具、预水合运行时标记，以及覆盖标题栏与线程侧边栏行为的桌面 QA 定向测试。
+- Add a shared liquid-glass runtime model, provider, and regression coverage so ambient light, adaptive clarity, and pointer optics can be driven as one system instead of isolated component styling. 新增共享的液态玻璃运行时模型、provider 与回归测试，使环境光、自适应清晰度和指针光学反馈可以作为统一系统驱动，而不再只是零散组件样式。
 
 ### Changed
 
 - Refine the liquid-glass desktop titlebar with real Tauri window controls, hover glyph micro-interactions, and platform-aware chrome handling for macOS and Windows. 打磨液态玻璃桌面标题栏：接入真实 Tauri 窗口控制、补充 hover 字形微交互，并为 macOS 与 Windows 做平台感知的窗口 chrome 处理。
+- Refactor custom feedback and overlay primitives so toast banners move to the top center and dialogs/popovers share the same liquid-glass material rhythm. 重构自定义反馈与浮层 primitive：将 toast 改为顶部居中的横幅通知，并让 dialog / popover 共享一致的液态玻璃材质与节奏。
+- Sweep the remaining custom components into the same liquid-glass system, unifying model, MCP, settings, selector, and message surfaces around shared material tokens and calmer Apple-like interaction details. 将剩余自定义组件统一收口到同一套液态玻璃系统中，让模型、MCP、设置、选择器与消息表面共享材质 token 与更克制的苹果式交互细节。
+- Replace the last native provider-type dropdown with a reusable liquid-glass Select component so floating lists, selected states, and trigger chrome match the rest of the desktop UI. 用可复用的液态玻璃 Select 组件替换最后一个原生 provider 类型下拉，让浮层列表、选中态与触发器边框统一到桌面界面的同一套语言。
+- Upgrade the shared glass surfaces with runtime-aware layered fills, ambient background response, and press ripple hooks so dialogs, popovers, buttons, fields, selects, and top banners feel closer to Apple-style liquid material behavior. 将共享玻璃表面升级为可感知运行时的 layered fill、环境光响应与按压涟漪钩子，让 dialogs、popovers、按钮、输入框、下拉选择器与顶部通知更接近苹果式液态材质的行为表现。
 
 ### Fixed
 

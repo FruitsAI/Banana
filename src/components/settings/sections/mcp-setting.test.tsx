@@ -104,6 +104,14 @@ describe("McpSetting", () => {
     await screen.findByText("还没有 MCP 服务器");
 
     expect(screen.getAllByTestId("settings-section-group").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("tab", { name: /MCP 服务器/ })).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-nav-item",
+    );
+    expect(screen.getByRole("tab", { name: /市场/ })).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-nav-item",
+    );
   });
 
   it("shows a guided empty state with shortcuts for the next MCP action", async () => {
@@ -143,14 +151,14 @@ describe("McpSetting", () => {
   it("opens a market template in the detail editor with prefilled values", async () => {
     await renderSetting("还没有 MCP 服务器");
 
-    fireEvent.click(screen.getByRole("button", { name: "市场" }));
+    fireEvent.click(screen.getByRole("tab", { name: /市场/ }));
     fireEvent.click(screen.getByRole("button", { name: "使用 Filesystem 模板" }));
 
     expect(screen.getByDisplayValue("Filesystem")).toBeInTheDocument();
     expect(screen.getByDisplayValue("npx")).toBeInTheDocument();
     expect(
       screen.getByDisplayValue(/@modelcontextprotocol\/server-filesystem/),
-    ).toBeInTheDocument();
+    ).toHaveAttribute("data-surface-tone", "liquid-mcp-textarea");
   });
 
   it("does not expose unsupported MCP detail controls", async () => {

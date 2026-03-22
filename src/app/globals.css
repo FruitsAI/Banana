@@ -135,6 +135,7 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12);
+  --desktop-toast-offset: 54px;
   
   /* Glass Surfaces - Warm Cream */
   --glass-surface: rgba(255, 255, 255, 0.85);
@@ -731,6 +732,32 @@
     overflow: hidden;
     z-index: 0;
   }
+
+  .fluid-background::after {
+    content: "";
+    position: absolute;
+    inset: -18%;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        38% 34% at var(--liquid-ambient-focus-x, 50%) var(--liquid-ambient-focus-y, 18%),
+        rgba(255, 255, 255, calc(0.12 + var(--liquid-ambient-energy, 0.16) * 0.14)) 0%,
+        rgba(90, 200, 250, calc(0.08 + var(--liquid-ambient-energy, 0.16) * 0.12)) 18%,
+        transparent 56%
+      );
+    filter: blur(42px);
+    mix-blend-mode: soft-light;
+    opacity: calc(0.34 + var(--liquid-ambient-energy, 0.16) * 0.9);
+    transform: translate3d(
+      var(--liquid-ambient-offset-x, 0px),
+      var(--liquid-ambient-offset-y, 0px),
+      0
+    );
+    transition:
+      transform calc(320ms * var(--motion-duration-factor)) var(--ease-out),
+      opacity calc(280ms * var(--motion-duration-factor)) var(--ease-out);
+    will-change: transform, opacity;
+  }
   
   .fluid-blob {
     position: absolute;
@@ -804,6 +831,11 @@
   
   .dark .fluid-blob-4 {
     background: radial-gradient(circle, rgba(255, 204, 0, 0.08) 0%, transparent 70%);
+  }
+
+  .dark .fluid-background::after {
+    mix-blend-mode: screen;
+    opacity: calc(0.28 + var(--liquid-ambient-energy, 0.16) * 0.84);
   }
   
   /* Subtle noise texture */
@@ -1074,6 +1106,10 @@
 
   :root[data-runtime="tauri"][data-platform="windows"] .content {
     height: 100dvh !important;
+  }
+
+  :root[data-runtime="tauri"][data-platform="windows"] {
+    --desktop-toast-offset: 14px;
   }
 
   :root[data-runtime="tauri"][data-platform="macos"] [data-titlebar-controls="custom"] {
@@ -1835,6 +1871,11 @@
   --motion-glow-opacity: 1;
   --motion-loop-play-state: running;
   --motion-decorative-opacity: 0.84;
+  --liquid-ambient-focus-x: 50%;
+  --liquid-ambient-focus-y: 18%;
+  --liquid-ambient-offset-x: 0px;
+  --liquid-ambient-offset-y: 0px;
+  --liquid-ambient-energy: 0.16;
 }
 
 :root[data-motion-level="low"] {
@@ -1845,6 +1886,7 @@
   --motion-press-scale: 0.994;
   --motion-glow-opacity: 0.45;
   --motion-decorative-opacity: 0.45;
+  --liquid-ambient-energy: 0.12;
 }
 
 :root[data-motion-level="high"] {
@@ -1855,6 +1897,55 @@
   --motion-press-scale: 0.962;
   --motion-glow-opacity: 1.18;
   --motion-decorative-opacity: 1.08;
+  --liquid-ambient-energy: 0.2;
+}
+
+[data-material-role] {
+  --liquid-pointer-x: 50%;
+  --liquid-pointer-y: 22%;
+  --liquid-pointer-presence: 0;
+  --liquid-clarity-strength: 0.12;
+  --liquid-surface-blur-boost: 0px;
+  --liquid-surface-saturate-boost: 0%;
+  --liquid-surface-brightness-boost: 0;
+  --liquid-surface-ambient-opacity: 0.22;
+  transition:
+    background calc(240ms * var(--motion-duration-factor)) var(--ease-out),
+    border-color calc(220ms * var(--motion-duration-factor)) var(--ease-out),
+    box-shadow calc(260ms * var(--motion-duration-factor)) var(--ease-out),
+    backdrop-filter calc(240ms * var(--motion-duration-factor)) var(--ease-out),
+    -webkit-backdrop-filter calc(240ms * var(--motion-duration-factor)) var(--ease-out);
+}
+
+[data-liquid-interactive="true"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+[data-liquid-interactive="true"]::after {
+  content: "";
+  position: absolute;
+  inset: -36%;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at var(--liquid-ripple-x, 50%) var(--liquid-ripple-y, 50%),
+      rgba(255, 255, 255, calc(var(--liquid-ripple-opacity, 0) * 1.15)) 0%,
+      rgba(255, 255, 255, calc(var(--liquid-ripple-opacity, 0) * 0.52)) 18%,
+      transparent 60%
+    );
+  opacity: var(--liquid-ripple-opacity, 0);
+  transform: scale(var(--liquid-ripple-scale, 0.54));
+  transition:
+    opacity calc(360ms * var(--motion-duration-factor)) var(--ease-out),
+    transform calc(420ms * var(--motion-duration-factor)) var(--ease-out);
+  mix-blend-mode: screen;
+}
+
+[data-liquid-interactive="true"][data-liquid-pressed="true"]::after {
+  opacity: calc(var(--liquid-press-opacity, 0.22) * var(--motion-glow-opacity));
+  transform: scale(1);
 }
 
 :root[data-motion-mode="reduced"],
@@ -2046,8 +2137,13 @@
 }
 
 [data-slot="dialog-overlay"],
-[data-slot="dialog-content"] {
+[data-slot="dialog-content"],
+[data-slot="popover-content"] {
   animation-duration: calc(240ms * var(--motion-duration-factor));
+}
+
+[data-toast-style="liquid-banner"] {
+  transition-duration: calc(220ms * var(--motion-duration-factor));
 }
 
 [data-slot="label"] {
@@ -2069,7 +2165,9 @@
   [data-slot="switch-thumb"],
   [data-slot="dialog-overlay"],
   [data-slot="dialog-content"],
+  [data-slot="popover-content"],
   [data-slot="label"],
+  [data-toast-style="liquid-banner"],
   .theme-transition,
   .theme-transition *,
   .theme-transition *::before,

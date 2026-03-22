@@ -37,16 +37,16 @@ function getVariantStyle(variant: MessageSurfaceVariant): CSSProperties {
       return {
         ...getMaterialSurfaceStyle("content", "sm"),
         background:
-          "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 100%), var(--glass-subtle)",
-        border: "1px solid color-mix(in srgb, var(--glass-border) 82%, rgba(255,255,255,0.32))",
+          "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 100%), var(--material-content-background)",
+        border: "1px solid color-mix(in srgb, var(--material-content-border) 82%, rgba(255,255,255,0.32))",
         boxShadow: "0 10px 24px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255,255,255,0.28)",
       };
     case "tool":
       return {
         ...getMaterialSurfaceStyle("content", "sm"),
         background:
-          "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 100%), var(--glass-subtle)",
-        border: "1px solid color-mix(in srgb, var(--glass-border) 84%, rgba(255,255,255,0.28))",
+          "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 100%), var(--material-content-background)",
+        border: "1px solid color-mix(in srgb, var(--material-content-border) 84%, rgba(255,255,255,0.28))",
         boxShadow: "0 10px 22px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255,255,255,0.26)",
       };
   }

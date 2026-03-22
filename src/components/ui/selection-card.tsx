@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Tick02Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 
 interface SelectionCardProps {
   /** 是否处于选中状态 */
@@ -28,13 +29,18 @@ export function SelectionCard({ isActive, onClick, children, className }: Select
     <motion.button
       onClick={onClick}
       className={cn(
-        "material-interactive relative rounded-xl border p-4 text-left transition-all duration-200",
+        "material-interactive relative w-full overflow-hidden rounded-[24px] border p-4 text-left transition-all duration-200",
         className
       )}
       data-hover-surface={isActive ? "accent" : "content"}
+      data-material-role="content"
+      data-surface-tone="liquid-selection-card"
       style={{
-        background: isActive ? "var(--brand-primary-lighter)" : "var(--glass-surface)",
-        borderColor: isActive ? "var(--brand-primary-border)" : "var(--glass-border)",
+        ...getMaterialSurfaceStyle(isActive ? "accent" : "content", "sm"),
+        background: isActive
+          ? "linear-gradient(180deg, rgba(59,130,246,0.16) 0%, rgba(255,255,255,0.08) 100%), var(--material-accent-background)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 100%), var(--material-content-background)",
+        borderColor: isActive ? "var(--material-accent-border)" : "var(--material-content-border)",
       }}
       whileHover={
         shouldReduceMotion
@@ -46,13 +52,25 @@ export function SelectionCard({ isActive, onClick, children, className }: Select
       whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
       transition={{ type: "spring", stiffness: 400, damping: 20 }}
     >
+      <span
+        className="pointer-events-none absolute inset-x-3 top-0 h-px opacity-75"
+        aria-hidden="true"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 18%, rgba(255,255,255,0.16) 82%, transparent 100%)",
+        }}
+      />
       {/* 右上角勾选标记，激活时以 scale 动画入场 */}
       {isActive && (
         <motion.div
           initial={shouldReduceMotion ? false : { scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: "var(--brand-primary)" }}
+          className="absolute right-3 top-3 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border"
+          style={{
+            background: "linear-gradient(180deg, rgba(59,130,246,0.18) 0%, rgba(59,130,246,0.78) 100%)",
+            borderColor: "rgba(255,255,255,0.3)",
+            boxShadow: "0 10px 22px rgba(59,130,246,0.22)",
+          }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         >
           <HugeiconsIcon icon={Tick02Icon} size={10} color="#ffffff" />

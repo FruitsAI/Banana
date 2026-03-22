@@ -114,8 +114,9 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
                   <span
                     className="inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em]"
                     style={{
-                      background: "var(--brand-primary-lightest)",
-                      borderColor: "var(--brand-primary-border)",
+                      background:
+                        "linear-gradient(180deg, rgba(59,130,246,0.16) 0%, rgba(255,255,255,0.08) 100%), var(--material-accent-background)",
+                      borderColor: "var(--material-accent-border)",
                       color: "var(--brand-primary)",
                     }}
                   >
@@ -152,9 +153,10 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
           <span
             className="rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.08em]"
             style={{
-              background: "var(--glass-subtle)",
-              borderColor: "var(--glass-border)",
+              background: "color-mix(in srgb, var(--material-content-background) 92%, rgba(15, 23, 42, 0.08))",
+              borderColor: "var(--material-content-border)",
               color: "var(--text-tertiary)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
             }}
           >
             {activeTabMeta.accent}

@@ -134,12 +134,18 @@ export function ThemeSetting() {
                     onClick={() => setTheme(item.id)}
                     className="flex min-h-[116px] flex-col items-center justify-center gap-3 rounded-2xl"
                   >
-                    <div
-                      className="flex h-10 w-10 items-center justify-center rounded-lg"
-                      style={{
-                        background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
-                      }}
-                    >
+                      <div
+                        className="flex h-10 w-10 items-center justify-center rounded-lg"
+                        style={{
+                          background: isActive
+                            ? "color-mix(in srgb, var(--brand-primary) 18%, var(--material-content-background))"
+                            : "var(--material-content-background)",
+                          border: "1px solid var(--material-content-border)",
+                          boxShadow: isActive
+                            ? "0 0 0 1px color-mix(in srgb, var(--brand-primary) 30%, rgba(59, 130, 246, 0.2))"
+                            : "inset 0 1px 0 rgba(255,255,255,0.12)",
+                        }}
+                      >
                       <HugeiconsIcon
                         icon={item.icon}
                         size={20}

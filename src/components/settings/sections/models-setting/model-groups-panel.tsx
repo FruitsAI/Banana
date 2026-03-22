@@ -59,7 +59,11 @@ export function ModelGroupsPanel({
             </Label>
             <span
               className="text-[10px] px-1.5 py-0.5 rounded"
-              style={{ background: "var(--glass-subtle)", color: "var(--text-tertiary)" }}
+              style={{
+                background: "var(--material-floating-background)",
+                color: "var(--text-tertiary)",
+                border: "1px solid var(--material-content-border)",
+              }}
             >
               {modelsCount}
             </span>
@@ -78,8 +82,8 @@ export function ModelGroupsPanel({
         style={{
           ...getMaterialSurfaceStyle("content", "sm"),
           background:
-            "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), rgba(255,255,255,0.04)",
-          border: "1px solid var(--glass-border)",
+            "linear-gradient(180deg, color-mix(in srgb, var(--material-floating-background) 94%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 92%, transparent) 100%)",
+          border: "1px solid var(--material-content-border)",
         }}
       >
         {modelGroups.length === 0 ? (
@@ -95,15 +99,22 @@ export function ModelGroupsPanel({
               iconColor="var(--brand-primary)"
               className="group/panel rounded-none border-0"
               headerStyle={{
-                background: "rgba(255,255,255,0.08)",
+                background:
+                  "color-mix(in srgb, var(--material-floating-background) 88%, transparent)",
                 color: "var(--text-primary)",
                 borderBottom: "1px solid var(--divider)",
               }}
               headerActions={
                 <button
                   type="button"
-                  className="rounded-full px-2 py-1 text-[11px] opacity-0 transition-opacity duration-150 group-hover/panel:opacity-100 hover:opacity-100"
-                  style={{ color: "var(--danger)" }}
+                  className="material-interactive rounded-full border px-2 py-1 text-[11px] opacity-0 transition-all duration-150 group-hover/panel:opacity-100 hover:opacity-100 motion-safe:hover:-translate-y-px"
+                  data-hover-surface="content"
+                  style={{
+                    ...getMaterialSurfaceStyle("floating", "sm"),
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
+                    color: "var(--danger)",
+                  }}
                   onClick={() => onDeleteGroup(groupName, groupModels)}
                   aria-label={`删除分组 ${groupName}`}
                 >
@@ -119,14 +130,23 @@ export function ModelGroupsPanel({
                 return (
                   <div
                     key={model.id}
-                    className="flex items-center justify-between border-b px-5 py-3 last:border-0"
+                    className="group/item flex items-center justify-between border-b px-5 py-3 last:border-0"
                     style={{
                       background: "transparent",
                       borderColor: "var(--divider)",
                     }}
                   >
                     <button
-                      className="flex min-w-0 items-center gap-3 text-left"
+                      className="material-interactive flex min-w-0 items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors duration-200"
+                      data-hover-surface={isDefaultModel ? "accent" : "content"}
+                      style={{
+                        background: isDefaultModel
+                          ? "linear-gradient(180deg, rgba(59,130,246,0.14) 0%, rgba(255,255,255,0.04) 100%), var(--material-accent-background)"
+                          : "transparent",
+                        boxShadow: isDefaultModel
+                          ? "0 10px 24px rgba(59,130,246,0.12), inset 0 1px 0 rgba(255,255,255,0.34)"
+                          : "none",
+                      }}
                       disabled={model.is_enabled === false}
                       onClick={() => onSelectDefaultModel(model.id)}
                       type="button"
@@ -146,8 +166,8 @@ export function ModelGroupsPanel({
                             <span
                               className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
                               style={{
-                                background: "rgba(59,130,246,0.08)",
-                                borderColor: "rgba(59,130,246,0.18)",
+                                background: "var(--material-accent-background)",
+                                borderColor: "var(--material-accent-border)",
                                 color: "var(--brand-primary)",
                               }}
                             >
@@ -162,8 +182,14 @@ export function ModelGroupsPanel({
                     </button>
                     <div className="flex shrink-0 items-center gap-3">
                       <button
-                        className="inline-flex items-center gap-1 text-[11px] opacity-0 transition-opacity group-hover/panel:opacity-100 hover:opacity-100"
-                        style={{ color: "var(--text-tertiary)" }}
+                        className="material-interactive inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] opacity-0 transition-all duration-150 group-hover/panel:opacity-100 hover:opacity-100 motion-safe:hover:-translate-y-px"
+                        data-hover-surface="content"
+                        style={{
+                          ...getMaterialSurfaceStyle("floating", "sm"),
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
+                          color: "var(--text-tertiary)",
+                        }}
                         onClick={() => onOpenEditModel(model)}
                         aria-label={`编辑模型 ${model.id}`}
                         type="button"
@@ -172,8 +198,14 @@ export function ModelGroupsPanel({
                         编辑
                       </button>
                       <button
-                        className="inline-flex items-center gap-1 text-[11px] opacity-0 transition-opacity group-hover/panel:opacity-100 hover:opacity-100"
-                        style={{ color: "var(--danger)" }}
+                        className="material-interactive inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] opacity-0 transition-all duration-150 group-hover/panel:opacity-100 hover:opacity-100 motion-safe:hover:-translate-y-px"
+                        data-hover-surface="content"
+                        style={{
+                          ...getMaterialSurfaceStyle("floating", "sm"),
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
+                          color: "var(--danger)",
+                        }}
                         onClick={() => onDeleteModel(model)}
                         aria-label={`删除模型 ${model.id}`}
                         type="button"
@@ -202,11 +234,8 @@ export function ModelGroupsPanel({
       <div className="flex gap-3 pt-4">
         <Button
           size="sm"
-          className="h-9 rounded-full px-4 text-xs font-medium border-0"
-          style={{
-            background: "var(--brand-primary)",
-            color: "#fff",
-          }}
+          className="h-9 rounded-full px-4 text-xs font-medium motion-safe:hover:-translate-y-px"
+          surface="floating"
           onClick={onOpenManageModels}
         >
           <HugeiconsIcon icon={ListSettingIcon} size={14} className="mr-1.5" /> 管理
@@ -214,10 +243,8 @@ export function ModelGroupsPanel({
         <Button
           variant="outline"
           size="sm"
-          className="h-9 rounded-full border px-4 text-xs"
-          style={{
-            ...getMaterialSurfaceStyle("content", "sm"),
-          }}
+          className="h-9 rounded-full border px-4 text-xs motion-safe:hover:-translate-y-px"
+          surface="floating"
           onClick={onOpenAddModel}
         >
           <HugeiconsIcon icon={Add01Icon} size={14} className="mr-1.5" /> 添加

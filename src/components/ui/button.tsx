@@ -83,6 +83,7 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      data-liquid-interactive={isGlassEffect ? "true" : undefined}
       data-material-role={isGlassEffect ? role : undefined}
       data-iridescent={isGlassEffect ? String(iridescent) : undefined}
       data-iridescent-animated={isGlassEffect ? String(allowAnimatedIridescence) : undefined}
@@ -91,6 +92,10 @@ function Button({
         isGlassEffect
           ? {
               ...getMaterialSurfaceStyle(role, variant === "glass" ? "md" : "sm"),
+              ["--liquid-surface-fill" as string]:
+                role === "floating"
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 100%), var(--liquid-material-base-background)"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 100%), var(--liquid-material-base-background)",
             }
           : undefined
       }

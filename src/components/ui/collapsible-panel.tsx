@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 
 interface CollapsiblePanelProps {
   title: React.ReactNode;
@@ -34,17 +35,35 @@ export function CollapsiblePanel({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className={cn("overflow-hidden", className)}>
+    <div
+      className={cn("overflow-hidden rounded-[26px] border", className)}
+      data-material-role="content"
+      data-surface-tone="liquid-section-body"
+      style={{
+        ...getMaterialSurfaceStyle("content", "sm"),
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 100%), var(--material-content-background)",
+      }}
+    >
       <div className="relative">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
+          aria-expanded={isOpen}
           className={cn(
-            "w-full flex items-center gap-2 p-3 text-sm font-medium transition-colors",
+            "w-full flex items-center gap-2 border-b px-4 py-3.5 text-sm font-medium transition-[background-color,border-color,color]",
             headerActions ? "pr-12" : undefined,
             headerClassName
           )}
-          style={headerStyle}
+          data-surface-tone="liquid-section-trigger"
+          style={{
+            borderColor: "color-mix(in srgb, var(--divider) 78%, rgba(255,255,255,0.16))",
+            background: isOpen
+              ? "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 100%)"
+              : "transparent",
+            color: "var(--text-primary)",
+            ...headerStyle,
+          }}
         >
           <motion.div
             initial={false}
@@ -73,7 +92,7 @@ export function CollapsiblePanel({
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            {children}
+            <div className="px-4 py-4">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
