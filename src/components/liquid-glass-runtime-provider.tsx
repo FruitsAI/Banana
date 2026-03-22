@@ -69,13 +69,43 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     };
     const motionLevel = resolveMotionLevel(intensity);
     const pressedCleanup = new Map<HTMLElement, number>();
+    let runtimeActivated = false;
+    let mutationObserver: MutationObserver | null = null;
     let frame = 0;
     let lastScrollY = window.scrollY;
     let lastScrollAt = performance.now();
     let scrollVelocity = 0;
 
+    const startMutationObserver = () => {
+      if (mutationObserver) {
+        return;
+      }
+
+      mutationObserver = new MutationObserver(() => {
+        scheduleSync();
+      });
+
+      mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-material-role", "data-surface-clarity", "class"],
+      });
+    };
+
+    const activateRuntime = () => {
+      if (runtimeActivated) {
+        return;
+      }
+
+      runtimeActivated = true;
+      document.documentElement.dataset.liquidGlassRuntime = "active";
+      startMutationObserver();
+      scheduleSync();
+    };
+
     const scheduleSync = () => {
-      if (frame !== 0) {
+      if (!runtimeActivated || frame !== 0) {
         return;
       }
 
@@ -97,8 +127,6 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
         motionLevel,
       });
       const surfaces = document.querySelectorAll<HTMLElement>(SURFACE_SELECTOR);
-
-      document.documentElement.dataset.liquidGlassRuntime = "active";
       applyRootCSSVariables(liquidGlassAmbientStateToCSSVariables(ambientState));
 
       for (const surface of surfaces) {
@@ -158,6 +186,7 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     };
 
     const handlePointerMove = (event: PointerEvent) => {
+      activateRuntime();
       pointerState.x = event.clientX;
       pointerState.y = event.clientY;
       pointerState.active = true;
@@ -165,11 +194,16 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     };
 
     const handlePointerReset = () => {
+      if (!runtimeActivated) {
+        return;
+      }
+
       pointerState.active = false;
       scheduleSync();
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      activateRuntime();
       pointerState.x = event.clientX;
       pointerState.y = event.clientY;
       pointerState.active = true;
@@ -178,6 +212,7 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     };
 
     const handleScroll = () => {
+      activateRuntime();
       const now = performance.now();
       const nextScrollY = window.scrollY;
       const deltaY = Math.abs(nextScrollY - lastScrollY);
@@ -189,36 +224,28 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
       scheduleSync();
     };
 
-    const mutationObserver = new MutationObserver(() => {
+    const handleResize = () => {
+      activateRuntime();
       scheduleSync();
-    });
-
-    mutationObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["data-material-role", "data-surface-clarity", "class"],
-    });
+    };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerdown", handlePointerDown, { passive: true });
     window.addEventListener("pointerup", handlePointerReset, { passive: true });
     window.addEventListener("pointercancel", handlePointerReset, { passive: true });
     window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", scheduleSync, { passive: true });
+    window.addEventListener("resize", handleResize, { passive: true });
     window.addEventListener("blur", handlePointerReset);
     document.addEventListener("mouseleave", handlePointerReset);
 
-    syncSurfaces();
-
     return () => {
-      mutationObserver.disconnect();
+      mutationObserver?.disconnect();
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointerup", handlePointerReset);
       window.removeEventListener("pointercancel", handlePointerReset);
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", scheduleSync);
+      window.removeEventListener("resize", handleResize);
       window.removeEventListener("blur", handlePointerReset);
       document.removeEventListener("mouseleave", handlePointerReset);
 

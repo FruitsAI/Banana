@@ -24,6 +24,7 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 ### Fixed
 
 - Make thread rows keyboard-focusable and desktop-native, clamp the context menu to the viewport, support Escape dismissal, and restore focus after closing the menu. 将线程列表项改为可键盘聚焦的桌面化交互，限制右键菜单在视口内显示，支持 Escape 关闭，并在菜单收起后恢复焦点。
+- Prevent the liquid-glass runtime from mutating server-rendered surfaces before hydration finishes, fixing the sidebar/search hydration mismatch on first paint. 避免液态玻璃运行时在 hydration 完成前提前改写服务端渲染的表面节点，修复侧边栏与搜索区域首帧的 hydration mismatch。
 
 ## [0.1.0] - 2026-03-21
 

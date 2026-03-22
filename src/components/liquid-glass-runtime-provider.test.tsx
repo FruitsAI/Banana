@@ -30,7 +30,27 @@ describe("LiquidGlassRuntimeProvider", () => {
     document.documentElement.style.removeProperty("--liquid-ambient-energy");
   });
 
-  it("projects adaptive clarity and pointer optics onto tracked surfaces", async () => {
+  it("does not mutate tracked SSR surfaces before the runtime is activated", () => {
+    render(
+      <LiquidGlassRuntimeProvider>
+        <div
+          data-testid="surface"
+          data-material-role="floating"
+          data-surface-clarity="high"
+        />
+      </LiquidGlassRuntimeProvider>,
+    );
+
+    const surface = screen.getByTestId("surface");
+
+    expect(surface.dataset.liquidClarityState).toBeUndefined();
+    expect(surface.style.getPropertyValue("--liquid-clarity-strength")).toBe("");
+    expect(
+      document.documentElement.style.getPropertyValue("--liquid-ambient-focus-x"),
+    ).toBe("");
+  });
+
+  it("projects adaptive clarity and pointer optics onto tracked surfaces after activation", async () => {
     render(
       <LiquidGlassRuntimeProvider>
         <div
