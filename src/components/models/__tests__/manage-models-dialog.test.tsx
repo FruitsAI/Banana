@@ -34,9 +34,27 @@ vi.mock("framer-motion", () => ({
   motion: new Proxy(
     {},
     {
-      get: (_target, tag: string) => ({ children, ...props }: React.HTMLAttributes<HTMLElement> & { layoutId?: string }) => {
-        const domProps = { ...props } as React.HTMLAttributes<HTMLElement> & { layoutId?: string };
+      get: (_target, tag: string) => ({
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLElement> & {
+        layoutId?: string;
+        whileHover?: unknown;
+        whileTap?: unknown;
+        transition?: unknown;
+      }) => {
+        const domProps = {
+          ...props,
+        } as React.HTMLAttributes<HTMLElement> & {
+          layoutId?: string;
+          whileHover?: unknown;
+          whileTap?: unknown;
+          transition?: unknown;
+        };
         delete domProps.layoutId;
+        delete domProps.transition;
+        delete domProps.whileHover;
+        delete domProps.whileTap;
         return React.createElement(tag, domProps, children);
       },
     },
@@ -108,6 +126,13 @@ describe("ManageModelsDialog", () => {
     expect(screen.getByRole("button", { name: "嵌入" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "联网" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "免费" })).not.toBeInTheDocument();
+    expect(screen.getByText("Reasoner Pro").closest("[data-selection-style]")).toHaveAttribute(
+      "data-selection-style",
+      "idle",
+    );
+    expect(
+      screen.getByText("Reasoner Pro").closest("[data-selection-style]")?.getAttribute("style"),
+    ).toContain("var(--liquid-selection-shadow");
 
     fireEvent.click(screen.getByRole("button", { name: "推理" }));
 

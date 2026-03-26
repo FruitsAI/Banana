@@ -1,11 +1,20 @@
 import { cn } from "@/lib/utils";
+import {
+  getMaterialSurfaceStyle,
+  type MaterialDepth,
+  type MaterialRole,
+} from "@/components/ui/material-surface";
 
 interface GlassPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   width?: "sidebar" | "full";
+  surface?: Extract<MaterialRole, "chrome" | "content">;
+  depth?: MaterialDepth;
 }
 
 export function GlassPanel({
   width = "sidebar",
+  surface = "chrome",
+  depth = "md",
   className,
   children,
   style,
@@ -19,9 +28,9 @@ export function GlassPanel({
         width === "full" && "w-full",
         className
       )}
+      data-material-role={surface}
       style={{
-        background: "var(--bg-sidebar)",
-        borderColor: "var(--divider)",
+        ...getMaterialSurfaceStyle(surface, depth),
         ...style,
       }}
       {...props}

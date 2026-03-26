@@ -1,17 +1,52 @@
 "use client";
 
 import { Switch } from "@/components/ui/switch";
-import { SidebarLayout } from "@/components/ui/sidebar-layout";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Settings01Icon } from "@hugeicons/core-free-icons";
 import { ModelIcon } from "@/components/models/model-selector";
 import { AddModelDialog } from "@/components/models/add-model-dialog";
 import { AddProviderDialog } from "@/components/providers/add-provider-dialog";
 import { ManageModelsDialog } from "@/components/models/manage-models-dialog";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { SettingsPageFrame } from "@/components/settings/settings-page-frame";
+import {
+  SettingsSectionGroup,
+  SettingsSectionShell,
+  SettingsSectionTitleRow,
+} from "@/components/settings/settings-section-shell";
 import { ModelGroupsPanel } from "./models-setting/model-groups-panel";
 import { ProviderConnectionSection } from "./models-setting/provider-connection-section";
 import { ProviderSidebar } from "./models-setting/provider-sidebar";
 import { useModelsSettingController } from "./models-setting/use-models-setting-controller";
+
+function GuidedEmptyState({
+  eyebrow,
+  testId,
+  title,
+}: {
+  eyebrow: string;
+  testId: string;
+  title: string;
+}) {
+  return (
+    <div
+      className="rounded-[24px] border px-5 py-5"
+      data-testid={testId}
+      style={{
+        ...getMaterialSurfaceStyle("content", "sm"),
+        background:
+          "linear-gradient(180deg, color-mix(in srgb, var(--material-content-background) 94%, transparent) 0%, color-mix(in srgb, var(--material-floating-background) 92%, transparent) 100%)",
+      }}
+    >
+      <div className="text-[10px] font-medium uppercase tracking-[0.18em]" style={{ color: "var(--text-tertiary)" }}>
+        {eyebrow}
+      </div>
+      <div className="mt-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+        {title}
+      </div>
+    </div>
+  );
+}
 
 export function ModelsSetting() {
   const {
@@ -71,81 +106,197 @@ export function ModelsSetting() {
     />
   );
 
-  const content = (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div
-        className="flex items-center justify-between px-6 py-4 border-b"
-        style={{ borderColor: "var(--divider)" }}
-      >
-        <div className="flex items-center gap-2">
-          {activeProvider && <ModelIcon modelName={activeProvider.name} size={14} />}
-          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-            {activeProvider?.name ?? "模型设置"}
-          </h2>
-          <HugeiconsIcon
-            icon={Settings01Icon}
-            size={16}
-            style={{ color: "var(--text-tertiary)" }}
-          />
-        </div>
-        <Switch
-          checked={Boolean(activeProvider?.is_enabled)}
-          onCheckedChange={(checked) => void handleToggleProvider(checked)}
-          disabled={!activeProvider}
-        />
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 custom-scroll">
-        {loading ? (
-          <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            正在加载模型配置...
-          </div>
-        ) : (
-          <>
-            <ProviderConnectionSection
-              activeProvider={activeProvider}
-              apiKey={apiKey}
-              baseUrl={baseUrl}
-              isTesting={isTesting}
-              saving={saving}
-              showApiKey={showApiKey}
-              onApiKeyChange={setApiKey}
-              onBaseUrlChange={setBaseUrl}
-              onTestConnection={() => {
-                void handleTestConnection();
-              }}
-              onToggleShowApiKey={toggleShowApiKey}
-            />
-
-            <ModelGroupsPanel
-              activeModelId={activeModelId}
-              modelGroups={modelGroups}
-              modelsCount={models.length}
-              onDeleteGroup={(groupName, groupModels) => {
-                void handleDeleteModelGroup(groupName, groupModels);
-              }}
-              onDeleteModel={(model) => {
-                void handleDeleteModel(model);
-              }}
-              onOpenAddModel={openAddModelDialog}
-              onOpenEditModel={openEditModelDialog}
-              onOpenManageModels={() => setIsManageModelsDialogOpen(true)}
-              onSelectDefaultModel={(modelId) => {
-                void handleSelectDefaultModel(modelId);
-              }}
-              onToggleModel={(model, checked) => {
-                void handleToggleModel(model, checked);
-              }}
-            />
-          </>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <>
-      <SidebarLayout sidebar={sidebar} content={content} />
+      <SettingsPageFrame>
+        <SettingsSectionShell
+            sectionId="models"
+            eyebrow="Models"
+            title="模型与平台"
+            headerAccessory={
+              <div
+                className="flex flex-col gap-2 rounded-[24px] border p-2.5 sm:flex-row sm:items-center"
+                data-testid="models-preferences-toolbar"
+                style={{
+                  ...getMaterialSurfaceStyle("content", "sm"),
+                  background:
+                    "linear-gradient(180deg, color-mix(in srgb, var(--material-floating-background) 94%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 92%, transparent) 100%)",
+                }}
+              >
+                <div className="pr-3 sm:border-r" style={{ borderColor: "var(--divider)" }}>
+                  <div className="text-[10px] font-medium uppercase tracking-[0.18em]" style={{ color: "var(--text-tertiary)" }}>
+                    当前平台
+                  </div>
+                  <div className="mt-1 inline-flex items-center gap-2 text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+                    {activeProvider ? <ModelIcon modelName={activeProvider.name} size={14} /> : null}
+                    <span>{activeProvider?.name ?? "未选择平台"}</span>
+                  </div>
+                </div>
+
+                <label
+                  className="inline-flex items-center justify-between gap-3 rounded-full border px-3 py-2 text-xs font-medium"
+                  style={{
+                    ...getMaterialSurfaceStyle("floating", "sm"),
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <span>启用平台</span>
+                  <Switch
+                    checked={Boolean(activeProvider?.is_enabled)}
+                    onCheckedChange={(checked) => void handleToggleProvider(checked)}
+                    disabled={!activeProvider}
+                  />
+                </label>
+              </div>
+            }
+          >
+            <div
+              className="grid min-h-0 gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[320px_minmax(0,1fr)]"
+              data-preferences-layout="two-column"
+              data-preferences-height="matched"
+            >
+              <SettingsSectionGroup className="flex min-h-full flex-col overflow-hidden p-0 sm:p-0">
+                <div
+                  className="flex-none px-5 pb-5 pt-5 sm:px-6 sm:pb-5 sm:pt-6"
+                  data-provider-sidebar-header-align="section-group"
+                  data-testid="models-provider-list-header"
+                >
+                  <SettingsSectionTitleRow
+                    testId="models-provider-list-header-row"
+                    title="平台列表"
+                  />
+                </div>
+                <div
+                  className="flex min-h-0 flex-1 flex-col border-t"
+                  data-testid="models-provider-list-body"
+                  style={{ borderColor: "var(--divider)" }}
+                >
+                  {sidebar}
+                </div>
+              </SettingsSectionGroup>
+
+              <div className="min-w-0 space-y-5">
+                <SettingsSectionGroup>
+                  <SettingsSectionTitleRow
+                    className="mb-5"
+                    icon={
+                      <HugeiconsIcon
+                        icon={Settings01Icon}
+                        size={16}
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
+                    }
+                    testId="models-connection-header"
+                    title="连接与凭据"
+                    accessory={
+                      activeProvider ? (
+                        <div
+                          className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em]"
+                          style={{
+                            background: "var(--material-floating-background)",
+                            borderColor: "var(--material-content-border)",
+                            color: "var(--text-tertiary)",
+                          }}
+                        >
+                          {activeProvider.provider_type ?? "custom"}
+                        </div>
+                      ) : null
+                    }
+                  />
+
+                  {loading ? (
+                    <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                      正在加载模型配置...
+                    </div>
+                  ) : activeProvider ? (
+                    <div
+                      className="space-y-5"
+                      data-connection-layout="stacked"
+                      data-testid="models-connection-stack"
+                    >
+                      <ProviderConnectionSection
+                        activeProvider={activeProvider}
+                        apiKey={apiKey}
+                        baseUrl={baseUrl}
+                        isTesting={isTesting}
+                        saving={saving}
+                        showApiKey={showApiKey}
+                        onApiKeyChange={setApiKey}
+                        onBaseUrlChange={setBaseUrl}
+                        onTestConnection={() => {
+                          void handleTestConnection();
+                        }}
+                        onToggleShowApiKey={toggleShowApiKey}
+                      />
+                    </div>
+                  ) : (
+                    <GuidedEmptyState
+                      testId="models-connection-empty-state"
+                      eyebrow="Connection"
+                      title="先选择一个平台"
+                    />
+                  )}
+                </SettingsSectionGroup>
+
+                <SettingsSectionGroup>
+                  <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                        默认模型与可用性
+                      </h3>
+                    </div>
+
+                    <div
+                      className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium"
+                      style={{
+                        background: "var(--material-floating-background)",
+                        borderColor: "var(--material-content-border)",
+                        color: "var(--text-tertiary)",
+                      }}
+                    >
+                      {models.length} 个模型
+                    </div>
+                  </div>
+
+                  {loading ? (
+                    <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                      正在同步模型清单...
+                    </div>
+                  ) : activeProvider ? (
+                    <ModelGroupsPanel
+                      activeModelId={activeModelId}
+                      modelGroups={modelGroups}
+                      modelsCount={models.length}
+                      onDeleteGroup={(groupName, groupModels) => {
+                        void handleDeleteModelGroup(groupName, groupModels);
+                      }}
+                      onDeleteModel={(model) => {
+                        void handleDeleteModel(model);
+                      }}
+                      onOpenAddModel={openAddModelDialog}
+                      onOpenEditModel={openEditModelDialog}
+                      onOpenManageModels={() => setIsManageModelsDialogOpen(true)}
+                      onSelectDefaultModel={(modelId) => {
+                        void handleSelectDefaultModel(modelId);
+                      }}
+                      onToggleModel={(model, checked) => {
+                        void handleToggleModel(model, checked);
+                      }}
+                      showHeader={false}
+                      showTopBorder={false}
+                    />
+                  ) : (
+                    <GuidedEmptyState
+                      testId="models-library-empty-state"
+                      eyebrow="Library"
+                      title="模型库会跟随平台出现"
+                    />
+                  )}
+                </SettingsSectionGroup>
+              </div>
+            </div>
+        </SettingsSectionShell>
+      </SettingsPageFrame>
       <AddProviderDialog
         open={isAddProviderDialogOpen}
         onOpenChange={setIsAddProviderDialogOpen}

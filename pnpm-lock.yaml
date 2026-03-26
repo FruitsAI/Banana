@@ -47,9 +47,15 @@ importers:
       framer-motion:
         specifier: ^12.35.1
         version: 12.35.1(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      katex:
+        specifier: ^0.16.38
+        version: 0.16.38
       lucide-react:
         specifier: ^0.577.0
         version: 0.577.0(react@19.2.3)
+      mermaid:
+        specifier: ^11.13.0
+        version: 11.13.0
       next:
         specifier: 16.1.6
         version: 16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -68,9 +74,18 @@ importers:
       react-markdown:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@19.2.14)(react@19.2.3)
+      rehype-katex:
+        specifier: ^7.0.1
+        version: 7.0.1
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
+      remark-math:
+        specifier: ^6.0.0
+        version: 6.0.0
+      shiki:
+        specifier: ^3.23.0
+        version: 3.23.0
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0

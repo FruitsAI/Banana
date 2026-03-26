@@ -10,7 +10,10 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
+import { SettingsPageFrame } from "@/components/settings/settings-page-frame";
+import { SettingsSectionGroup, SettingsSectionShell } from "@/components/settings/settings-section-shell";
 import { SelectionCard } from "@/components/ui/selection-card";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 import type { AnimationIntensity } from "@/lib/animation-intensity";
 
 const THEME_OPTIONS = [
@@ -22,11 +25,10 @@ const THEME_OPTIONS = [
 const INTENSITY_OPTIONS: Array<{
   id: AnimationIntensity;
   label: string;
-  description: string;
 }> = [
-  { id: "low", label: "轻量", description: "更少位移和缩放，低干扰" },
-  { id: "medium", label: "标准", description: "平衡观感与效率，推荐" },
-  { id: "high", label: "增强", description: "更明显动效，更强反馈" },
+  { id: "low", label: "轻量" },
+  { id: "medium", label: "标准" },
+  { id: "high", label: "增强" },
 ];
 
 export function ThemeSetting() {
@@ -50,112 +52,156 @@ export function ThemeSetting() {
 
   if (!mounted) {
     return (
-      <div className="p-6">
-        <h2 className="text-lg font-semibold mb-6" style={{ color: "var(--text-primary)" }}>
-          外观设置
-        </h2>
-        <div className="flex gap-3">
-          {THEME_OPTIONS.map((item) => (
-            <div
-              key={item.id}
-              className="flex-1 min-h-[100px] rounded-xl border"
-              style={{
-                background: "var(--glass-surface)",
-                borderColor: "var(--glass-border)",
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      <SettingsPageFrame>
+        <SettingsSectionShell
+          sectionId="theme"
+          eyebrow="Appearance"
+          title="外观设置"
+        >
+            <SettingsSectionGroup>
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  主题
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {THEME_OPTIONS.map((item) => (
+                  <div
+                    key={item.id}
+                    className="min-h-[116px] rounded-2xl border"
+                    style={{ ...getMaterialSurfaceStyle("floating", "sm") }}
+                  />
+                ))}
+              </div>
+            </SettingsSectionGroup>
+
+            <SettingsSectionGroup>
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  动画强度
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {INTENSITY_OPTIONS.map((item) => (
+                  <div
+                    key={item.id}
+                    className="min-h-[112px] rounded-2xl border"
+                    style={{ ...getMaterialSurfaceStyle("floating", "sm") }}
+                  />
+                ))}
+              </div>
+            </SettingsSectionGroup>
+        </SettingsSectionShell>
+      </SettingsPageFrame>
     );
   }
 
   return (
-    <div className="p-6 space-y-8">
-      <section>
-        <h2 className="text-lg font-semibold mb-6" style={{ color: "var(--text-primary)" }}>
-          外观设置
-        </h2>
+    <SettingsPageFrame>
+      <SettingsSectionShell
+        sectionId="theme"
+        eyebrow="Appearance"
+        title="外观设置"
+      >
+          <SettingsSectionGroup>
+            <div className="mb-5">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                主题
+              </h3>
+            </div>
 
-        <div className="flex gap-3">
-          {THEME_OPTIONS.map((item) => {
-            const isActive = theme === item.id;
-            return (
-              <SelectionCard
-                key={item.id}
-                isActive={isActive}
-                onClick={() => setTheme(item.id)}
-                className="flex-1 flex flex-col items-center justify-center gap-2 min-h-[100px]"
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{
-                    background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
-                  }}
-                >
-                  <HugeiconsIcon
-                    icon={item.icon}
-                    size={20}
-                    style={{
-                      color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)",
-                    }}
-                  />
-                </div>
-                <span
-                  className="text-xs font-medium"
-                  style={{
-                    color: isActive ? "var(--brand-primary)" : "var(--text-primary)",
-                  }}
-                >
-                  {item.label}
-                </span>
-              </SelectionCard>
-            );
-          })}
-        </div>
-      </section>
-
-      <section>
-        <h3 className="text-base font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-          动画强度
-        </h3>
-        <p className="text-xs mb-4" style={{ color: "var(--text-tertiary)" }}>
-          影响全局过渡、交互动效和动态反馈。
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {INTENSITY_OPTIONS.map((item) => {
-            const isActive = intensity === item.id;
-            const isSaving = savingIntensity === item.id;
-
-            return (
-              <SelectionCard
-                key={item.id}
-                isActive={isActive}
-                onClick={() => void handleIntensityChange(item.id)}
-                className="text-left min-h-[100px]"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span
-                    className="text-sm font-semibold"
-                    style={{ color: isActive ? "var(--brand-primary)" : "var(--text-primary)" }}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {THEME_OPTIONS.map((item) => {
+                const isActive = theme === item.id;
+                return (
+                  <SelectionCard
+                    key={item.id}
+                    isActive={isActive}
+                    onClick={() => setTheme(item.id)}
+                    className="flex min-h-[116px] flex-col items-center justify-center gap-3 rounded-2xl"
                   >
-                    {item.label}
-                  </span>
-                </div>
-                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                  {item.description}
-                </p>
-                {isSaving && (
-                  <span className="mt-2 inline-block text-[11px]" style={{ color: "var(--brand-primary)" }}>
-                    正在保存...
-                  </span>
-                )}
-              </SelectionCard>
-            );
-          })}
-        </div>
-      </section>
-    </div>
+                      <div
+                        className="flex h-10 w-10 items-center justify-center rounded-lg"
+                        style={{
+                          background: isActive
+                            ? "var(--selection-active-chip-fill)"
+                            : "var(--material-content-background)",
+                          border: isActive
+                            ? "1px solid var(--selection-active-chip-border)"
+                            : "1px solid var(--material-content-border)",
+                          boxShadow: isActive
+                            ? "var(--selection-active-chip-shadow)"
+                            : "inset 0 1px 0 rgba(255,255,255,0.12)",
+                        }}
+                      >
+                      <HugeiconsIcon
+                        icon={item.icon}
+                        size={20}
+                        style={{
+                          color: isActive
+                            ? "var(--selection-active-foreground, var(--brand-primary))"
+                            : "var(--text-tertiary)",
+                        }}
+                      />
+                    </div>
+                    <span
+                      className="text-xs font-medium"
+                      style={{
+                        color: isActive
+                          ? "var(--selection-active-foreground, var(--brand-primary))"
+                          : "var(--text-primary)",
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                  </SelectionCard>
+                );
+              })}
+            </div>
+          </SettingsSectionGroup>
+
+          <SettingsSectionGroup>
+            <div className="mb-5">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                动画强度
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {INTENSITY_OPTIONS.map((item) => {
+                const isActive = intensity === item.id;
+                const isSaving = savingIntensity === item.id;
+
+                return (
+                  <SelectionCard
+                    key={item.id}
+                    isActive={isActive}
+                    onClick={() => void handleIntensityChange(item.id)}
+                    className="min-h-[112px] rounded-2xl text-left"
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <span
+                        className="text-sm font-semibold"
+                        style={{
+                          color: isActive
+                            ? "var(--selection-active-foreground, var(--brand-primary))"
+                            : "var(--text-primary)",
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+                    {isSaving ? (
+                      <span className="mt-2 inline-block text-[11px]" style={{ color: "var(--selection-active-foreground)" }}>
+                        正在保存...
+                      </span>
+                    ) : null}
+                  </SelectionCard>
+                );
+              })}
+            </div>
+          </SettingsSectionGroup>
+      </SettingsSectionShell>
+    </SettingsPageFrame>
   );
 }

@@ -47,4 +47,16 @@ R  docs/old.md -> docs/new.md
 `),
     ).toEqual(["README.md", "docs/new.md", "CHANGELOG.md"]);
   });
+
+  it("still parses the first porcelain entry correctly after outer trim removes its leading space", async () => {
+    const { parseGitStatusPaths } = await import(
+      "../../../scripts/changelog-tools.mjs"
+    );
+
+    expect(
+      parseGitStatusPaths(`M CHANGELOG.md
+ M src/app/page.tsx
+`),
+    ).toEqual(["CHANGELOG.md", "src/app/page.tsx"]);
+  });
 });

@@ -1,6 +1,8 @@
 "use client";
 
 import { CloudIcon, McpServerIcon, BadgeInfoIcon, PaintBoardIcon } from "@hugeicons/core-free-icons";
+import { SidebarUtilityDock } from "@/components/layout/sidebar-utility-dock";
+import { WorkspaceSidebarShell } from "@/components/layout/workspace-sidebar-shell";
 import { NavItem } from "@/components/ui/nav-item";
 import type { SettingsTab } from "./settings-container";
 
@@ -21,43 +23,71 @@ interface SettingsSidebarProps {
  */
 export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps) {
   const tabs = [
-    { id: "models" as SettingsTab, icon: CloudIcon, label: "模型设置" },
-    { id: "mcp" as SettingsTab, icon: McpServerIcon, label: "MCP 设置" },
-    { id: "theme" as SettingsTab, icon: PaintBoardIcon, label: "外观设置" },
-    { id: "about" as SettingsTab, icon: BadgeInfoIcon, label: "关于我们" },
+    {
+      id: "models" as SettingsTab,
+      icon: CloudIcon,
+      label: "模型设置",
+    },
+    {
+      id: "mcp" as SettingsTab,
+      icon: McpServerIcon,
+      label: "MCP 设置",
+    },
+    {
+      id: "theme" as SettingsTab,
+      icon: PaintBoardIcon,
+      label: "外观设置",
+    },
+    {
+      id: "about" as SettingsTab,
+      icon: BadgeInfoIcon,
+      label: "关于我们",
+    },
   ];
 
   return (
-    <div
-      className="w-60 sm:w-64 lg:w-72 flex-shrink-0 flex flex-col h-full border-r"
-      style={{
-        background: 'var(--bg-sidebar)',
-        borderColor: 'var(--divider)',
-      }}
+    <WorkspaceSidebarShell
+      testId="settings-sidebar-shell"
+      style={{ boxShadow: "var(--liquid-material-rest-shadow)" }}
     >
-      {/* Header */}
-      <div className="px-4 pt-4 pb-3">
+      <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-3 sm:pb-4">
+        <div
+          className="text-[11px] font-medium uppercase tracking-[0.18em] mb-2"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          Preferences
+        </div>
         <h1
-          className="text-base font-semibold"
+          className="text-base sm:text-lg font-semibold"
           style={{ color: 'var(--text-primary)' }}
         >
           设置
         </h1>
       </div>
 
-      {/* Navigation */}
-      <div className="px-3 py-2 space-y-0.5">
-        {tabs.map((tab) => (
-          <NavItem
-            key={tab.id}
-            icon={tab.icon}
-            label={tab.label}
-            isActive={activeTab === tab.id}
-            onClick={() => onTabChange(tab.id)}
-            layoutId="settingsNav"
-          />
-        ))}
+      <div className="flex-1 min-h-0 overflow-y-auto px-1.5 sm:px-2 py-2">
+        <div className="space-y-1" role="tablist" aria-label="设置分组">
+          {tabs.map((tab) => (
+            <NavItem
+              key={tab.id}
+              icon={tab.icon}
+              label={tab.label}
+              isActive={activeTab === tab.id}
+              onClick={() => onTabChange(tab.id)}
+              layoutId="settingsNav"
+              semanticProps={{
+                "aria-selected": activeTab === tab.id,
+                "aria-controls": `settings-panel-${tab.id}`,
+                id: `settings-tab-${tab.id}`,
+                role: "tab",
+                type: "button",
+              }}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+
+      <SidebarUtilityDock activeView="settings" />
+    </WorkspaceSidebarShell>
   );
 }

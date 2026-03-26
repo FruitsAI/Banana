@@ -7,6 +7,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface"
 
 /**
  * Dialog 相关组件 (模态对话框)
@@ -56,10 +57,16 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
+      data-backdrop-style="frosted-atmosphere"
+      data-testid="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/44 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:duration-250 data-[state=closed]:duration-200",
+        "fixed inset-0 z-50 bg-[rgba(6,10,18,0.26)] backdrop-blur-[18px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:duration-250 data-[state=closed]:duration-200",
         className
       )}
+      style={{
+        background:
+          "radial-gradient(circle at top, rgba(59,130,246,0.1), transparent 26%), radial-gradient(circle at bottom, rgba(255,255,255,0.08), transparent 34%), rgba(6,10,18,0.22)",
+      }}
       {...props}
     />
   )
@@ -78,23 +85,46 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        data-surface-tone="liquid-modal"
+        data-testid="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border p-6 shadow-xl outline-none sm:max-w-lg motion-safe:will-change-transform data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-3 data-[state=open]:duration-300 data-[state=closed]:duration-200",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-1.5rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden rounded-[32px] border p-6 shadow-[0_36px_90px_rgba(15,23,42,0.22)] outline-none sm:max-w-lg motion-safe:will-change-transform data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-3 data-[state=open]:duration-300 data-[state=closed]:duration-200",
           className
         )}
         style={{
-          background: "var(--glass-elevated)",
-          borderColor: "var(--glass-border)",
-          backdropFilter: "blur(20px) saturate(180%)",
-          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          ...getMaterialSurfaceStyle("floating", "lg"),
+          ["--liquid-surface-fill" as string]:
+            "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.08) 100%), var(--liquid-material-base-background)",
         }}
+        data-material-role="floating"
+        data-surface-clarity="high"
         {...props}
       >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-95"
+          aria-hidden="true"
+          style={{
+            background:
+              "radial-gradient(circle at top left, rgba(255,255,255,0.3), transparent 28%), radial-gradient(circle at bottom right, rgba(59,130,246,0.14), transparent 34%)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-x-6 top-0 h-px opacity-90"
+          aria-hidden="true"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.82) 16%, rgba(255,255,255,0.18) 84%, transparent 100%)",
+          }}
+        />
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-md p-1.5 opacity-70 transition-[transform,opacity,background-color,color] duration-200 ease-out hover:opacity-100 motion-safe:hover:rotate-90 motion-safe:hover:scale-110 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-4 right-4 z-10 rounded-full border p-2 text-[var(--icon-secondary)] opacity-90 transition-[transform,opacity,background-color,color,border-color] duration-200 ease-out hover:opacity-100 motion-safe:hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary-light)]"
+            style={{
+              background: "rgba(255,255,255,0.12)",
+              borderColor: "rgba(255,255,255,0.16)",
+            }}
           >
             <HugeiconsIcon icon={Cancel01Icon} size={16} />
             <span className="sr-only">Close</span>
@@ -109,7 +139,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      className={cn("relative z-10 flex flex-col gap-2 text-center sm:text-left", className)}
       {...props}
     />
   )
@@ -127,7 +157,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "relative z-10 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -149,7 +179,8 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-none font-semibold", className)}
+      className={cn("text-[1.35rem] leading-tight font-semibold tracking-[-0.02em]", className)}
+      style={{ color: "var(--text-primary)" }}
       {...props}
     />
   )
@@ -162,7 +193,8 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-sm leading-6", className)}
+      style={{ color: "var(--text-secondary)" }}
       {...props}
     />
   )

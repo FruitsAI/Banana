@@ -14,6 +14,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { ModelIcon } from "@/components/models/model-selector";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import {
+  getLiquidSelectionState,
+  getLiquidSelectionStyle,
+} from "@/components/ui/liquid-selection";
 import type { Model } from "@/domain/models/types";
 
 interface ModelGroupsPanelProps {
@@ -27,6 +32,8 @@ interface ModelGroupsPanelProps {
   onOpenManageModels: () => void;
   onSelectDefaultModel: (modelId: string) => void;
   onToggleModel: (model: Model, checked: boolean) => void;
+  showHeader?: boolean;
+  showTopBorder?: boolean;
 }
 
 export function ModelGroupsPanel({
@@ -40,30 +47,47 @@ export function ModelGroupsPanel({
   onOpenManageModels,
   onSelectDefaultModel,
   onToggleModel,
+  showHeader = true,
+  showTopBorder = true,
 }: ModelGroupsPanelProps) {
   return (
-    <div className="space-y-3 pt-4 border-t" style={{ borderColor: "var(--divider)" }}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Label className="font-semibold text-[13px]" style={{ color: "var(--text-primary)" }}>
-            模型
-          </Label>
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded"
-            style={{ background: "var(--glass-subtle)", color: "var(--text-tertiary)" }}
-          >
-            {modelsCount}
-          </span>
-          <HugeiconsIcon icon={Search01Icon} size={14} style={{ color: "var(--text-tertiary)" }} />
+    <div
+      className={showTopBorder ? "space-y-3 border-t pt-4" : "space-y-3"}
+      style={showTopBorder ? { borderColor: "var(--divider)" } : undefined}
+    >
+      {showHeader ? (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Label className="font-semibold text-[13px]" style={{ color: "var(--text-primary)" }}>
+              模型
+            </Label>
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded"
+              style={{
+                background: "var(--material-floating-background)",
+                color: "var(--text-tertiary)",
+                border: "1px solid var(--material-content-border)",
+              }}
+            >
+              {modelsCount}
+            </span>
+            <HugeiconsIcon
+              icon={Search01Icon}
+              size={14}
+              style={{ color: "var(--text-tertiary)" }}
+            />
+          </div>
+          <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: "var(--text-tertiary)" }} />
         </div>
-        <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: "var(--text-tertiary)" }} />
-      </div>
+      ) : null}
 
       <div
-        className="rounded-xl overflow-hidden"
+        className="overflow-hidden rounded-[24px]"
         style={{
-          background: "var(--glass-surface)",
-          border: "1px solid var(--glass-border)",
+          ...getMaterialSurfaceStyle("content", "sm"),
+          background:
+            "linear-gradient(180deg, color-mix(in srgb, var(--material-floating-background) 94%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 92%, transparent) 100%)",
+          border: "1px solid var(--material-content-border)",
         }}
       >
         {modelGroups.length === 0 ? (
@@ -76,22 +100,32 @@ export function ModelGroupsPanel({
               key={groupName}
               defaultOpen={true}
               title={groupName}
-              iconColor="var(--brand-primary)"
+              iconColor="var(--selection-active-indicator)"
               className="group/panel rounded-none border-0"
               headerStyle={{
-                background: "var(--glass-overlay)",
-                color: "var(--brand-primary)",
+                background:
+                  "color-mix(in srgb, var(--material-floating-background) 88%, transparent)",
+                color: "var(--text-primary)",
                 borderBottom: "1px solid var(--divider)",
               }}
               headerActions={
                 <button
                   type="button"
-                  className="rounded-md p-1 opacity-0 transition-opacity duration-150 group-hover/panel:opacity-100 hover:opacity-100"
-                  style={{ color: "var(--danger)" }}
+                  className="material-interactive rounded-full border px-2 py-1 text-[11px] opacity-0 transition-all duration-150 group-hover/panel:opacity-100 hover:opacity-100 motion-safe:hover:-translate-y-px"
+                  data-hover-surface="content"
+                  style={{
+                    ...getMaterialSurfaceStyle("floating", "sm"),
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
+                    color: "var(--danger)",
+                  }}
                   onClick={() => onDeleteGroup(groupName, groupModels)}
                   aria-label={`删除分组 ${groupName}`}
                 >
-                  <HugeiconsIcon icon={Delete01Icon} size={14} />
+                  <span className="inline-flex items-center gap-1">
+                    <HugeiconsIcon icon={Delete01Icon} size={12} />
+                    删除
+                  </span>
                 </button>
               }
             >
@@ -100,16 +134,30 @@ export function ModelGroupsPanel({
                 return (
                   <div
                     key={model.id}
-                    className="flex items-center justify-between p-3 pl-8 border-b last:border-0"
+                    className="group/item flex items-center justify-between border-b px-5 py-3 last:border-0"
                     style={{
-                      background: "var(--bg-primary)",
+                      background: "transparent",
                       borderColor: "var(--divider)",
                     }}
                   >
                     <button
-                      className="flex items-center gap-3 min-w-0 text-left"
+                      className="material-interactive relative flex w-full min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-[20px] border px-3 py-2.5 text-left transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-out hover:-translate-y-px"
+                      data-hover-surface={isDefaultModel ? "accent" : "content"}
+                      data-material-role="content"
+                      data-testid={isDefaultModel ? "default-model-selection-button" : undefined}
+                      data-model-row-width="uniform"
+                      data-selection-style={getLiquidSelectionState(isDefaultModel)}
+                      style={getLiquidSelectionStyle({
+                        active: isDefaultModel,
+                        depth: "md",
+                        inactiveRole: "content",
+                        inactiveFill:
+                          "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%), color-mix(in srgb, var(--material-content-background) 56%, transparent)",
+                        inactiveBorderColor: "var(--material-content-border)",
+                      })}
                       disabled={model.is_enabled === false}
                       onClick={() => onSelectDefaultModel(model.id)}
+                      type="button"
                     >
                       <ModelIcon
                         modelName={model.name}
@@ -117,36 +165,74 @@ export function ModelGroupsPanel({
                         showBorder={isDefaultModel}
                         className="shrink-0"
                       />
-                      <div className="min-w-0">
-                        <div className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-                          {model.name}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div
+                            className="truncate text-[13px] font-medium"
+                            style={{
+                              color: isDefaultModel
+                                ? "var(--selection-active-foreground)"
+                                : "var(--text-primary)",
+                            }}
+                          >
+                            {model.name}
+                          </div>
                         </div>
-                        <div className="text-[11px] truncate opacity-50" style={{ color: "var(--text-tertiary)" }}>
+                        <div
+                          className="truncate text-[11px]"
+                          style={{
+                            color: isDefaultModel
+                              ? "var(--selection-active-foreground-muted)"
+                              : "var(--text-tertiary)",
+                            opacity: isDefaultModel ? 0.92 : 0.6,
+                          }}
+                        >
                           {model.id}
                         </div>
                       </div>
                     </button>
-                    <div className="flex items-center gap-3 shrink-0 px-2">
+                    <div className="ml-3 flex shrink-0 items-center gap-3">
                       <button
-                        className="opacity-50 hover:opacity-100 transition-opacity"
-                        style={{ color: "var(--text-tertiary)" }}
+                        className="material-interactive inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] opacity-0 transition-all duration-150 group-hover/panel:opacity-100 hover:opacity-100 motion-safe:hover:-translate-y-px"
+                        data-hover-surface="content"
+                        style={{
+                          ...getMaterialSurfaceStyle("floating", "sm"),
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
+                          color: "var(--text-tertiary)",
+                        }}
                         onClick={() => onOpenEditModel(model)}
                         aria-label={`编辑模型 ${model.id}`}
+                        type="button"
                       >
-                        <HugeiconsIcon icon={Edit03Icon} size={16} />
+                        <HugeiconsIcon icon={Edit03Icon} size={12} />
+                        编辑
                       </button>
                       <button
-                        className="opacity-70 hover:opacity-100 transition-opacity"
-                        style={{ color: "var(--danger)" }}
+                        className="material-interactive inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] opacity-0 transition-all duration-150 group-hover/panel:opacity-100 hover:opacity-100 motion-safe:hover:-translate-y-px"
+                        data-hover-surface="content"
+                        style={{
+                          ...getMaterialSurfaceStyle("floating", "sm"),
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
+                          color: "var(--danger)",
+                        }}
                         onClick={() => onDeleteModel(model)}
                         aria-label={`删除模型 ${model.id}`}
+                        type="button"
                       >
-                        <HugeiconsIcon icon={Delete01Icon} size={16} />
+                        <HugeiconsIcon icon={Delete01Icon} size={12} />
+                        删除
                       </button>
-                      <Switch
-                        checked={model.is_enabled}
-                        onCheckedChange={(checked) => onToggleModel(model, checked)}
-                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                          启用
+                        </span>
+                        <Switch
+                          checked={model.is_enabled}
+                          onCheckedChange={(checked) => onToggleModel(model, checked)}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
@@ -159,11 +245,8 @@ export function ModelGroupsPanel({
       <div className="flex gap-3 pt-4">
         <Button
           size="sm"
-          className="h-9 rounded-xl text-xs font-medium px-4 border-0"
-          style={{
-            background: "var(--brand-primary)",
-            color: "#fff",
-          }}
+          className="h-9 rounded-full px-4 text-xs font-medium motion-safe:hover:-translate-y-px"
+          surface="floating"
           onClick={onOpenManageModels}
         >
           <HugeiconsIcon icon={ListSettingIcon} size={14} className="mr-1.5" /> 管理
@@ -171,11 +254,8 @@ export function ModelGroupsPanel({
         <Button
           variant="outline"
           size="sm"
-          className="h-9 rounded-xl text-xs px-4 border"
-          style={{
-            background: "var(--glass-surface)",
-            borderColor: "var(--glass-border)",
-          }}
+          className="h-9 rounded-full border px-4 text-xs motion-safe:hover:-translate-y-px"
+          surface="floating"
           onClick={onOpenAddModel}
         >
           <HugeiconsIcon icon={Add01Icon} size={14} className="mr-1.5" /> 添加

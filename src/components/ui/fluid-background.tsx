@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
 
@@ -15,13 +16,47 @@ import { useAnimationIntensity } from "@/components/animation-intensity-provider
 export function FluidBackground() {
   const shouldReduceMotion = useReducedMotion();
   const { factors, intensity } = useAnimationIntensity();
+  const [themeMode, setThemeMode] = useState<"unknown" | "light" | "dark">("unknown");
   const motionReduced = shouldReduceMotion || intensity === "low";
 
   const duration = (base: number) => base * factors.duration;
 
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const syncThemeMode = () => {
+      setThemeMode(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    };
+
+    syncThemeMode();
+
+    const observer = new MutationObserver(() => {
+      syncThemeMode();
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  if (themeMode === "unknown") {
+    return <div className="fluid-background" data-fluid-mode="hydrating" />;
+  }
+
+  if (themeMode === "dark") {
+    return <div className="fluid-background" data-fluid-mode="static-dark" />;
+  }
+
   if (motionReduced) {
     return (
-      <div className="fluid-background">
+      <div className="fluid-background" data-fluid-mode="static-light">
         <div className="fluid-blob fluid-blob-1" style={{ animation: "none" }} />
         <div className="fluid-blob fluid-blob-2" style={{ animation: "none" }} />
         <div className="fluid-blob fluid-blob-3" style={{ animation: "none" }} />
@@ -31,7 +66,7 @@ export function FluidBackground() {
   }
 
   return (
-    <div className="fluid-background">
+    <div className="fluid-background" data-fluid-mode="dynamic-light">
       <motion.div
         className="fluid-blob fluid-blob-1"
         animate={{

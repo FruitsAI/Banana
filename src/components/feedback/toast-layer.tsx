@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { createPortal } from "react-dom";
+import { useAnimationIntensity } from "@/components/animation-intensity-provider";
 import { Button } from "@/components/ui/button";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 import { cn } from "@/lib/utils";
 import type { ToastMessage, ToastVariant } from "@/components/feedback/types";
 
@@ -14,7 +16,7 @@ interface ToastLayerProps {
 }
 
 const TOAST_VARIANT_STYLE: Record<ToastVariant, string> = {
-  default: "border-[var(--glass-border)]",
+  default: "border-[var(--material-floating-border)]",
   success: "border-[var(--success)]/35",
   error: "border-[var(--danger)]/35",
   warning: "border-[var(--warning)]/35",
@@ -22,11 +24,19 @@ const TOAST_VARIANT_STYLE: Record<ToastVariant, string> = {
 };
 
 const TOAST_ACCENT_STYLE: Record<ToastVariant, string> = {
-  default: "bg-[var(--brand-primary)]/35",
+  default: "bg-[var(--brand-primary)]/65",
   success: "bg-[var(--success)]",
   error: "bg-[var(--danger)]",
   warning: "bg-[var(--warning)]",
   info: "bg-[var(--info)]",
+};
+
+const TOAST_META_LABEL: Record<ToastVariant, string> = {
+  default: "Notice",
+  success: "Success",
+  error: "Error",
+  warning: "Warning",
+  info: "Info",
 };
 
 /**
@@ -35,6 +45,11 @@ const TOAST_ACCENT_STYLE: Record<ToastVariant, string> = {
  */
 export function ToastLayer({ messages, onDismiss, onAction }: ToastLayerProps) {
   const [mounted, setMounted] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
+  const { factors, intensity } = useAnimationIntensity();
+  const motionReduced = shouldReduceMotion || intensity === "low";
+  const motionDuration = (value: number) => Number((value * factors.duration).toFixed(3));
+  const motionDistance = (value: number) => Number((value * factors.distance).toFixed(3));
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -46,55 +61,100 @@ export function ToastLayer({ messages, onDismiss, onAction }: ToastLayerProps) {
   }
 
   return createPortal(
-    <div className="pointer-events-none fixed right-4 bottom-4 z-[120] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2">
+    <div
+      className="pointer-events-none fixed left-1/2 z-[140] flex w-[min(540px,calc(100vw-1.5rem))] -translate-x-1/2 flex-col gap-2.5"
+      data-testid="toast-viewport"
+      data-toast-placement="top-center"
+      data-toast-style="liquid-banner"
+      style={{
+        top: "calc(env(safe-area-inset-top, 0px) + var(--desktop-toast-offset, 54px))",
+      }}
+    >
       <AnimatePresence initial={false}>
         {messages.map((message) => {
           const variant = message.variant ?? "default";
           return (
             <motion.div
               key={message.id}
-              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              initial={motionReduced ? false : { opacity: 0, y: motionDistance(-18), scale: 0.975 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.98 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              exit={motionReduced ? { opacity: 0.999, y: 0, scale: 1 } : { opacity: 0, y: motionDistance(-10), scale: 0.985 }}
+              transition={{ duration: motionDuration(0.26), ease: [0.16, 1, 0.3, 1] }}
               className={cn(
-                "pointer-events-auto relative overflow-hidden rounded-2xl border p-3 shadow-xl",
+                "pointer-events-auto relative overflow-hidden rounded-[28px] border px-4 py-3.5 shadow-xl",
                 TOAST_VARIANT_STYLE[variant]
               )}
+              data-testid={`toast-item-${message.id}`}
+              data-feedback-surface="liquid-banner"
+              data-toast-layout="system-banner"
+              data-toast-variant={variant}
+              data-surface-clarity="high"
               style={{
-                background: "var(--glass-elevated)",
-                backdropFilter: "blur(20px) saturate(180%)",
-                WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                ...getMaterialSurfaceStyle("floating", "md"),
+                ["--liquid-surface-fill" as string]:
+                  "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.1) 100%), var(--liquid-material-base-background)",
               }}
             >
-              <span
-                className={cn("absolute inset-y-0 left-0 w-1", TOAST_ACCENT_STYLE[variant])}
-                aria-hidden
+              <div
+                className="pointer-events-none absolute inset-0 opacity-90"
+                aria-hidden="true"
+                style={{
+                  background:
+                    "radial-gradient(circle at top left, rgba(255,255,255,0.28), transparent 30%), radial-gradient(circle at top right, rgba(59,130,246,0.12), transparent 34%)",
+                }}
               />
-              <div className="flex items-start justify-between gap-3 pl-2">
+              <div
+                className="pointer-events-none absolute inset-x-4 top-0 h-px opacity-80"
+                aria-hidden="true"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 18%, rgba(255,255,255,0.24) 82%, transparent 100%)",
+                }}
+              />
+              <div className="relative z-10 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className={cn("h-2.5 w-2.5 rounded-full shadow-[0_0_18px_currentColor]", TOAST_ACCENT_STYLE[variant])} />
+                  <span
+                    className="rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em]"
+                    style={{
+                      color: "var(--text-tertiary)",
+                      borderColor: "rgba(255,255,255,0.18)",
+                      background: "rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    {TOAST_META_LABEL[variant]}
+                  </span>
+                </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">{message.title}</p>
+                  <p className="truncate text-sm font-semibold tracking-[0.01em]" style={{ color: "var(--text-primary)" }}>
+                    {message.title}
+                  </p>
                   {message.description ? (
-                    <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+                    <p className="mt-1 truncate text-[13px] leading-5" style={{ color: "var(--text-secondary)" }}>
                       {message.description}
                     </p>
                   ) : null}
                 </div>
-                <div className="flex items-center gap-1">
+                <div
+                  className="flex items-center justify-end gap-2"
+                  data-testid={`toast-actions-${message.id}`}
+                  data-toast-actions="trailing"
+                >
                   {message.actionLabel ? (
                     <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 rounded-lg px-2 text-xs"
+                      size="xs"
+                      variant="secondary"
+                      surface="floating"
+                      className="min-w-[64px] rounded-full px-3 text-[11px] font-semibold"
                       onClick={() => onAction(message.id)}
                     >
                       {message.actionLabel}
                     </Button>
                   ) : null}
                   <Button
-                    size="sm"
+                    size="xs"
                     variant="ghost"
-                    className="h-7 rounded-lg px-2 text-xs"
+                    className="rounded-full px-2.5 text-[11px]"
                     onClick={() => onDismiss(message.id)}
                   >
                     关闭

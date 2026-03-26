@@ -63,6 +63,24 @@ describe("AboutSetting", () => {
   it("shows the synced app version, current copyright year, and actionable external links", () => {
     render(<AboutSetting />);
 
+    expect(screen.getByTestId("settings-page-frame")).toHaveAttribute(
+      "data-settings-page-width",
+      "fluid",
+    );
+    expect(screen.getByTestId("settings-page-frame")).toHaveAttribute(
+      "data-settings-page-fill",
+      "stage",
+    );
+    expect(screen.getByTestId("settings-section-shell")).toHaveAttribute(
+      "data-material-role",
+      "floating",
+    );
+    expect(screen.getByTestId("settings-section-shell")).toHaveAttribute(
+      "data-settings-section",
+      "about",
+    );
+    expect(screen.getAllByTestId("settings-section-group").length).toBeGreaterThanOrEqual(2);
+
     expect(screen.getByText(`v${packageJson.version}`)).toBeInTheDocument();
     expect(
       screen.getByText(new RegExp(`© ${new Date().getFullYear()} Fruits AI\\. All rights reserved\\.`)),

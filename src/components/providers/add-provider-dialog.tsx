@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 
 const PROVIDER_TYPE_OPTIONS = [
   { label: "OpenAI", value: "openai" },
@@ -139,11 +140,12 @@ export function AddProviderDialog({
           }
           className="relative rounded-2xl border"
           style={{
-            background: "linear-gradient(145deg, var(--glass-overlay), var(--glass-surface))",
-            borderColor: "var(--glass-border-strong)",
-            boxShadow: "0 16px 48px var(--brand-primary-light)",
-            backdropFilter: "blur(20px) saturate(180%)",
-            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            background:
+              "linear-gradient(145deg, color-mix(in srgb, var(--material-floating-background) 96%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 94%, transparent) 100%)",
+            borderColor: "var(--material-content-border)",
+            boxShadow: "0 22px 54px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255,255,255,0.42)",
+            backdropFilter: "blur(24px) saturate(190%)",
+            WebkitBackdropFilter: "blur(24px) saturate(190%)",
           }}
         >
           <motion.div
@@ -159,20 +161,32 @@ export function AddProviderDialog({
 
           <form className="relative space-y-6 px-6 pb-5 pt-6" onSubmit={(event) => void handleSubmit(event)}>
             <DialogHeader className="space-y-2 text-left">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border"
+                    style={{
+                      background: "var(--material-floating-background)",
+                      borderColor: "var(--material-content-border)",
+                      color: "var(--brand-primary)",
+                    }}
+                  >
+                    <HugeiconsIcon icon={Add01Icon} size={15} />
+                  </span>
+                  <DialogTitle className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+                    添加提供商
+                  </DialogTitle>
+                </div>
                 <span
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border"
+                  className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
                   style={{
-                    background: "var(--glass-subtle)",
-                    borderColor: "var(--glass-border)",
-                    color: "var(--brand-primary)",
+                    background: "var(--material-floating-background)",
+                    borderColor: "var(--material-content-border)",
+                    color: "var(--text-tertiary)",
                   }}
                 >
-                  <HugeiconsIcon icon={Add01Icon} size={15} />
+                  Provider
                 </span>
-                <DialogTitle className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-                  添加提供商
-                </DialogTitle>
               </div>
               <DialogDescription
                 className="text-[13px]"
@@ -182,16 +196,33 @@ export function AddProviderDialog({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="border-t pt-5" style={{ borderColor: "var(--divider)" }}>
-              <div
-                className="mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full border text-6xl font-semibold"
-                style={{
-                  background: "var(--glass-subtle)",
-                  borderColor: "var(--glass-border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                {previewIcon}
+            <div
+              className="rounded-2xl border px-4 py-4"
+              style={{
+                background:
+                  "linear-gradient(180deg, color-mix(in srgb, var(--material-floating-background) 92%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 94%, transparent) 100%)",
+                borderColor: "var(--material-content-border)",
+              }}
+            >
+              <div className="mb-6 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-tertiary)" }}>
+                    Preview
+                  </div>
+                  <div className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+                    将显示在 Provider 列表中
+                  </div>
+                </div>
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl border text-2xl font-semibold"
+                  style={{
+                    background: "var(--material-floating-background)",
+                    borderColor: "var(--material-content-border)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {previewIcon}
+                </div>
               </div>
 
               <motion.div
@@ -224,6 +255,7 @@ export function AddProviderDialog({
                     onChange={(event) => setProviderName(event.target.value)}
                     placeholder="例如 OpenAI"
                     className="h-10 text-sm md:text-sm"
+                    surface="floating"
                   />
                 </motion.div>
 
@@ -237,31 +269,12 @@ export function AddProviderDialog({
                   <Label className="text-[13px] font-semibold text-[var(--text-primary)]">
                     提供商类型
                   </Label>
-                  <div className="relative">
-                    <select
-                      value={providerType}
-                      onChange={(event) => setProviderType(event.target.value as ProviderType)}
-                      className="h-10 w-full appearance-none rounded-xl border px-4 pr-10 text-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none"
-                      style={{
-                        borderColor: "var(--glass-border)",
-                        background: "var(--glass-surface)",
-                        color: "var(--text-primary)",
-                        boxShadow: "0 0 0 0 transparent",
-                      }}
-                    >
-                      {PROVIDER_TYPE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span
-                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      <HugeiconsIcon icon={ArrowDown01Icon} size={16} />
-                    </span>
-                  </div>
+                  <Select
+                    aria-label="提供商类型"
+                    value={providerType}
+                    onValueChange={(nextValue) => setProviderType(nextValue as ProviderType)}
+                    options={PROVIDER_TYPE_OPTIONS}
+                  />
                 </motion.div>
               </motion.div>
             </div>
@@ -270,7 +283,10 @@ export function AddProviderDialog({
               <p className="text-xs font-medium text-[var(--danger)]">{errorMessage}</p>
             ) : null}
 
-            <DialogFooter className="pt-1 sm:justify-end">
+            <DialogFooter
+              className="border-t pt-4 sm:justify-end"
+              style={{ borderColor: "var(--divider)" }}
+            >
               <motion.div
                 whileHover={prefersReducedMotion ? undefined : { y: -1 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.985 }}
@@ -281,6 +297,7 @@ export function AddProviderDialog({
                   variant="outline"
                   size="sm"
                   className="h-9 rounded-xl px-4 text-xs"
+                  surface="floating"
                   onClick={() => handleDialogOpenChange(false)}
                   disabled={isSubmitting}
                 >
@@ -308,4 +325,3 @@ export function AddProviderDialog({
     </Dialog>
   );
 }
-

@@ -14,6 +14,7 @@ import {
   ANIMATION_INTENSITY_CONFIG_KEY,
   DEFAULT_ANIMATION_INTENSITY,
   getMotionFactors,
+  getMotionState,
   normalizeAnimationIntensity,
   type AnimationIntensity,
   type MotionFactors,
@@ -33,9 +34,16 @@ const AnimationIntensityContext = createContext<AnimationIntensityContextValue>(
   setIntensity: async () => undefined,
 });
 
-function applyIntensityToDocument(intensity: AnimationIntensity) {
+function applyMotionStateToDocument(intensity: AnimationIntensity, prefersReducedMotion: boolean) {
   if (typeof document === "undefined") return;
-  document.documentElement.dataset.motionLevel = intensity;
+  const motionState = getMotionState(intensity, prefersReducedMotion);
+  const root = document.documentElement;
+
+  root.dataset.motionLevel = intensity;
+  root.dataset.motionMode = motionState.mode;
+  root.dataset.motionDecorative = motionState.decorativeLoops ? "enabled" : "disabled";
+  root.style.setProperty("--motion-loop-play-state", motionState.decorativeLoopPlayState);
+  root.style.setProperty("--motion-decorative-opacity", motionState.decorativeOpacity.toString());
 }
 
 export function AnimationIntensityProvider({ children }: { children: ReactNode }) {
@@ -44,6 +52,38 @@ export function AnimationIntensityProvider({ children }: { children: ReactNode }
     DEFAULT_ANIMATION_INTENSITY
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncReducedMotionPreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+
+    syncReducedMotionPreference();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncReducedMotionPreference);
+
+      return () => {
+        mediaQuery.removeEventListener("change", syncReducedMotionPreference);
+      };
+    }
+
+    mediaQuery.addListener(syncReducedMotionPreference);
+
+    return () => {
+      mediaQuery.removeListener(syncReducedMotionPreference);
+    };
+  }, []);
+
+  useEffect(() => {
+    applyMotionStateToDocument(intensity, prefersReducedMotion);
+  }, [intensity, prefersReducedMotion]);
 
   useEffect(() => {
     let active = true;
@@ -54,11 +94,9 @@ export function AnimationIntensityProvider({ children }: { children: ReactNode }
         if (!active) return;
         const normalized = normalizeAnimationIntensity(stored);
         setIntensityState(normalized);
-        applyIntensityToDocument(normalized);
       } catch (error) {
         if (!active) return;
         console.error("Failed to load animation intensity:", error);
-        applyIntensityToDocument(DEFAULT_ANIMATION_INTENSITY);
       } finally {
         if (active) {
           setIsLoading(false);
@@ -76,7 +114,6 @@ export function AnimationIntensityProvider({ children }: { children: ReactNode }
   const setIntensity = useCallback(async (next: AnimationIntensity) => {
     const normalized = normalizeAnimationIntensity(next);
     setIntensityState(normalized);
-    applyIntensityToDocument(normalized);
 
     try {
       await saveConfig(ANIMATION_INTENSITY_CONFIG_KEY, normalized);

@@ -1,15 +1,22 @@
 "use client";
 
-import type { ComponentProps } from "react";
-import { motion } from "framer-motion";
+import type { ComponentProps, ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
+import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import {
+  getLiquidSelectionState,
+  getLiquidSelectionStyle,
+} from "@/components/ui/liquid-selection";
 
 interface NavItemProps {
   /** HugeIcons 图标组件 */
   icon: ComponentProps<typeof HugeiconsIcon>["icon"];
   /** 显示文本 */
   label: string;
+  /** 辅助说明文本 */
+  description?: string;
   /** 是否处于激活状态 */
   isActive: boolean;
   /** 点击回调 */
@@ -22,6 +29,16 @@ interface NavItemProps {
   layoutId?: string;
   /** 额外 className */
   className?: string;
+  /** 右侧补充内容 */
+  accessory?: ReactNode;
+  /** 透传给底层 button 的附加语义属性 */
+  semanticProps?: {
+    "aria-controls"?: string;
+    "aria-selected"?: boolean;
+    id?: string;
+    role?: string;
+    type?: "button" | "submit" | "reset";
+  };
 }
 
 /**
@@ -32,54 +49,110 @@ interface NavItemProps {
 export function NavItem({
   icon,
   label,
+  description,
   isActive,
   onClick,
   layoutId = "navActiveIndicator",
   className,
+  accessory,
+  semanticProps,
 }: NavItemProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <motion.button
       onClick={onClick}
+      {...semanticProps}
       className={cn(
-        "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200",
-        className
+        "material-interactive relative w-full overflow-hidden border text-sm transition-all duration-200",
+        description
+          ? "flex items-start gap-3 rounded-[24px] px-3.5 py-3.5 text-left"
+          : "flex items-center gap-3 rounded-[20px] px-3.5 py-3",
+        className,
       )}
-      style={{
-        background: isActive ? "var(--brand-primary-lighter)" : "transparent",
-        color: isActive ? "var(--brand-primary)" : "var(--text-secondary)",
-      }}
-      whileHover={{
-        background: isActive ? "var(--brand-primary-light)" : "var(--glass-subtle)",
-      }}
-      whileTap={{ scale: 0.99 }}
+      data-active={isActive ? "true" : "false"}
+      data-hover-surface={isActive ? "accent" : "content"}
+      data-material-role="content"
+      data-selection-style={getLiquidSelectionState(isActive)}
+      data-surface-tone="liquid-nav-item"
+      style={getLiquidSelectionStyle({
+        active: isActive,
+        inactiveRole: "content",
+        inactiveTextColor: "var(--text-secondary)",
+      })}
+      whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+      whileTap={shouldReduceMotion ? undefined : { scale: 0.99 }}
     >
       {/* 激活态边框动画 */}
       {isActive && (
         <motion.div
-          className="absolute inset-0 rounded-xl border pointer-events-none"
-          style={{ borderColor: "var(--brand-primary-border)" }}
+          className="pointer-events-none absolute inset-0 rounded-[inherit] border"
+          style={{ borderColor: "var(--selection-active-border)" }}
           layoutId={`${layoutId}Border`}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />
       )}
 
-      <HugeiconsIcon
-        icon={icon}
-        size={18}
-        style={{ color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)" }}
+      <span
+        className="pointer-events-none absolute inset-x-3 top-0 h-px opacity-75"
+        aria-hidden="true"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 18%, rgba(255,255,255,0.14) 82%, transparent 100%)",
+        }}
       />
 
-      <span className="font-medium">{label}</span>
-
-      {/* 左侧激活指示条动画 */}
-      {isActive && (
-        <motion.div
-          className="absolute left-0 w-1 h-5 rounded-r-full"
-          style={{ background: "var(--brand-primary)" }}
-          layoutId={`${layoutId}Indicator`}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      <div
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-xl border",
+          description ? "mt-0.5 h-9 w-9" : "h-8 w-8",
+        )}
+        style={{
+          ...getMaterialSurfaceStyle(isActive ? "accent" : "floating", "sm"),
+          background: isActive ? "var(--selection-active-chip-fill)" : "var(--material-floating-background)",
+          borderColor: isActive ? "var(--selection-active-chip-border)" : "var(--material-floating-border)",
+          boxShadow: isActive
+            ? "var(--selection-active-chip-shadow)"
+            : "var(--liquid-material-rest-shadow)",
+        }}
+      >
+        <HugeiconsIcon
+          icon={icon}
+          size={description ? 18 : 17}
+          style={{
+            color: isActive
+              ? "var(--selection-active-foreground, var(--brand-primary))"
+              : "var(--icon-muted)",
+          }}
         />
+      </div>
+
+      {description ? (
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <span
+              className="font-medium"
+              style={{
+                color: isActive
+                  ? "var(--selection-active-foreground, var(--brand-primary))"
+                  : "var(--text-primary)",
+              }}
+            >
+              {label}
+            </span>
+            {accessory}
+          </div>
+          <p className="mt-1 text-xs leading-5" style={{ color: "var(--text-tertiary)" }}>
+            {description}
+          </p>
+        </div>
+      ) : (
+        <>
+          <span className="font-medium">{label}</span>
+          {accessory}
+        </>
       )}
+
     </motion.button>
   );
 }

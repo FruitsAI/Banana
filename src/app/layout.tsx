@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { AnimationIntensityProvider } from "@/components/animation-intensity-provider";
 import { FeedbackProvider } from "@/components/feedback/feedback-provider";
 import { PlatformMarker } from "@/components/layout/platform-marker";
-import { Rail } from "@/components/layout/rail";
-import { Titlebar } from "@/components/layout/titlebar";
+import { LiquidGlassRuntimeProvider } from "@/components/liquid-glass-runtime-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FluidBackground } from "@/components/ui/fluid-background";
+import { buildPlatformMarkerScript } from "@/lib/platform";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,25 +22,33 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body>
+        <Script id="banana-platform-marker" strategy="beforeInteractive">
+          {buildPlatformMarkerScript()}
+        </Script>
         <PlatformMarker />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange={false}
+          disableTransitionOnChange
           storageKey="banana-theme"
         >
           <AnimationIntensityProvider>
-            <FeedbackProvider>
-              <div className="window theme-transition" id="window">
-                <FluidBackground />
-                <Titlebar />
-                <div className="content">
-                  <Rail />
-                  {children}
+            <LiquidGlassRuntimeProvider>
+              <FeedbackProvider>
+                <div className="window" id="window">
+                  <FluidBackground />
+                  <div
+                    aria-hidden="true"
+                    className="window-drag-region"
+                    data-tauri-drag-region="true"
+                    data-testid="window-drag-region"
+                    data-window-drag-region="top-strip"
+                  />
+                  <div className="content">{children}</div>
                 </div>
-              </div>
-            </FeedbackProvider>
+              </FeedbackProvider>
+            </LiquidGlassRuntimeProvider>
           </AnimationIntensityProvider>
         </ThemeProvider>
       </body>

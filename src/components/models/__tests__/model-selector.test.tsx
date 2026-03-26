@@ -34,7 +34,24 @@ vi.mock("@/stores/models/useModelsStore", () => ({
 vi.mock("@/components/ui/popover", () => ({
   Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PopoverTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverContent: ({
+    children,
+    align,
+    sideOffset,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement> & {
+    align?: string;
+    sideOffset?: number;
+  }) => (
+    <div
+      data-testid="popover-content"
+      data-align={align}
+      data-side-offset={sideOffset}
+      {...props}
+    >
+      {children}
+    </div>
+  ),
 }));
 
 vi.mock("@/components/icons/provider-icons", () => ({
@@ -101,5 +118,23 @@ describe("ModelSelector", () => {
     expect(screen.queryByText("工具")).not.toBeInTheDocument();
     expect(screen.queryByText("联网")).not.toBeInTheDocument();
     expect(screen.queryByText("免费")).not.toBeInTheDocument();
+  });
+
+  it("keeps the trigger and floating picker inside the same high-clarity popover system", async () => {
+    render(<ModelSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("model-selector-trigger")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("model-selector-trigger")).toHaveAttribute("data-trigger-shape", "pill");
+    expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-material-role", "floating");
+    expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-surface-clarity", "high");
+    expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-align", "start");
+    expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-side-offset", "10");
+    expect(screen.getByPlaceholderText("搜索模型...").closest("[data-surface-tone]")).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-search-field",
+    );
   });
 });
