@@ -31,12 +31,12 @@ jobs:
             patchelf
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 10.30.3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -70,7 +70,7 @@ jobs:
             bundle-label: macos-apple-silicon
             args: "--target aarch64-apple-darwin"
             rust-target: aarch64-apple-darwin
-          - os: macos-13
+          - os: macos-15-intel
             bundle-label: macos-intel
             args: "--target x86_64-apple-darwin"
             rust-target: x86_64-apple-darwin
@@ -100,12 +100,12 @@ jobs:
             patchelf
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 10.30.3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -133,7 +133,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build and upload release assets
-        uses: tauri-apps/tauri-action@v1
+        # Upstream no longer exposes a resolvable `v1` ref, so pin to the latest published action tag.
+        uses: tauri-apps/tauri-action@action-v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
