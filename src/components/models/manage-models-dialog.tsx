@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Search01Icon,
   LoadingIcon,
   CheckmarkCircle01Icon,
 } from "@hugeicons/core-free-icons";
@@ -14,8 +13,12 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { ModelIcon } from "@/components/models/model-selector";
+import { SearchInput } from "@/components/ui/search-input";
+import {
+  getLiquidSelectionState,
+  getLiquidSelectionStyle,
+} from "@/components/ui/liquid-selection";
 import { cn } from "@/lib/utils";
 import type { Model, Provider } from "@/domain/models/types";
 import { inferModelCapabilities } from "@/lib/model-settings";
@@ -228,7 +231,7 @@ export function ManageModelsDialog({
                 style={{
                   background: "var(--material-floating-background)",
                   borderColor: "var(--material-content-border)",
-                  color: "var(--text-tertiary)",
+                  color: "var(--text-secondary)",
                 }}
               >
                 Market
@@ -236,16 +239,13 @@ export function ManageModelsDialog({
             </div>
 
             <div className="flex gap-2">
-              <div className="relative flex-1">
-                <HugeiconsIcon className="absolute left-3 top-1/2 -translate-y-1/2" icon={Search01Icon} size={16} style={{ color: "var(--text-tertiary)" }} />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="搜索模型 ID 或名称"
-                  className="pl-9 h-11 rounded-xl"
-                  surface="floating"
-                />
-              </div>
+              <SearchInput
+                containerClassName="flex-1"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索模型 ID 或名称"
+                surface="floating"
+              />
             </div>
 
             {/* Tabs */}
@@ -260,19 +260,15 @@ export function ManageModelsDialog({
                     "material-interactive whitespace-nowrap rounded-xl border px-3 py-1.5 text-[12px] font-medium transition-colors relative",
                     activeCategory === cat.value
                       ? "text-[var(--brand-primary)]"
-                      : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   )}
                   data-hover-surface={activeCategory === cat.value ? "accent" : "floating"}
-                  style={{
-                    background:
-                      activeCategory === cat.value
-                        ? "var(--material-accent-background)"
-                        : "var(--material-floating-background)",
-                    borderColor:
-                      activeCategory === cat.value
-                        ? "var(--material-accent-border)"
-                        : "var(--material-content-border)",
-                  }}
+                  data-selection-style={getLiquidSelectionState(activeCategory === cat.value)}
+                  style={getLiquidSelectionStyle({
+                    active: activeCategory === cat.value,
+                    inactiveRole: "floating",
+                    inactiveTextColor: "var(--text-secondary)",
+                  })}
                 >
                   {cat.label}
                   {activeCategory === cat.value && (
@@ -329,7 +325,7 @@ export function ManageModelsDialog({
                         style={{
                           background: "var(--material-floating-background)",
                           borderColor: "var(--material-content-border)",
-                          color: "var(--text-tertiary)",
+                          color: "var(--text-secondary)",
                         }}
                       >
                         {models.length}
@@ -352,9 +348,23 @@ export function ManageModelsDialog({
                       return (
                         <div
                           key={m.id}
-                          className="material-interactive flex items-center justify-between p-3 rounded-xl border transition-all group/item"
+                          className="material-interactive group/item flex items-center justify-between rounded-xl border p-3 transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-out hover:-translate-y-px"
                           data-hover-surface={isAdded ? "content" : "floating"}
+                          data-material-role={isAdded ? "content" : "floating"}
+                          data-selection-style="idle"
                           style={{
+                            ...getLiquidSelectionStyle({
+                              active: false,
+                              depth: "md",
+                              inactiveRole: isAdded ? "content" : "floating",
+                              inactiveFill: isAdded
+                                ? "color-mix(in srgb, var(--material-content-background) 92%, transparent)"
+                                : "var(--material-floating-background)",
+                              inactiveBorderColor: isAdded
+                                ? "color-mix(in srgb, var(--success) 24%, var(--material-content-border))"
+                                : "var(--material-content-border)",
+                              inactiveTextColor: "var(--text-primary)",
+                            }),
                             background: isAdded
                               ? "color-mix(in srgb, var(--material-content-background) 92%, transparent)"
                               : "var(--material-floating-background)",
@@ -367,7 +377,7 @@ export function ManageModelsDialog({
                             <ModelIcon modelName={m.name} size={14} className="opacity-70" />
                             <div className="min-w-0">
                               <div className="text-[13px] font-medium truncate text-[var(--text-primary)]">{m.name}</div>
-                              <div className="text-[11px] truncate text-[var(--text-tertiary)]">{m.id}</div>
+                              <div className="text-[11px] truncate text-[var(--text-secondary)]">{m.id}</div>
                             </div>
                           </div>
                           

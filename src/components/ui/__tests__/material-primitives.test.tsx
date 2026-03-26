@@ -5,10 +5,14 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Switch } from "@/components/ui/switch";
+import { TextareaField } from "@/components/ui/textarea-field";
 import { SelectionCard } from "@/components/ui/selection-card";
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { NavItem } from "@/components/ui/nav-item";
+import { IridescentBorder } from "@/components/ui/iridescent-border";
+import { getLiquidSelectionStyle } from "@/components/ui/liquid-selection";
 
 const { mockUseAnimationIntensity } = vi.hoisted(() => ({
   mockUseAnimationIntensity: vi.fn(),
@@ -25,6 +29,7 @@ vi.mock("@hugeicons/react", () => ({
 vi.mock("@hugeicons/core-free-icons", () => ({
   Tick02Icon: "icon",
   ArrowDown01Icon: "icon",
+  Search01Icon: "icon",
 }));
 
 vi.mock("framer-motion", () => {
@@ -173,10 +178,33 @@ describe("material primitives", () => {
     );
   });
 
+  it("keeps iridescent borders on longhand background styles when animation toggles", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { rerender } = render(<IridescentBorder animated opacity={0.24} />);
+
+    const border = document.querySelector("[data-iridescent='true']");
+    expect(border).toHaveStyle({
+      backgroundImage: "var(--iridescent-border)",
+      backgroundSize: "300% 300%",
+    });
+
+    rerender(<IridescentBorder animated={false} opacity={0.24} />);
+
+    expect(border).toHaveStyle({
+      backgroundImage: "var(--iridescent-border)",
+      backgroundSize: "100% 100%",
+    });
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
   it("exposes liquid-glass surface tones for interactive field and selection primitives", () => {
     render(
       <>
         <Input aria-label="Refined field" />
+        <SearchInput aria-label="Search field" />
+        <TextareaField aria-label="Detailed field" />
         <Switch aria-label="Refined switch" />
         <SelectionCard isActive onClick={vi.fn()}>
           Active choice
@@ -188,6 +216,14 @@ describe("material primitives", () => {
       "data-surface-tone",
       "liquid-field",
     );
+    expect(screen.getByLabelText("Search field").closest("[data-surface-tone]")).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-search-field",
+    );
+    expect(screen.getByLabelText("Detailed field").closest("[data-surface-tone]")).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-textarea-field",
+    );
     expect(screen.getByRole("button", { name: "Refined switch" })).toHaveAttribute(
       "data-surface-tone",
       "liquid-switch",
@@ -195,6 +231,24 @@ describe("material primitives", () => {
     expect(screen.getByRole("button", { name: /Active choice/i })).toHaveAttribute(
       "data-surface-tone",
       "liquid-selection-card",
+    );
+  });
+
+  it("keeps shared button and switch controls on the unified desktop control family", () => {
+    render(
+      <>
+        <Button variant="default">Send</Button>
+        <Switch aria-label="Enabled switch" checked />
+      </>,
+    );
+
+    expect(screen.getByRole("button", { name: "Send" })).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-button-primary",
+    );
+    expect(screen.getByRole("button", { name: "Enabled switch" })).toHaveAttribute(
+      "data-switch-accent",
+      "system-blue",
     );
   });
 
@@ -219,6 +273,44 @@ describe("material primitives", () => {
     expect(screen.getByText("Panel content").closest("[data-surface-tone]")).toHaveAttribute(
       "data-surface-tone",
       "liquid-section-body",
+    );
+  });
+
+  it("keeps the active navigation selection on the deeper blue liquid accent treatment", () => {
+    render(<NavItem icon={"icon"} label="Models" isActive onClick={vi.fn()} />);
+
+    const activeItem = screen.getByRole("button", { name: "Models" });
+
+    expect(activeItem).toHaveAttribute("data-selection-style", "liquid-accent");
+    expect(activeItem.getAttribute("style")).toContain("var(--selection-active-fill)");
+    expect(activeItem.getAttribute("style")).toContain("var(--selection-active-border)");
+  });
+
+  it("keeps idle selection rows flat until hover while preserving a lifted resting shadow for active rows", () => {
+    const idleStyle = getLiquidSelectionStyle({
+      active: false,
+      inactiveRole: "content",
+    });
+    const activeStyle = getLiquidSelectionStyle({
+      active: true,
+      inactiveRole: "content",
+    });
+
+    expect(idleStyle["--liquid-selection-rest-shadow" as keyof typeof idleStyle]).toBe(
+      "var(--liquid-material-rest-shadow)",
+    );
+    expect(idleStyle["--liquid-selection-hover-shadow" as keyof typeof idleStyle]).toBe(
+      "var(--liquid-material-base-shadow)",
+    );
+    expect(idleStyle.boxShadow).toBe(
+      "var(--liquid-selection-shadow, var(--liquid-selection-rest-shadow, var(--liquid-surface-shadow, var(--liquid-material-base-shadow))))",
+    );
+
+    expect(activeStyle["--liquid-selection-rest-shadow" as keyof typeof activeStyle]).toBe(
+      "var(--selection-active-shadow, var(--liquid-material-base-shadow))",
+    );
+    expect(activeStyle["--liquid-selection-hover-shadow" as keyof typeof activeStyle]).toBe(
+      "var(--selection-active-shadow, var(--liquid-material-base-shadow))",
     );
   });
 });

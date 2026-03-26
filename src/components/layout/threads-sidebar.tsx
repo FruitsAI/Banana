@@ -13,14 +13,28 @@ import { v4 as uuidv4 } from "uuid";
 import type { Thread } from "@/domain/chat/types";
 import { useChatStore } from "@/stores/chat/useChatStore";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import {
+  getLiquidSelectionState,
+  getLiquidSelectionStyle,
+} from "@/components/ui/liquid-selection";
+import { SidebarUtilityDock } from "@/components/layout/sidebar-utility-dock";
+import { WorkspaceSidebarShell } from "@/components/layout/workspace-sidebar-shell";
 
 const CONTEXT_MENU_WIDTH = 168;
 const CONTEXT_MENU_HEIGHT = 60;
 const CONTEXT_MENU_MARGIN = 12;
 
+function parseThreadDate(dateStr: string) {
+  // Stored timestamps may arrive as UTC strings without a timezone suffix.
+  const normalized = dateStr.includes("T") || dateStr.includes("Z")
+    ? dateStr
+    : dateStr.replace(" ", "T") + "Z";
+  return new Date(normalized);
+}
+
 function formatTime(dateStr: string) {
   try {
-    const date = new Date(dateStr.includes('T') || dateStr.includes('Z') ? dateStr : dateStr.replace(' ', 'T') + 'Z');
+    const date = parseThreadDate(dateStr);
     const now = new Date();
     
     if (date.toDateString() === now.toDateString()) {
@@ -34,7 +48,7 @@ function formatTime(dateStr: string) {
 
 function getDayCategory(dateStr: string) {
   try {
-    const date = new Date(dateStr.includes('T') || dateStr.includes('Z') ? dateStr : dateStr.replace(' ', 'T') + 'Z');
+    const date = parseThreadDate(dateStr);
     const now = new Date();
     
     if (date.toDateString() === now.toDateString()) return "today";
@@ -50,8 +64,8 @@ function getDayCategory(dateStr: string) {
 
 function sortThreadsByActivity(threads: Thread[]): Thread[] {
   return [...threads].sort((a, b) => {
-    const timeA = new Date(a.updated_at || a.created_at).getTime();
-    const timeB = new Date(b.updated_at || b.created_at).getTime();
+    const timeA = parseThreadDate(a.updated_at || a.created_at).getTime();
+    const timeB = parseThreadDate(b.updated_at || b.created_at).getTime();
     return timeB - timeA;
   });
 }
@@ -100,15 +114,13 @@ function ThreadItemComponent({
       }`}
       data-hover-surface={selected ? "accent" : "floating"}
       data-material-role="content"
-      style={{
-        ...getMaterialSurfaceStyle("content", "sm"),
-        background: selected
-          ? "var(--material-accent-background)"
-          : "var(--material-content-background)",
-        borderColor: selected
-          ? "var(--material-accent-border)"
-          : "var(--material-content-border)",
-      }}
+      data-selection-style={getLiquidSelectionState(selected)}
+      style={getLiquidSelectionStyle({
+        active: selected,
+        inactiveRole: "content",
+        inactiveFill:
+          "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
+      })}
       initial={motionReduced ? false : { opacity: 0, x: motionDistance(-8), y: motionDistance(4) }}
       animate={{ opacity: 1, x: 0, y: 0 }}
       transition={{
@@ -127,25 +139,17 @@ function ThreadItemComponent({
       whileTap={motionReduced ? undefined : { scale: motionScale(0.99) }}
       type="button"
     >
-      {selected ? (
-        <motion.span
-          data-testid="thread-selection-indicator"
-          className="absolute left-0 top-1/2 h-10 w-1 -translate-y-1/2 rounded-r-full"
-          style={{
-            background: "var(--brand-primary)",
-            boxShadow: "0 0 18px var(--brand-primary-glow)",
-          }}
-          layoutId="threadSelectionIndicator"
-          transition={{ type: "spring", stiffness: 460, damping: 32 }}
-        />
-      ) : null}
       <div
         className="font-medium text-xs sm:text-sm mb-0.5 truncate relative z-10"
-        style={{ color: selected ? "var(--brand-primary)" : "var(--text-primary)" }}
+        style={{
+          color: selected
+            ? "var(--selection-active-foreground, var(--brand-primary))"
+            : "var(--text-primary)",
+        }}
       >
         {thread.title || "新会话"}
       </div>
-      <div className="text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 relative z-10" style={{ color: "var(--text-tertiary)" }}>
+      <div className="text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 relative z-10" style={{ color: "var(--text-secondary)" }}>
         <span>{formatTime(thread.created_at)}</span>
         <span style={{ color: "var(--text-quaternary)" }}>·</span>
         <span className="truncate">{thread.model_id || "默认模型"}</span>
@@ -175,6 +179,7 @@ function ThreadsSidebarContent() {
   const menuRef = useRef<HTMLDivElement>(null);
   const threadButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const isMountedRef = useRef(false);
+  // Ignore stale async loads so slower refreshes cannot overwrite a newer sidebar snapshot.
   const loadRequestIdRef = useRef(0);
 
   const loadThreads = useCallback(async () => {
@@ -311,23 +316,18 @@ function ThreadsSidebarContent() {
   };
 
   return (
-    <motion.div
-      className="w-60 sm:w-64 lg:w-72 flex-shrink-0 flex flex-col h-full relative"
-      data-testid="threads-sidebar-shell"
-      data-material-role="chrome"
-      style={{
-        ...getMaterialSurfaceStyle("chrome", "md"),
-        borderRight: "1px solid var(--divider)",
-      }}
+    <WorkspaceSidebarShell
+      testId="threads-sidebar-shell"
       initial={motionReduced ? false : { opacity: 0, x: motionDistance(-14) }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: motionDuration(0.35), ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2 sm:pb-3" data-testid="threads-sidebar-toolbar">
+      <div className="px-1.5 sm:px-2 pt-3 sm:pt-4 pb-2 sm:pb-3" data-testid="threads-sidebar-toolbar">
         <div
           className="rounded-[26px] border px-3 py-3 sm:px-4 sm:py-4"
           style={{
             ...getMaterialSurfaceStyle("floating", "sm"),
+            boxShadow: "none",
             background:
               "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 100%), rgba(255,255,255,0.04)",
           }}
@@ -388,11 +388,11 @@ function ThreadsSidebarContent() {
 
             <motion.button
               onClick={handleCreateThread}
-              className="sidebar-create-button material-interactive sidebar-glow-btn stage-action-button w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl"
+              className="sidebar-create-button material-interactive sidebar-glow-btn stage-action-button flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border"
               data-hover-surface="floating"
               style={{
                 ...getMaterialSurfaceStyle("floating", "sm"),
-                color: "var(--text-secondary)",
+                color: "var(--icon-secondary)",
               }}
               whileHover={
                 motionReduced
@@ -413,7 +413,7 @@ function ThreadsSidebarContent() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-1.5 sm:px-2 py-2 space-y-3 sm:space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-1.5 sm:px-2 py-2 space-y-3 sm:space-y-4">
         {filteredThreads.length === 0 && searchQuery.trim() === "" ? (
           <motion.div
             className="px-2 sm:px-3"
@@ -535,7 +535,7 @@ function ThreadsSidebarContent() {
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border" style={{
                 background: "color-mix(in srgb, var(--material-content-background) 90%, rgba(255,255,255,0.08))",
                 borderColor: "var(--material-content-border)",
-                color: "var(--text-tertiary)",
+                color: "var(--icon-secondary)",
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
               }}>
                 <HugeiconsIcon icon={Search01Icon} size={24} />
@@ -550,6 +550,9 @@ function ThreadsSidebarContent() {
           </motion.div>
         )}
       </div>
+
+      <SidebarUtilityDock activeView="home" />
+
       {/* Context Menu - 使用 Portal 挂载到 body 以避免容器剪裁 */}
       {mounted && contextMenu && createPortal(
         <AnimatePresence>
@@ -593,7 +596,7 @@ function ThreadsSidebarContent() {
         </AnimatePresence>,
         document.body
       )}
-    </motion.div>
+    </WorkspaceSidebarShell>
   );
 }
 

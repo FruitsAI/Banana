@@ -3,8 +3,6 @@ import Script from "next/script";
 import { AnimationIntensityProvider } from "@/components/animation-intensity-provider";
 import { FeedbackProvider } from "@/components/feedback/feedback-provider";
 import { PlatformMarker } from "@/components/layout/platform-marker";
-import { Rail } from "@/components/layout/rail";
-import { Titlebar } from "@/components/layout/titlebar";
 import { LiquidGlassRuntimeProvider } from "@/components/liquid-glass-runtime-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FluidBackground } from "@/components/ui/fluid-background";
@@ -32,19 +30,22 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange={false}
+          disableTransitionOnChange
           storageKey="banana-theme"
         >
           <AnimationIntensityProvider>
             <LiquidGlassRuntimeProvider>
               <FeedbackProvider>
-                <div className="window theme-transition" id="window">
+                <div className="window" id="window">
                   <FluidBackground />
-                  <Titlebar />
-                  <div className="content">
-                    <Rail />
-                    {children}
-                  </div>
+                  <div
+                    aria-hidden="true"
+                    className="window-drag-region"
+                    data-tauri-drag-region="true"
+                    data-testid="window-drag-region"
+                    data-window-drag-region="top-strip"
+                  />
+                  <div className="content">{children}</div>
                 </div>
               </FeedbackProvider>
             </LiquidGlassRuntimeProvider>

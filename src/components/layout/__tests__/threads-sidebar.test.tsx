@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ThreadsSidebar } from "@/components/layout/threads-sidebar";
 import type { Thread } from "@/domain/chat/types";
 
-const { mockUseChatStore, mockRouterPush, mockActiveThreadId } = vi.hoisted(() => ({
+const { mockUseChatStore, mockRouterPush, mockActiveThreadId, mockSetTheme } = vi.hoisted(() => ({
   mockUseChatStore: vi.fn(),
   mockRouterPush: vi.fn(),
   mockActiveThreadId: { current: null as string | null },
+  mockSetTheme: vi.fn(),
 }));
 
 function createDeferred<T>() {
@@ -40,6 +41,13 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/stores/chat/useChatStore", () => ({
   useChatStore: mockUseChatStore,
+}));
+
+vi.mock("next-themes", () => ({
+  useTheme: () => ({
+    theme: "light",
+    setTheme: mockSetTheme,
+  }),
 }));
 
 vi.mock("@/components/ui/search-input", () => ({
@@ -121,11 +129,43 @@ describe("ThreadsSidebar", () => {
     render(<ThreadsSidebar />);
 
     expect(screen.getByTestId("threads-sidebar-toolbar")).toBeInTheDocument();
+    expect(screen.getByTestId("threads-sidebar-toolbar").className).toContain("px-1.5");
+    expect(screen.getByTestId("threads-sidebar-toolbar").className).toContain("sm:px-2");
     expect(screen.getByTestId("threads-sidebar-empty-state")).toHaveAttribute(
       "data-empty-tone",
       "guided",
     );
+    expect(screen.getByRole("button", { name: "新建会话" }).className).toContain("border");
     expect(screen.queryByText("快捷指令")).not.toBeInTheDocument();
+  });
+
+  it("anchors the global navigation/theme controls in a bottom utility dock", () => {
+    mockUseChatStore.mockReturnValue({
+      loadThreads: vi.fn(async () => []),
+      removeChatThread: vi.fn(),
+    });
+
+    render(<ThreadsSidebar />);
+
+    expect(screen.getByTestId("sidebar-utility-dock")).toHaveAttribute(
+      "data-sidebar-dock-position",
+      "bottom",
+    );
+    expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dock")).not.toBeInTheDocument();
+    expect(screen.queryByText("全局切换与外观控制")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "会话" })).toHaveAttribute(
+      "data-selection-style",
+      "liquid-accent",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "会话" }));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "切换主题" }));
+
+    expect(mockRouterPush).toHaveBeenCalledWith("/");
+    expect(mockRouterPush).toHaveBeenCalledWith("/settings");
+    expect(mockSetTheme).toHaveBeenCalledWith("dark");
   });
 
   it("ignores stale refresh loads so an older response cannot overwrite a newer sidebar snapshot", async () => {
@@ -179,7 +219,7 @@ describe("ThreadsSidebar", () => {
     expect(screen.queryByText("old thread")).not.toBeInTheDocument();
   });
 
-  it("exposes shell roles and a dedicated selection indicator for the active thread", async () => {
+  it("exposes shell roles and keeps the active thread on the shared liquid selection style", async () => {
     mockActiveThreadId.current = "thread-selected";
 
     mockUseChatStore.mockReturnValue({
@@ -205,13 +245,22 @@ describe("ThreadsSidebar", () => {
       "data-material-role",
       "chrome",
     );
+    expect(screen.getByTestId("threads-sidebar-shell")).toHaveAttribute(
+      "data-sidebar-shell",
+      "workspace",
+    );
+    expect(screen.getByTestId("threads-sidebar-shell")).toHaveAttribute(
+      "data-sidebar-safe-area",
+      "traffic-lights",
+    );
     const selectedThreadButton = screen.getByRole("button", { name: /selected thread/i });
     expect(selectedThreadButton).toHaveAttribute("aria-current", "page");
+    expect(selectedThreadButton).toHaveAttribute("data-selection-style", "liquid-accent");
     expect(screen.getByText("selected thread").closest("[data-material-role]")).toHaveAttribute(
       "data-material-role",
       "content",
     );
-    expect(screen.getByTestId("thread-selection-indicator")).toBeInTheDocument();
+    expect(screen.queryByTestId("thread-selection-indicator")).not.toBeInTheDocument();
   });
 
   it("renders a guided search empty state instead of leaving the thread column blank", async () => {

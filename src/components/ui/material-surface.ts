@@ -40,11 +40,17 @@ const MATERIAL_SHADOWS: Record<MaterialRole, Record<MaterialDepth, string>> = {
   },
 };
 
+function getMaterialRestShadow(baseShadow: string) {
+  const [, restShadow] = baseShadow.split(/,\s(?=inset)/);
+  return restShadow ?? baseShadow;
+}
+
 export function getMaterialSurfaceStyle(
   role: MaterialRole,
   depth: MaterialDepth = "md",
 ): CSSProperties {
   const optics = MATERIAL_OPTICS[role];
+  const baseShadow = MATERIAL_SHADOWS[role][depth];
   const backdropFilter = `var(--liquid-surface-backdrop-filter, blur(calc(${optics.blur}px + var(--liquid-surface-blur-boost, 0px))) saturate(calc(${optics.saturate}% + var(--liquid-surface-saturate-boost, 0%))) brightness(calc(${optics.brightness} + var(--liquid-surface-brightness-boost, 0))))`;
   const surfaceBackground = [
     "radial-gradient(140% 120% at var(--liquid-pointer-x, 50%) var(--liquid-pointer-y, 22%), rgba(255,255,255,calc(0.08 + var(--liquid-pointer-presence, 0) * 0.3)) 0%, rgba(255,255,255,calc(0.02 + var(--liquid-surface-ambient-opacity, 0.22) * 0.12)) 22%, transparent 58%)",
@@ -55,10 +61,11 @@ export function getMaterialSurfaceStyle(
   return {
     ["--liquid-material-base-background" as string]: `var(--material-${role}-background)`,
     ["--liquid-material-base-border" as string]: `var(--material-${role}-border)`,
-    ["--liquid-material-base-shadow" as string]: MATERIAL_SHADOWS[role][depth],
+    ["--liquid-material-base-shadow" as string]: baseShadow,
+    ["--liquid-material-rest-shadow" as string]: getMaterialRestShadow(baseShadow),
     background: `var(--liquid-surface-background, ${surfaceBackground})`,
     borderColor: `var(--liquid-material-base-border)`,
-    boxShadow: `var(--liquid-material-base-shadow)`,
+    boxShadow: `var(--liquid-surface-shadow, var(--liquid-material-base-shadow))`,
     backdropFilter,
     WebkitBackdropFilter: backdropFilter,
   };

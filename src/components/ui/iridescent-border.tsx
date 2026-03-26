@@ -28,14 +28,14 @@ export function IridescentBorder({ opacity = 0.3, className, animated = false }:
       style={{
         padding: "1px",
         opacity,
-        background: "var(--iridescent-border)",
+        backgroundImage: "var(--iridescent-border)",
+        backgroundPosition: "50% 50%",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: allowAnimation ? "300% 300%" : "100% 100%",
         WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
         WebkitMaskComposite: "xor",
         maskComposite: "exclude",
-        ...(allowAnimation && {
-          backgroundSize: "300% 300%",
-          animation: "iridescent-border-flow 5s ease-in-out infinite",
-        }),
+        animation: allowAnimation ? "iridescent-border-flow 5s ease-in-out infinite" : "none",
       }}
     />
   );

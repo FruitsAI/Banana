@@ -7,27 +7,14 @@ import {
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import ReactMarkdown, { type Components } from "react-markdown";
 import type { ChatMessage } from "@/domain/chat/types";
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
 import { MessageSurface } from "@/components/chat/message-surface";
 import { ToolInvocationCard } from "@/components/chat/tool-invocation-card";
 import { cn } from "@/lib/utils";
 import { extractThoughtContent } from "@/components/layout/stage-message-utils";
+import { MessageMarkdown } from "@/components/layout/stage/message-markdown";
 import { isReducedMotionMode } from "@/lib/animation-intensity";
-
-const markdownComponents: Components = {
-  hr: () => (
-    <hr
-      className="glass-markdown-divider my-6 h-px border-0 rounded-full"
-      style={{
-        background:
-          "linear-gradient(90deg, transparent 0%, var(--material-content-border) 18%, var(--brand-primary-light) 50%, var(--material-content-border) 82%, transparent 100%)",
-        opacity: 0.56,
-      }}
-    />
-  ),
-};
 
 function ThoughtBlock({ thought, isStreaming }: { thought: string; isStreaming: boolean }) {
   const [userExpanded, setUserExpanded] = useState(false);
@@ -85,7 +72,7 @@ function ThoughtBlock({ thought, isStreaming }: { thought: string; isStreaming: 
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
             <div className="px-3.5 pb-3.5 italic" style={{ color: "var(--text-tertiary)" }}>
-              <ReactMarkdown components={markdownComponents}>{thought}</ReactMarkdown>
+              <MessageMarkdown content={thought} />
               {isStreaming && (
                 <div className="flex gap-1 mt-2">
                   <div className={cn("w-1 h-1 rounded-full bg-brand-primary", !motionReduced && "animate-bounce")} />
@@ -125,7 +112,7 @@ function ThoughtContent({ content, reasoning }: { content: string; reasoning?: s
         <ThoughtBlock thought={combinedReasoning} isStreaming={parsedContent.isThinking} />
         {parsedContent.mainContent && (
           <div className="w-full px-0.5">
-            <ReactMarkdown components={markdownComponents}>{parsedContent.mainContent}</ReactMarkdown>
+            <MessageMarkdown content={parsedContent.mainContent} />
           </div>
         )}
       </div>
@@ -139,7 +126,7 @@ function ThoughtContent({ content, reasoning }: { content: string; reasoning?: s
       )}
       {parsedContent.mainContent && (
         <div className="w-full px-0.5">
-          <ReactMarkdown components={markdownComponents}>{parsedContent.mainContent}</ReactMarkdown>
+          <MessageMarkdown content={parsedContent.mainContent} />
         </div>
       )}
     </div>
@@ -167,7 +154,7 @@ export function AssistantMessageBody({ message }: { message: ChatMessage }) {
 
           return (
             <div key={`${message.id}-content-${index}`} className="w-full px-0.5">
-              <ReactMarkdown components={markdownComponents}>{segment.content}</ReactMarkdown>
+              <MessageMarkdown content={segment.content} />
             </div>
           );
         })}

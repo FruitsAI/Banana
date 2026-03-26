@@ -120,7 +120,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 z-10 rounded-full border p-2 text-[var(--text-tertiary)] opacity-90 transition-[transform,opacity,background-color,color,border-color] duration-200 ease-out hover:opacity-100 motion-safe:hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary-light)]"
+            className="absolute top-4 right-4 z-10 rounded-full border p-2 text-[var(--icon-secondary)] opacity-90 transition-[transform,opacity,background-color,color,border-color] duration-200 ease-out hover:opacity-100 motion-safe:hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary-light)]"
             style={{
               background: "rgba(255,255,255,0.12)",
               borderColor: "rgba(255,255,255,0.16)",

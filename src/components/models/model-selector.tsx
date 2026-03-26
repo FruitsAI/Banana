@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Search01Icon,
   ViewIcon,
   AiBrain02Icon,
   Wrench01Icon,
@@ -19,14 +18,15 @@ import { cn } from "@/lib/utils";
 import { getProviderIcon } from "@/components/icons/provider-icons";
 import { useModelsStore } from "@/stores/models/useModelsStore";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { SearchInput } from "@/components/ui/search-input";
 
 const CAPABILITY_CONFIG: Record<string, { icon: typeof ViewIcon; color: string }> = {
   vision: { icon: ViewIcon, color: "var(--success)" },
   reasoning: { icon: AiBrain02Icon, color: "var(--brand-primary)" },
   tools: { icon: Wrench01Icon, color: "var(--warning)" },
   web: { icon: InternetIcon, color: "var(--brand-primary)" },
-  audio: { icon: AudioWave01Icon, color: "var(--text-secondary)" },
-  embedding: { icon: Database01Icon, color: "var(--text-secondary)" },
+  audio: { icon: AudioWave01Icon, color: "var(--icon-secondary)" },
+  embedding: { icon: Database01Icon, color: "var(--icon-secondary)" },
 };
 
 const CAPABILITY_LABELS: Record<string, string> = {
@@ -236,7 +236,9 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
           className="material-interactive flex items-center justify-center h-8 sm:h-9 px-3.5 rounded-2xl text-xs font-semibold cursor-pointer border"
           style={{
             ...getMaterialSurfaceStyle("accent", "sm"),
-            color: activeModel ? "var(--brand-primary)" : "var(--text-tertiary)",
+            color: activeModel
+              ? "var(--selection-active-foreground, var(--brand-primary))"
+              : "var(--text-secondary)",
             opacity: disabled || models.length === 0 ? 0.5 : 1,
             pointerEvents: disabled || models.length === 0 ? "none" : "auto",
           }}
@@ -264,23 +266,16 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
         data-surface-clarity="high"
       >
         <div className="p-3 border-b" style={{ borderColor: "var(--divider)" }}>
-          <div className="search flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 border"
-            style={{
-              ...getMaterialSurfaceStyle("floating", "sm"),
-            }}
-          >
-            <HugeiconsIcon icon={Search01Icon} size={16} style={{ color: "var(--text-tertiary)" }} />
-            <input
-              placeholder="搜索模型..."
-              className="flex-1 text-sm bg-transparent outline-none"
-              style={{ color: "var(--text-primary)" }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+          <SearchInput
+            containerClassName="w-full"
+            placeholder="搜索模型..."
+            surface="floating"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
           {visibleCapabilities.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3 pl-1">
-              <span className="text-xs mr-2 font-medium" style={{ color: "var(--text-tertiary)" }}>能力标签</span>
+              <span className="text-xs mr-2 font-medium" style={{ color: "var(--text-secondary)" }}>能力标签</span>
               {visibleCapabilities.map((capability) => {
                 const config = CAPABILITY_CONFIG[capability];
                 if (!config) {
@@ -308,7 +303,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
         
         <div className="overflow-y-auto" style={{ maxHeight: "350px" }}>
           {groupedModels.length === 0 ? (
-            <div className="p-8 text-center" style={{ color: "var(--text-tertiary)" }}>
+            <div className="p-8 text-center" style={{ color: "var(--text-secondary)" }}>
               {searchQuery ? "没有找到匹配的模型" : "暂无可用模型，请前往设置开启"}
             </div>
           ) : (
@@ -319,7 +314,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                 return (
                   <div key={providerId} className="py-2">
                     <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider flex items-center gap-2" 
-                      style={{ color: "var(--text-tertiary)" }}>
+                      style={{ color: "var(--text-secondary)" }}>
                       {displayName}
                     </div>
                     <div>
@@ -335,12 +330,19 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                               ...getMaterialSurfaceStyle(isSelected ? "accent" : "floating", "sm"),
                               borderColor: isSelected
                                 ? "var(--material-accent-border)"
-                                : "transparent",
+                                : "var(--material-content-border)",
                             }}
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                               <ModelIcon modelName={model.id} />
-                              <div className="truncate text-sm font-medium" style={{ color: isSelected ? "var(--brand-primary)" : "var(--text-primary)" }}>
+                              <div
+                                className="truncate text-sm font-medium"
+                                style={{
+                                  color: isSelected
+                                    ? "var(--selection-active-foreground, var(--brand-primary))"
+                                    : "var(--text-primary)",
+                                }}
+                              >
                                 {model.name}
                               </div>
                             </div>

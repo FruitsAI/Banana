@@ -70,9 +70,16 @@ describe("ToastLayer", () => {
     const toast = screen.getByTestId("toast-item-toast-1");
     expect(toast).toHaveAttribute("data-feedback-surface", "liquid-banner");
     expect(toast).toHaveAttribute("data-toast-variant", "success");
+    expect(toast).toHaveAttribute("data-toast-layout", "system-banner");
     expect(toast.getAttribute("style")).toContain("--liquid-surface-fill");
+    expect(screen.getByTestId("toast-actions-toast-1")).toHaveAttribute(
+      "data-toast-actions",
+      "trailing",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "查看" }));
     expect(onAction).toHaveBeenCalledWith("toast-1");
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    expect(onDismiss).toHaveBeenCalledWith("toast-1");
   });
 });

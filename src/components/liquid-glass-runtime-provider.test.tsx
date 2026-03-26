@@ -23,6 +23,8 @@ describe("LiquidGlassRuntimeProvider", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    document.documentElement.classList.remove("dark");
+    delete document.documentElement.dataset.liquidDarkOptics;
     document.documentElement.style.removeProperty("--liquid-ambient-focus-x");
     document.documentElement.style.removeProperty("--liquid-ambient-focus-y");
     document.documentElement.style.removeProperty("--liquid-ambient-offset-x");
@@ -103,6 +105,48 @@ describe("LiquidGlassRuntimeProvider", () => {
       expect(
         document.documentElement.style.getPropertyValue("--liquid-ambient-energy"),
       ).not.toBe("");
+    });
+  });
+
+  it("keeps dark theme surfaces static instead of projecting pointer optics", async () => {
+    document.documentElement.classList.add("dark");
+
+    render(
+      <LiquidGlassRuntimeProvider>
+        <div
+          data-testid="surface"
+          data-material-role="floating"
+          data-surface-clarity="high"
+        />
+      </LiquidGlassRuntimeProvider>,
+    );
+
+    const surface = screen.getByTestId("surface");
+    Object.defineProperty(surface, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        left: 120,
+        top: 100,
+        width: 240,
+        height: 180,
+        right: 360,
+        bottom: 280,
+        x: 120,
+        y: 100,
+        toJSON: () => undefined,
+      }),
+    });
+
+    fireEvent.pointerMove(window, { clientX: 220, clientY: 180 });
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.liquidDarkOptics).toBe("static");
+      expect(surface.style.getPropertyValue("--liquid-pointer-x")).toBe("");
+      expect(surface.style.getPropertyValue("--liquid-clarity-strength")).toBe("");
+      expect(
+        document.documentElement.style.getPropertyValue("--liquid-ambient-focus-x"),
+      ).toBe("");
     });
   });
 });

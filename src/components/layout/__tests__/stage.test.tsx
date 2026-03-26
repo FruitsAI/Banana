@@ -1,8 +1,7 @@
 import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Stage } from "@/components/layout/stage";
-import { Titlebar } from "@/components/layout/titlebar";
 import type { ChatMessage } from "@/domain/chat/types";
 import type { ActiveModelSelection, Model, Provider } from "@/domain/models/types";
 
@@ -13,16 +12,6 @@ const { mockUseBananaChat } = vi.hoisted(() => ({
 const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
-}));
-
-const {
-  mockWindowClose,
-  mockWindowMinimize,
-  mockWindowToggleMaximize,
-} = vi.hoisted(() => ({
-  mockWindowClose: vi.fn(async () => undefined),
-  mockWindowMinimize: vi.fn(async () => undefined),
-  mockWindowToggleMaximize: vi.fn(async () => undefined),
 }));
 
 const {
@@ -87,14 +76,6 @@ vi.mock("@/components/ui/button", () => ({
     children,
     ...props
   }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
-}));
-
-vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({
-    close: mockWindowClose,
-    minimize: mockWindowMinimize,
-    toggleMaximize: mockWindowToggleMaximize,
-  }),
 }));
 
 vi.mock("@/lib/utils", () => ({
@@ -165,47 +146,6 @@ const userMessage: ChatMessage = {
   createdAt: "2026-03-20T12:00:00.000Z",
 };
 
-describe("Titlebar", () => {
-  beforeEach(() => {
-    Object.defineProperty(window, "__TAURI_INTERNALS__", {
-      configurable: true,
-      value: undefined,
-      writable: true,
-    });
-  });
-
-  it("renders native window controls inside the branded drag region", () => {
-    render(<Titlebar />);
-
-    expect(screen.getByRole("banner")).toHaveAttribute("data-tauri-drag-region", "true");
-    expect(screen.getByTestId("titlebar-window-controls")).toBeInTheDocument();
-    expect(screen.getByLabelText("关闭窗口")).toBeInTheDocument();
-    expect(screen.getByLabelText("最小化窗口")).toBeInTheDocument();
-    expect(screen.getByLabelText("调整窗口")).toBeInTheDocument();
-    expect(screen.getByText("Banana")).toBeInTheDocument();
-  });
-
-  it("routes the traffic-light controls to the current tauri window", async () => {
-    Object.defineProperty(window, "__TAURI_INTERNALS__", {
-      configurable: true,
-      value: {},
-      writable: true,
-    });
-
-    render(<Titlebar />);
-
-    fireEvent.click(screen.getByLabelText("关闭窗口"));
-    fireEvent.click(screen.getByLabelText("最小化窗口"));
-    fireEvent.click(screen.getByLabelText("调整窗口"));
-
-    await waitFor(() => {
-      expect(mockWindowClose).toHaveBeenCalledTimes(1);
-      expect(mockWindowMinimize).toHaveBeenCalledTimes(1);
-      expect(mockWindowToggleMaximize).toHaveBeenCalledTimes(1);
-    });
-  });
-});
-
 describe("Stage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -217,6 +157,10 @@ describe("Stage", () => {
       configurable: true,
       value: vi.fn(),
     });
+  });
+
+  afterEach(() => {
+    document.documentElement.classList.remove("dark");
   });
 
   it("keeps the composer draft until append resolves successfully", async () => {
@@ -240,6 +184,10 @@ describe("Stage", () => {
     render(<Stage />);
 
     const composer = screen.getByLabelText("消息输入框");
+    expect(composer.closest("[data-surface-tone]")).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-textarea-field",
+    );
     fireEvent.change(composer, { target: { value: "hello banana" } });
     fireEvent.click(screen.getByLabelText("发送消息"));
 
@@ -359,7 +307,12 @@ describe("Stage", () => {
     render(<Stage />);
 
     fireEvent.click(screen.getByTitle("编辑"));
-    fireEvent.change(screen.getByDisplayValue("hello banana"), {
+    const editingField = screen.getByDisplayValue("hello banana");
+    expect(editingField.closest("[data-surface-tone]")).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-textarea-field",
+    );
+    fireEvent.change(editingField, {
       target: { value: "edited banana" },
     });
     fireEvent.click(screen.getByText("保存并重发"));
@@ -414,6 +367,41 @@ describe("Stage", () => {
         isThink: false,
       });
     });
+  });
+
+  it("keeps user bubbles content-sized while assistant replies stretch across the stage lane", () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [
+        userMessage,
+        {
+          id: "msg-assistant-width",
+          role: "assistant",
+          content: "assistant reply",
+          createdAt: "2026-03-20T12:00:05.000Z",
+        },
+      ],
+      append: vi.fn(),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    const userSurface = screen.getByText("hello banana").closest("[data-message-variant='user']");
+    const assistantSurface = screen.getByText("assistant reply").closest("[data-message-variant='assistant']");
+
+    expect(userSurface).toBeTruthy();
+    expect(userSurface?.className).toContain("w-fit");
+    expect(userSurface?.className).toContain("max-w-[calc(100%-80px)]");
+
+    expect(assistantSurface).toBeTruthy();
+    expect(assistantSurface?.className).toContain("w-[calc(100%-80px)]");
+    expect(assistantSurface?.className).not.toContain("max-w-[780px]");
+    expect(assistantSurface?.parentElement?.className).toContain("w-full");
+    expect(screen.getByTestId("stage-conversation-scroll").className).toContain("pb-14");
+    expect(screen.getByTestId("stage-conversation-scroll").className).toContain("sm:pb-16");
   });
 
   it("shows failed MCP tool results with an error state instead of a success badge", () => {
@@ -491,6 +479,82 @@ describe("Stage", () => {
       "data-stage-priority",
       "secondary",
     );
+    expect(screen.getByLabelText("帮我写一段代码")).toBeInTheDocument();
+    expect(screen.getByLabelText("解释一个概念")).toBeInTheDocument();
+    expect(screen.getByLabelText("角色扮演对话")).toBeInTheDocument();
+  });
+
+  it("renders a logo-only empty state, icon-only quick actions, and aligned composer toggle selection styling", async () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [],
+      append: vi.fn(),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    expect(screen.queryByText("从一个清晰的提示开始")).not.toBeInTheDocument();
+    expect(screen.queryByText("Banana Workspace")).not.toBeInTheDocument();
+    expect(screen.queryByText("Shift + Enter 换行")).not.toBeInTheDocument();
+    expect(screen.queryByText("从下方输入任务，开始一个新对话")).not.toBeInTheDocument();
+    expect(screen.getByAltText("Banana Logo")).toBeInTheDocument();
+    expect(screen.getByTestId("stage-empty-hero").className).not.toContain("border");
+    expect(screen.getByTestId("stage-empty-logo-shell")).toHaveAttribute(
+      "data-empty-logo-animation",
+      "breathing",
+    );
+    expect(screen.getByTestId("stage-empty-logo-shell").className).toContain("rounded-[30px]");
+    expect(screen.queryByText("帮我写一段代码")).not.toBeInTheDocument();
+
+    const searchToggle = screen.getByLabelText("切换联网搜索");
+    expect(searchToggle).toHaveAttribute("data-selection-style", "liquid-accent");
+    expect(screen.getByLabelText("发送消息")).toHaveAttribute("data-send-state", "disabled");
+    expect(screen.getByTestId("composer-controls-row").className).toContain("mt-0");
+    expect(screen.getByTestId("composer-controls-row").className).toContain("pt-0");
+    expect(screen.getByLabelText("消息输入框")).toHaveStyle({ minHeight: "56px" });
+    expect(screen.getByLabelText("消息输入框").closest("[data-surface-tone]")).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-textarea-field",
+    );
+    expect(screen.getByLabelText("消息输入框").closest("[data-surface-tone]")?.className).not.toContain(
+      "border",
+    );
+
+    fireEvent.click(searchToggle);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("切换联网搜索")).toHaveAttribute(
+        "data-selection-style",
+        "idle",
+      );
+    });
+  });
+
+  it("keeps the dark empty state static without the ambient halo", async () => {
+    document.documentElement.classList.add("dark");
+
+    mockUseBananaChat.mockReturnValue({
+      messages: [],
+      append: vi.fn(),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stage-empty-logo-shell")).toHaveAttribute(
+        "data-empty-logo-animation",
+        "still",
+      );
+    });
+
+    expect(screen.queryByTestId("stage-empty-halo")).not.toBeInTheDocument();
   });
 
   it("keeps composer controls reachable when the stage drops into reduced motion", async () => {

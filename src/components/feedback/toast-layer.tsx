@@ -86,6 +86,7 @@ export function ToastLayer({ messages, onDismiss, onAction }: ToastLayerProps) {
               )}
               data-testid={`toast-item-${message.id}`}
               data-feedback-surface="liquid-banner"
+              data-toast-layout="system-banner"
               data-toast-variant={variant}
               data-surface-clarity="high"
               style={{
@@ -110,54 +111,54 @@ export function ToastLayer({ messages, onDismiss, onAction }: ToastLayerProps) {
                     "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 18%, rgba(255,255,255,0.24) 82%, transparent 100%)",
                 }}
               />
-              <div className="relative z-10 flex items-start gap-3">
-                <div className="mt-0.5 flex flex-col items-center gap-2">
+              <div className="relative z-10 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <span className={cn("h-2.5 w-2.5 rounded-full shadow-[0_0_18px_currentColor]", TOAST_ACCENT_STYLE[variant])} />
                   <span
-                    className="rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em]"
+                    className="rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em]"
                     style={{
                       color: "var(--text-tertiary)",
-                      borderColor: "rgba(255,255,255,0.2)",
+                      borderColor: "rgba(255,255,255,0.18)",
                       background: "rgba(255,255,255,0.08)",
                     }}
                   >
                     {TOAST_META_LABEL[variant]}
                   </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold tracking-[0.01em]" style={{ color: "var(--text-primary)" }}>
-                        {message.title}
-                      </p>
-                    </div>
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      className="h-7 rounded-full px-2.5 text-[11px]"
-                      onClick={() => onDismiss(message.id)}
-                    >
-                      关闭
-                    </Button>
-                  </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold tracking-[0.01em]" style={{ color: "var(--text-primary)" }}>
+                    {message.title}
+                  </p>
                   {message.description ? (
-                    <p className="mt-1.5 max-w-[34rem] text-[13px] leading-5" style={{ color: "var(--text-secondary)" }}>
+                    <p className="mt-1 truncate text-[13px] leading-5" style={{ color: "var(--text-secondary)" }}>
                       {message.description}
                     </p>
                   ) : null}
+                </div>
+                <div
+                  className="flex items-center justify-end gap-2"
+                  data-testid={`toast-actions-${message.id}`}
+                  data-toast-actions="trailing"
+                >
                   {message.actionLabel ? (
-                    <div className="mt-3 flex items-center justify-end">
-                      <Button
-                        size="sm"
-                        variant="glass"
-                        surface="floating"
-                        className="h-8 rounded-full px-3.5 text-[11px] font-semibold"
-                        onClick={() => onAction(message.id)}
-                      >
-                        {message.actionLabel}
-                      </Button>
-                    </div>
+                    <Button
+                      size="xs"
+                      variant="secondary"
+                      surface="floating"
+                      className="min-w-[64px] rounded-full px-3 text-[11px] font-semibold"
+                      onClick={() => onAction(message.id)}
+                    >
+                      {message.actionLabel}
+                    </Button>
                   ) : null}
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    className="rounded-full px-2.5 text-[11px]"
+                    onClick={() => onDismiss(message.id)}
+                  >
+                    关闭
+                  </Button>
                 </div>
               </div>
             </motion.div>

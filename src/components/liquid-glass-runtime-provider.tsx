@@ -19,10 +19,43 @@ const INTERACTIVE_SELECTOR = [
   ".material-interactive",
   "[data-slot='button'][data-material-role]",
 ].join(", ");
+const ROOT_AMBIENT_VARIABLES = [
+  "--liquid-ambient-focus-x",
+  "--liquid-ambient-focus-y",
+  "--liquid-ambient-offset-x",
+  "--liquid-ambient-offset-y",
+  "--liquid-ambient-energy",
+] as const;
+const SURFACE_OPTICS_VARIABLES = [
+  "--liquid-pointer-x",
+  "--liquid-pointer-y",
+  "--liquid-pointer-presence",
+  "--liquid-clarity-strength",
+  "--liquid-surface-blur-boost",
+  "--liquid-surface-saturate-boost",
+  "--liquid-surface-brightness-boost",
+  "--liquid-surface-ambient-opacity",
+  "--liquid-press-opacity",
+] as const;
+const SURFACE_INTERACTION_VARIABLES = [
+  "--liquid-ripple-x",
+  "--liquid-ripple-y",
+  "--liquid-ripple-opacity",
+  "--liquid-ripple-scale",
+] as const;
 
 function applyCSSVariables(target: HTMLElement, variables: Record<string, string>) {
   for (const [property, value] of Object.entries(variables)) {
     target.style.setProperty(property, value);
+  }
+}
+
+function clearCSSVariables(
+  target: HTMLElement,
+  variables: readonly string[],
+) {
+  for (const variable of variables) {
+    target.style.removeProperty(variable);
   }
 }
 
@@ -54,6 +87,10 @@ function resolveInteractiveSurface(target: EventTarget | null) {
   return target.closest<HTMLElement>(INTERACTIVE_SELECTOR);
 }
 
+function isDarkThemeActive() {
+  return document.documentElement.classList.contains("dark");
+}
+
 export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }) {
   const { intensity } = useAnimationIntensity();
 
@@ -71,10 +108,28 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     const pressedCleanup = new Map<HTMLElement, number>();
     let runtimeActivated = false;
     let mutationObserver: MutationObserver | null = null;
+    let themeObserver: MutationObserver | null = null;
     let frame = 0;
     let lastScrollY = window.scrollY;
     let lastScrollAt = performance.now();
     let scrollVelocity = 0;
+
+    const syncDarkOpticsMode = () => {
+      document.documentElement.dataset.liquidDarkOptics = isDarkThemeActive()
+        ? "static"
+        : "dynamic";
+    };
+
+    const clearRootAmbientOptics = () => {
+      clearCSSVariables(document.documentElement, ROOT_AMBIENT_VARIABLES);
+    };
+
+    const clearSurfaceOptics = (surface: HTMLElement) => {
+      clearCSSVariables(surface, SURFACE_OPTICS_VARIABLES);
+      clearCSSVariables(surface, SURFACE_INTERACTION_VARIABLES);
+      delete surface.dataset.liquidClarityState;
+      surface.dataset.liquidPressed = "false";
+    };
 
     const startMutationObserver = () => {
       if (mutationObserver) {
@@ -90,6 +145,29 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
         subtree: true,
         attributes: true,
         attributeFilter: ["data-material-role", "data-surface-clarity", "class"],
+      });
+
+      mutationObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    };
+
+    const startThemeObserver = () => {
+      if (themeObserver) {
+        return;
+      }
+
+      themeObserver = new MutationObserver(() => {
+        syncDarkOpticsMode();
+        if (runtimeActivated) {
+          scheduleSync();
+        }
+      });
+
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
       });
     };
 
@@ -116,17 +194,35 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     };
 
     const syncSurfaces = () => {
+      const usesStaticDarkOptics = isDarkThemeActive();
+      syncDarkOpticsMode();
+      const effectivePointer = usesStaticDarkOptics
+        ? {
+            ...pointerState,
+            active: false,
+          }
+        : pointerState;
       const viewport = {
         width: window.innerWidth,
         height: window.innerHeight,
         scrollVelocity,
       };
+      const surfaces = document.querySelectorAll<HTMLElement>(SURFACE_SELECTOR);
+
+      if (usesStaticDarkOptics) {
+        clearRootAmbientOptics();
+        for (const surface of surfaces) {
+          clearSurfaceOptics(surface);
+        }
+        scrollVelocity = Math.max(0, scrollVelocity * 0.72);
+        return;
+      }
+
       const ambientState = resolveLiquidGlassAmbientState({
         viewport,
-        pointer: pointerState,
+        pointer: effectivePointer,
         motionLevel,
       });
-      const surfaces = document.querySelectorAll<HTMLElement>(SURFACE_SELECTOR);
       applyRootCSSVariables(liquidGlassAmbientStateToCSSVariables(ambientState));
 
       for (const surface of surfaces) {
@@ -141,7 +237,7 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
           clarity: readLiquidGlassSurfaceClarity(surface.dataset.surfaceClarity),
           motionLevel,
           viewport,
-          pointer: pointerState,
+          pointer: effectivePointer,
           rect,
         });
 
@@ -186,6 +282,14 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     };
 
     const handlePointerMove = (event: PointerEvent) => {
+      if (isDarkThemeActive()) {
+        pointerState.active = false;
+        if (runtimeActivated) {
+          scheduleSync();
+        }
+        return;
+      }
+
       activateRuntime();
       pointerState.x = event.clientX;
       pointerState.y = event.clientY;
@@ -203,6 +307,14 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      if (isDarkThemeActive()) {
+        pointerState.active = false;
+        if (runtimeActivated) {
+          scheduleSync();
+        }
+        return;
+      }
+
       activateRuntime();
       pointerState.x = event.clientX;
       pointerState.y = event.clientY;
@@ -237,9 +349,12 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
     window.addEventListener("resize", handleResize, { passive: true });
     window.addEventListener("blur", handlePointerReset);
     document.addEventListener("mouseleave", handlePointerReset);
+    syncDarkOpticsMode();
+    startThemeObserver();
 
     return () => {
       mutationObserver?.disconnect();
+      themeObserver?.disconnect();
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointerup", handlePointerReset);
@@ -256,6 +371,9 @@ export function LiquidGlassRuntimeProvider({ children }: { children: ReactNode }
       for (const timeoutId of pressedCleanup.values()) {
         window.clearTimeout(timeoutId);
       }
+
+      clearRootAmbientOptics();
+      delete document.documentElement.dataset.liquidDarkOptics;
     };
   }, [intensity]);
 

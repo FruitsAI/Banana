@@ -8,7 +8,6 @@ interface SettingsSectionShellProps {
   sectionId: string;
   eyebrow?: string;
   title: string;
-  description?: string;
   headerAccessory?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -19,6 +18,14 @@ interface SettingsSectionGroupProps {
   children: ReactNode;
   className?: string;
   interactive?: boolean;
+}
+
+interface SettingsSectionTitleRowProps {
+  accessory?: ReactNode;
+  className?: string;
+  icon?: ReactNode;
+  testId?: string;
+  title: string;
 }
 
 function findNearestScrollParent(element: HTMLElement | null): HTMLElement | null {
@@ -38,11 +45,41 @@ function findNearestScrollParent(element: HTMLElement | null): HTMLElement | nul
   return null;
 }
 
+const HEADER_STICKY_SNAP_PX = 2;
+const HEADER_SCROLLABLE_BODY_BUFFER_PX = 28;
+
+export function SettingsSectionTitleRow({
+  accessory,
+  className,
+  icon,
+  testId,
+  title,
+}: SettingsSectionTitleRowProps) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-6 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+        className,
+      )}
+      data-settings-title-row="shared"
+      data-testid={testId}
+    >
+      <div className="flex min-h-6 items-center gap-2">
+        <h3 className="text-sm font-semibold leading-6" style={{ color: "var(--text-primary)" }}>
+          {title}
+        </h3>
+        {icon}
+      </div>
+
+      {accessory ? <div className="flex shrink-0 items-center gap-3">{accessory}</div> : null}
+    </div>
+  );
+}
+
 export function SettingsSectionShell({
   sectionId,
   eyebrow,
   title,
-  description,
   headerAccessory,
   children,
   className,
@@ -66,8 +103,9 @@ export function SettingsSectionShell({
       const sectionRect = sectionElement.getBoundingClientRect();
       const headerRect = headerElement.getBoundingClientRect();
       const rootTop = scrollParent?.getBoundingClientRect().top ?? 0;
-      const hasReachedScrollEdge = sectionRect.top <= rootTop + 2;
-      const hasScrollableBody = sectionRect.bottom - headerRect.height > rootTop + 28;
+      const hasReachedScrollEdge = sectionRect.top <= rootTop + HEADER_STICKY_SNAP_PX;
+      const hasScrollableBody =
+        sectionRect.bottom - headerRect.height > rootTop + HEADER_SCROLLABLE_BODY_BUFFER_PX;
       const nextCondensed = hasReachedScrollEdge && hasScrollableBody;
 
       setHeaderCondensed((current) => (current === nextCondensed ? current : nextCondensed));
@@ -88,12 +126,16 @@ export function SettingsSectionShell({
   return (
     <section
       ref={sectionRef}
-      className={cn("overflow-hidden rounded-[28px] border", className)}
+      className={cn("flex min-h-full flex-1 flex-col overflow-hidden rounded-[28px] border", className)}
       data-header-condensed={headerCondensed ? "true" : "false"}
+      data-settings-stage-fill="true"
       data-testid="settings-section-shell"
       data-material-role="floating"
       data-settings-section={sectionId}
-      style={{ ...getMaterialSurfaceStyle("floating", "md") }}
+      style={{
+        ...getMaterialSurfaceStyle("floating", "md"),
+        boxShadow: "var(--liquid-material-rest-shadow)",
+      }}
     >
       <div
         ref={headerRef}
@@ -160,20 +202,6 @@ export function SettingsSectionShell({
             >
               {title}
             </h2>
-            {description ? (
-              <p
-                className={cn(
-                  "text-sm leading-6 transition-[opacity,transform] duration-300 ease-out",
-                  headerCondensed ? "opacity-90" : "opacity-100",
-                )}
-                style={{
-                  color: "var(--text-secondary)",
-                  transform: headerCondensed ? "translateY(-1px)" : "translateY(0px)",
-                }}
-              >
-                {description}
-              </p>
-            ) : null}
           </div>
 
           {headerAccessory}
@@ -181,7 +209,7 @@ export function SettingsSectionShell({
       </div>
 
       <div
-        className={cn("space-y-5 px-6 py-6 sm:px-7 sm:py-7", contentClassName)}
+        className={cn("flex-1 space-y-5 px-6 py-6 sm:px-7 sm:py-7", contentClassName)}
         data-testid="settings-section-body"
         data-settings-body="true"
       >

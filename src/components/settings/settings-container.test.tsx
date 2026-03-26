@@ -24,20 +24,20 @@ vi.mock("./settings-content", () => ({
 }));
 
 describe("SettingsContainer", () => {
-  it("renders the layered settings shell and switches tabs through the sidebar", () => {
+  it("lets the sidebar sit directly in the workspace and flattens the content stage into the right pane", () => {
     render(<SettingsContainer />);
 
     expect(screen.getByTestId("settings-scene")).toHaveAttribute("data-material-role", "chrome");
-    expect(screen.getByTestId("settings-shell")).toHaveAttribute("data-material-role", "chrome");
-    expect(screen.getByTestId("settings-shell")).toHaveAttribute("data-settings-shell-tone", "desktop-pane");
+    expect(screen.queryByTestId("settings-shell")).not.toBeInTheDocument();
     expect(screen.getByTestId("settings-content-frame")).toHaveAttribute(
-      "data-material-role",
-      "content",
+      "data-settings-stage",
+      "inline",
     );
     expect(screen.getByTestId("settings-content-frame")).toHaveAttribute(
       "data-settings-active-tab",
       "models",
     );
+    expect(screen.getByTestId("settings-content-frame")).not.toHaveAttribute("data-material-role");
     expect(screen.getByTestId("settings-content-atmosphere")).toHaveAttribute(
       "data-settings-atmosphere",
       "models",

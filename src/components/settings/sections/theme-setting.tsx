@@ -10,6 +10,7 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { useAnimationIntensity } from "@/components/animation-intensity-provider";
+import { SettingsPageFrame } from "@/components/settings/settings-page-frame";
 import { SettingsSectionGroup, SettingsSectionShell } from "@/components/settings/settings-section-shell";
 import { SelectionCard } from "@/components/ui/selection-card";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
@@ -24,11 +25,10 @@ const THEME_OPTIONS = [
 const INTENSITY_OPTIONS: Array<{
   id: AnimationIntensity;
   label: string;
-  description: string;
 }> = [
-  { id: "low", label: "轻量", description: "更少位移和缩放，低干扰" },
-  { id: "medium", label: "标准", description: "平衡观感与效率，推荐" },
-  { id: "high", label: "增强", description: "更明显动效，更强反馈" },
+  { id: "low", label: "轻量" },
+  { id: "medium", label: "标准" },
+  { id: "high", label: "增强" },
 ];
 
 export function ThemeSetting() {
@@ -52,22 +52,17 @@ export function ThemeSetting() {
 
   if (!mounted) {
     return (
-      <div className="h-full overflow-y-auto custom-scroll">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <SettingsSectionShell
-            sectionId="theme"
-            eyebrow="Appearance"
-            title="外观设置"
-            description="根据当前环境切换主题与动效密度，让界面层级、亮度和反馈节奏更贴近系统。"
-          >
+      <SettingsPageFrame>
+        <SettingsSectionShell
+          sectionId="theme"
+          eyebrow="Appearance"
+          title="外观设置"
+        >
             <SettingsSectionGroup>
               <div className="mb-4">
                 <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                   主题
                 </h3>
-                <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                  选择浅色、深色或跟随系统。
-                </p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {THEME_OPTIONS.map((item) => (
@@ -85,9 +80,6 @@ export function ThemeSetting() {
                 <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                   动画强度
                 </h3>
-                <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                  控制位移、缩放和持续反馈的整体强度。
-                </p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {INTENSITY_OPTIONS.map((item) => (
@@ -99,29 +91,23 @@ export function ThemeSetting() {
                 ))}
               </div>
             </SettingsSectionGroup>
-          </SettingsSectionShell>
-        </div>
-      </div>
+        </SettingsSectionShell>
+      </SettingsPageFrame>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto custom-scroll">
-      <div className="max-w-4xl mx-auto px-6 py-6">
-        <SettingsSectionShell
-          sectionId="theme"
-          eyebrow="Appearance"
-          title="外观设置"
-          description="选择更适合当前环境的界面主题，让 Banana 的层级、亮度与材质反馈和系统节奏保持一致。"
-        >
+    <SettingsPageFrame>
+      <SettingsSectionShell
+        sectionId="theme"
+        eyebrow="Appearance"
+        title="外观设置"
+      >
           <SettingsSectionGroup>
             <div className="mb-5">
               <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 主题
               </h3>
-              <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                在浅色、深色和系统外观之间切换，让窗口材质与桌面环境自然融合。
-              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -138,11 +124,13 @@ export function ThemeSetting() {
                         className="flex h-10 w-10 items-center justify-center rounded-lg"
                         style={{
                           background: isActive
-                            ? "color-mix(in srgb, var(--brand-primary) 18%, var(--material-content-background))"
+                            ? "var(--selection-active-chip-fill)"
                             : "var(--material-content-background)",
-                          border: "1px solid var(--material-content-border)",
+                          border: isActive
+                            ? "1px solid var(--selection-active-chip-border)"
+                            : "1px solid var(--material-content-border)",
                           boxShadow: isActive
-                            ? "0 0 0 1px color-mix(in srgb, var(--brand-primary) 30%, rgba(59, 130, 246, 0.2))"
+                            ? "var(--selection-active-chip-shadow)"
                             : "inset 0 1px 0 rgba(255,255,255,0.12)",
                         }}
                       >
@@ -150,14 +138,18 @@ export function ThemeSetting() {
                         icon={item.icon}
                         size={20}
                         style={{
-                          color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)",
+                          color: isActive
+                            ? "var(--selection-active-foreground, var(--brand-primary))"
+                            : "var(--text-tertiary)",
                         }}
                       />
                     </div>
                     <span
                       className="text-xs font-medium"
                       style={{
-                        color: isActive ? "var(--brand-primary)" : "var(--text-primary)",
+                        color: isActive
+                          ? "var(--selection-active-foreground, var(--brand-primary))"
+                          : "var(--text-primary)",
                       }}
                     >
                       {item.label}
@@ -173,9 +165,6 @@ export function ThemeSetting() {
               <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 动画强度
               </h3>
-              <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                影响全局过渡、交互动效和动态反馈。较低强度会减少位移与持续装饰动画，更适合长时间专注。
-              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -193,16 +182,17 @@ export function ThemeSetting() {
                     <div className="mb-1 flex items-center justify-between">
                       <span
                         className="text-sm font-semibold"
-                        style={{ color: isActive ? "var(--brand-primary)" : "var(--text-primary)" }}
+                        style={{
+                          color: isActive
+                            ? "var(--selection-active-foreground, var(--brand-primary))"
+                            : "var(--text-primary)",
+                        }}
                       >
                         {item.label}
                       </span>
                     </div>
-                    <p className="text-xs leading-5" style={{ color: "var(--text-tertiary)" }}>
-                      {item.description}
-                    </p>
                     {isSaving ? (
-                      <span className="mt-2 inline-block text-[11px]" style={{ color: "var(--brand-primary)" }}>
+                      <span className="mt-2 inline-block text-[11px]" style={{ color: "var(--selection-active-foreground)" }}>
                         正在保存...
                       </span>
                     ) : null}
@@ -211,8 +201,7 @@ export function ThemeSetting() {
               })}
             </div>
           </SettingsSectionGroup>
-        </SettingsSectionShell>
-      </div>
-    </div>
+      </SettingsSectionShell>
+    </SettingsPageFrame>
   );
 }

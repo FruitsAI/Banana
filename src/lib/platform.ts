@@ -15,16 +15,20 @@ interface WindowRuntimeLike {
 
 type WindowWithRuntimeBridge = Window & WindowRuntimeLike;
 
+function detectPlatformFromCombinedText(combined: string): DesktopPlatform {
+  if (combined.includes("mac") || combined.includes("darwin")) return "macos";
+  if (combined.includes("windows") || /\bwin(?:32|64)?\b/.test(combined)) return "windows";
+  if (combined.includes("linux") || combined.includes("x11")) return "linux";
+  return "unknown";
+}
+
 export function detectDesktopPlatform(navigatorLike: NavigatorPlatformLike): DesktopPlatform {
   const uaDataPlatform = navigatorLike.userAgentData?.platform ?? "";
   const navigatorPlatform = navigatorLike.platform ?? "";
   const userAgent = navigatorLike.userAgent ?? "";
   const combined = `${uaDataPlatform} ${navigatorPlatform} ${userAgent}`.toLowerCase();
 
-  if (combined.includes("win")) return "windows";
-  if (combined.includes("mac") || combined.includes("darwin")) return "macos";
-  if (combined.includes("linux") || combined.includes("x11")) return "linux";
-  return "unknown";
+  return detectPlatformFromCombinedText(combined);
 }
 
 export function detectRuntimeEnvironment(windowLike: WindowRuntimeLike | undefined): RuntimeEnvironment {
@@ -65,10 +69,10 @@ export function buildPlatformMarkerScript(): string {
     "  const navigatorPlatform = navigator.platform ?? '';",
     "  const userAgent = navigator.userAgent ?? '';",
     "  const combined = `${uaDataPlatform} ${navigatorPlatform} ${userAgent}`.toLowerCase();",
-    "  const platform = combined.includes('win')",
-    "    ? 'windows'",
-    "    : combined.includes('mac') || combined.includes('darwin')",
-    "      ? 'macos'",
+    "  const platform = combined.includes('mac') || combined.includes('darwin')",
+    "    ? 'macos'",
+    "    : combined.includes('windows') || /\\bwin(?:32|64)?\\b/.test(combined)",
+    "      ? 'windows'",
     "      : combined.includes('linux') || combined.includes('x11')",
     "        ? 'linux'",
     "        : 'unknown';",

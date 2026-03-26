@@ -5,7 +5,11 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowDown01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { getFieldShellStyle } from "@/components/ui/field-shell";
+import {
+  getLiquidSelectionState,
+  getLiquidSelectionStyle,
+} from "@/components/ui/liquid-selection";
 import { cn } from "@/lib/utils";
 
 export interface SelectOption<Value extends string = string> {
@@ -62,16 +66,19 @@ export function Select<Value extends string = string>({
           disabled={disabled}
           data-liquid-interactive="true"
           className={cn(
-            "group/select relative flex h-11 w-full items-center justify-between overflow-hidden rounded-[22px] border px-4 text-left transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-out focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--brand-primary-light)] disabled:pointer-events-none disabled:opacity-50",
+            "group/select relative flex min-h-11 w-full items-center justify-between overflow-hidden rounded-[22px] border px-4 py-2.5 text-left transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-out focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
             className,
           )}
+          data-field-shell="true"
           data-surface-tone="liquid-select-trigger"
           data-material-role="floating"
           data-hover-surface="floating"
           style={{
-            ...getMaterialSurfaceStyle("floating", "md"),
-            ["--liquid-surface-fill" as string]:
-              "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--liquid-material-base-background)",
+            ...getFieldShellStyle({
+              focused: open,
+              size: "md",
+              surface: "floating",
+            }),
             color: "var(--text-primary)",
           }}
         >
@@ -101,7 +108,7 @@ export function Select<Value extends string = string>({
             style={{
               background: "color-mix(in srgb, var(--material-floating-background) 92%, transparent)",
               borderColor: "var(--material-content-border)",
-              color: "var(--text-tertiary)",
+              color: "var(--icon-secondary)",
             }}
           >
             <HugeiconsIcon icon={ArrowDown01Icon} size={14} />
@@ -134,16 +141,14 @@ export function Select<Value extends string = string>({
                 data-surface-tone={isSelected ? "liquid-select-option-active" : "liquid-select-option"}
                 data-material-role={isSelected ? "accent" : "floating"}
                 data-hover-surface={isSelected ? "accent" : "floating"}
-                style={{
-                  ...getMaterialSurfaceStyle(isSelected ? "accent" : "floating", "sm"),
-                  ["--liquid-surface-fill" as string]: isSelected
-                    ? "linear-gradient(180deg, rgba(59,130,246,0.18) 0%, rgba(255,255,255,0.08) 100%), var(--material-accent-background)"
-                    : "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-floating-background)",
-                  borderColor: isSelected
-                    ? "var(--material-accent-border)"
-                    : "var(--material-floating-border)",
-                  color: isSelected ? "var(--brand-primary)" : "var(--text-primary)",
-                }}
+                data-selection-style={getLiquidSelectionState(isSelected)}
+                style={getLiquidSelectionStyle({
+                  active: isSelected,
+                  inactiveRole: "floating",
+                  inactiveFill:
+                    "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-floating-background)",
+                  inactiveTextColor: "var(--text-primary)",
+                })}
                 onClick={() => {
                   onValueChange(option.value);
                   setOpen(false);
@@ -154,7 +159,11 @@ export function Select<Value extends string = string>({
                   {option.description ? (
                     <span
                       className="mt-0.5 block truncate text-xs leading-5"
-                      style={{ color: isSelected ? "var(--brand-primary)" : "var(--text-tertiary)" }}
+                      style={{
+                        color: isSelected
+                          ? "var(--selection-active-foreground-muted)"
+                          : "var(--text-secondary)",
+                      }}
                     >
                       {option.description}
                     </span>
@@ -168,11 +177,10 @@ export function Select<Value extends string = string>({
                       exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
                       className="ml-3 inline-flex h-6 w-6 items-center justify-center rounded-full border"
                       style={{
-                        background:
-                          "linear-gradient(180deg, rgba(59,130,246,0.16) 0%, rgba(59,130,246,0.78) 100%)",
-                        borderColor: "rgba(255,255,255,0.32)",
+                        background: "var(--selection-active-badge-fill)",
+                        borderColor: "var(--selection-active-badge-border)",
                         color: "#fff",
-                        boxShadow: "0 10px 22px rgba(59,130,246,0.22)",
+                        boxShadow: "var(--selection-active-badge-shadow)",
                       }}
                     >
                       <HugeiconsIcon icon={Tick02Icon} size={12} color="currentColor" />

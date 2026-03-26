@@ -16,40 +16,38 @@ import {
   APP_DISPLAY_VERSION,
   APP_LINKS,
   APP_NAME,
-  APP_TAGLINE,
 } from "@/config/app-metadata";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { SettingsPageFrame } from "@/components/settings/settings-page-frame";
 import { SettingsSectionGroup, SettingsSectionShell } from "@/components/settings/settings-section-shell";
 
 export function AboutSetting() {
   const techStack = [
-    { name: "Tauri 2", icon: Layers01Icon, desc: "高性能桌面框架" },
-    { name: "Next.js", icon: ZapIcon, desc: "React 全栈框架" },
-    { name: "Vercel AI SDK", icon: CpuIcon, desc: "AI 流式响应" },
-    { name: "TypeScript", icon: CodeIcon, desc: "类型安全" },
+    { name: "Tauri 2", icon: Layers01Icon },
+    { name: "Next.js", icon: ZapIcon },
+    { name: "Vercel AI SDK", icon: CpuIcon },
+    { name: "TypeScript", icon: CodeIcon },
   ];
 
   return (
-    <div className="h-full overflow-y-auto custom-scroll">
-      <div className="max-w-4xl mx-auto px-6 py-6">
-        <SettingsSectionShell
-          sectionId="about"
-          eyebrow="About"
-          title={`${APP_NAME} 桌面应用`}
-          description="围绕桌面工作流构建的 AI 助手，把模型、工具与对话放进统一的液态玻璃操作界面。"
-          headerAccessory={
-            <div
-              className="inline-flex items-center justify-center self-start rounded-full border px-3 py-1 text-xs font-medium"
-              style={{
-                background: "var(--brand-primary-light)",
-                borderColor: "var(--brand-primary-border)",
-                color: "var(--brand-primary)",
-              }}
-            >
-              {APP_DISPLAY_VERSION}
-            </div>
-          }
-        >
+    <SettingsPageFrame>
+      <SettingsSectionShell
+        sectionId="about"
+        eyebrow="About"
+        title={`${APP_NAME} 桌面应用`}
+        headerAccessory={
+          <div
+            className="inline-flex items-center justify-center self-start rounded-full border px-3 py-1 text-xs font-medium"
+            style={{
+              background: "var(--brand-primary-light)",
+              borderColor: "var(--brand-primary-border)",
+              color: "var(--brand-primary)",
+            }}
+          >
+            {APP_DISPLAY_VERSION}
+          </div>
+        }
+      >
           <SettingsSectionGroup>
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
               <motion.div
@@ -71,10 +69,7 @@ export function AboutSetting() {
                 <h3 className="text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
                   {APP_NAME}
                 </h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                  {APP_TAGLINE}，以更克制的材质层级、内容优先的界面和自然的状态反馈，把聊天体验做成更像原生桌面应用的工作台。
-                </p>
-                <p className="mt-3 text-xs" style={{ color: "var(--text-tertiary)" }}>
+                <p className="mt-2 text-xs" style={{ color: "var(--text-tertiary)" }}>
                   © {APP_COPYRIGHT_YEAR} {APP_COPYRIGHT_OWNER}. All rights reserved.
                 </p>
               </div>
@@ -86,9 +81,6 @@ export function AboutSetting() {
               <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 技术栈
               </h3>
-              <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                以桌面性能、流式响应和类型安全为核心，保持体验细节与工程可维护性同步推进。
-              </p>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {techStack.map((tech, index) => (
@@ -112,9 +104,6 @@ export function AboutSetting() {
                     <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                       {tech.name}
                     </div>
-                    <div className="mt-0.5 text-xs" style={{ color: "var(--text-tertiary)" }}>
-                      {tech.desc}
-                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -126,9 +115,6 @@ export function AboutSetting() {
               <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 相关链接
               </h3>
-              <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                快速前往官网、文档和仓库，查看发布说明、使用方式与项目进展。
-              </p>
             </div>
             {APP_LINKS.map((link, index, arr) => (
               <a
@@ -160,8 +146,7 @@ export function AboutSetting() {
               </a>
             ))}
           </SettingsSectionGroup>
-        </SettingsSectionShell>
-      </div>
-    </div>
+      </SettingsSectionShell>
+    </SettingsPageFrame>
   );
 }

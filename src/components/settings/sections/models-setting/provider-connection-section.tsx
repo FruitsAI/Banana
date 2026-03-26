@@ -48,9 +48,9 @@ export function ProviderConnectionSection({
           <Label className="font-semibold text-[13px]" style={{ color: "var(--text-primary)" }}>
             API 密钥
           </Label>
-          <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: "var(--text-tertiary)" }} />
+          <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: "var(--icon-secondary)" }} />
         </div>
-        <div className="flex gap-2 relative">
+        <div className="relative flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
             <Input
               type={showApiKey ? "text" : "password"}
@@ -64,7 +64,7 @@ export function ProviderConnectionSection({
               className="material-interactive absolute right-2.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full transition-colors duration-200"
               data-hover-surface="floating"
               style={{
-                color: "var(--text-tertiary)",
+                color: "var(--icon-secondary)",
                 background: "var(--material-floating-background)",
                 border: "1px solid var(--material-content-border)",
               }}
@@ -77,7 +77,7 @@ export function ProviderConnectionSection({
           </div>
           <Button
             variant="outline"
-            className="px-4 shrink-0 h-10 rounded-xl border"
+            className="h-10 shrink-0 rounded-xl border px-4 sm:w-auto"
             surface="floating"
             onClick={onTestConnection}
             disabled={isTesting || saving || !activeProvider}
@@ -85,8 +85,8 @@ export function ProviderConnectionSection({
             {isTesting ? "检测中..." : "检测"}
           </Button>
         </div>
-        <div className="text-right">
-          <span className="inline-flex rounded-full border px-2 py-0.5 text-[11px]" style={{ color: "var(--text-tertiary)", background: "var(--material-floating-background)", borderColor: "var(--material-content-border)" }}>
+        <div className="text-left sm:text-right">
+          <span className="inline-flex rounded-full border px-2 py-0.5 text-[11px]" style={{ color: "var(--text-secondary)", background: "var(--material-floating-background)", borderColor: "var(--material-content-border)" }}>
             多个密钥使用逗号分隔
           </span>
         </div>
@@ -111,14 +111,14 @@ export function ProviderConnectionSection({
               style={{
                 borderColor: "var(--material-content-border)",
                 background: "var(--material-floating-background)",
-                color: "var(--text-tertiary)",
+                color: "var(--text-secondary)",
               }}
             >
               ↕
             </span>
-            <span style={{ color: "var(--text-tertiary)" }}>ⓘ</span>
+            <span style={{ color: "var(--icon-secondary)" }}>ⓘ</span>
           </Label>
-          <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: "var(--text-tertiary)" }} />
+          <HugeiconsIcon icon={Settings01Icon} size={16} style={{ color: "var(--icon-secondary)" }} />
         </div>
         <Input
           value={baseUrl}
@@ -127,7 +127,7 @@ export function ProviderConnectionSection({
           surface="floating"
         />
         <div className="rounded-xl border px-2.5 py-2" style={{ background: "var(--material-floating-background)", borderColor: "var(--material-content-border)" }}>
-          <span className="text-[11px] flex gap-2" style={{ color: "var(--text-tertiary)" }}>
+          <span className="flex gap-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
             <span>预览:</span>
             <span className="truncate opacity-50">
               {baseUrl.trim()

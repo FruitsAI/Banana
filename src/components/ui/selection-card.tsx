@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Tick02Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { getLiquidSelectionState } from "@/components/ui/liquid-selection";
 
 interface SelectionCardProps {
   /** 是否处于选中状态 */
@@ -34,6 +35,7 @@ export function SelectionCard({ isActive, onClick, children, className }: Select
       )}
       data-hover-surface={isActive ? "accent" : "content"}
       data-material-role="content"
+      data-selection-style={getLiquidSelectionState(isActive)}
       data-surface-tone="liquid-selection-card"
       style={{
         ...getMaterialSurfaceStyle(isActive ? "accent" : "content", "sm"),
@@ -65,11 +67,11 @@ export function SelectionCard({ isActive, onClick, children, className }: Select
         <motion.div
           initial={shouldReduceMotion ? false : { scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="absolute right-3 top-3 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border"
+          className="absolute right-3 top-3 flex h-6 w-6 flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
           style={{
-            background: "linear-gradient(180deg, rgba(59,130,246,0.18) 0%, rgba(59,130,246,0.78) 100%)",
-            borderColor: "rgba(255,255,255,0.3)",
-            boxShadow: "0 10px 22px rgba(59,130,246,0.22)",
+            background: "linear-gradient(180deg, #8bb9ff 0%, #5c9cff 52%, #3c82f6 100%)",
+            boxShadow:
+              "0 8px 18px rgba(59,130,246,0.2), inset 0 0.5px 0 rgba(255,255,255,0.14)",
           }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         >

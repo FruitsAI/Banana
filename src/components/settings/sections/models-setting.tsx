@@ -8,9 +8,11 @@ import { AddModelDialog } from "@/components/models/add-model-dialog";
 import { AddProviderDialog } from "@/components/providers/add-provider-dialog";
 import { ManageModelsDialog } from "@/components/models/manage-models-dialog";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { SettingsPageFrame } from "@/components/settings/settings-page-frame";
 import {
   SettingsSectionGroup,
   SettingsSectionShell,
+  SettingsSectionTitleRow,
 } from "@/components/settings/settings-section-shell";
 import { ModelGroupsPanel } from "./models-setting/model-groups-panel";
 import { ProviderConnectionSection } from "./models-setting/provider-connection-section";
@@ -18,12 +20,10 @@ import { ProviderSidebar } from "./models-setting/provider-sidebar";
 import { useModelsSettingController } from "./models-setting/use-models-setting-controller";
 
 function GuidedEmptyState({
-  description,
   eyebrow,
   testId,
   title,
 }: {
-  description: string;
   eyebrow: string;
   testId: string;
   title: string;
@@ -44,9 +44,6 @@ function GuidedEmptyState({
       <div className="mt-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
         {title}
       </div>
-      <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-        {description}
-      </p>
     </div>
   );
 }
@@ -111,13 +108,11 @@ export function ModelsSetting() {
 
   return (
     <>
-      <div className="h-full overflow-y-auto custom-scroll">
-        <div className="mx-auto max-w-5xl px-6 py-6">
-          <SettingsSectionShell
+      <SettingsPageFrame>
+        <SettingsSectionShell
             sectionId="models"
             eyebrow="Models"
             title="模型与平台"
-            description="用统一的偏好设置层级管理模型平台、连接凭据和默认模型，让启用状态、默认选择和主工作区保持同一节奏。"
             headerAccessory={
               <div
                 className="flex flex-col gap-2 rounded-[24px] border p-2.5 sm:flex-row sm:items-center"
@@ -155,60 +150,70 @@ export function ModelsSetting() {
               </div>
             }
           >
-            <div className="grid items-start gap-6 xl:grid-cols-[280px_minmax(0,1fr)]" data-preferences-layout="two-column">
-              <SettingsSectionGroup className="overflow-hidden p-0">
-                <div className="px-5 pb-3 pt-5">
-                  <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                    平台列表
-                  </h3>
-                  <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                    选择默认提供商、快速切换平台，并在同一处新增模型服务。
-                  </p>
+            <div
+              className="grid min-h-0 gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[320px_minmax(0,1fr)]"
+              data-preferences-layout="two-column"
+              data-preferences-height="matched"
+            >
+              <SettingsSectionGroup className="flex min-h-full flex-col overflow-hidden p-0 sm:p-0">
+                <div
+                  className="flex-none px-5 pb-5 pt-5 sm:px-6 sm:pb-5 sm:pt-6"
+                  data-provider-sidebar-header-align="section-group"
+                  data-testid="models-provider-list-header"
+                >
+                  <SettingsSectionTitleRow
+                    testId="models-provider-list-header-row"
+                    title="平台列表"
+                  />
                 </div>
-                <div className="border-t" style={{ borderColor: "var(--divider)" }}>
+                <div
+                  className="flex min-h-0 flex-1 flex-col border-t"
+                  data-testid="models-provider-list-body"
+                  style={{ borderColor: "var(--divider)" }}
+                >
                   {sidebar}
                 </div>
               </SettingsSectionGroup>
 
-              <div className="space-y-5">
+              <div className="min-w-0 space-y-5">
                 <SettingsSectionGroup>
-                  <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                          连接与凭据
-                        </h3>
-                        <HugeiconsIcon
-                          icon={Settings01Icon}
-                          size={16}
-                          style={{ color: "var(--text-tertiary)" }}
-                        />
-                      </div>
-                      <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                        保存当前平台的 API Key、地址和连通性配置，让切换和校验保持在同一个偏好设置场景里完成。
-                      </p>
-                    </div>
-
-                    {activeProvider ? (
-                      <div
-                        className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em]"
-                        style={{
-                          background: "var(--material-floating-background)",
-                          borderColor: "var(--material-content-border)",
-                          color: "var(--text-tertiary)",
-                        }}
-                      >
-                        {activeProvider.provider_type ?? "custom"}
-                      </div>
-                    ) : null}
-                  </div>
+                  <SettingsSectionTitleRow
+                    className="mb-5"
+                    icon={
+                      <HugeiconsIcon
+                        icon={Settings01Icon}
+                        size={16}
+                        style={{ color: "var(--text-tertiary)" }}
+                      />
+                    }
+                    testId="models-connection-header"
+                    title="连接与凭据"
+                    accessory={
+                      activeProvider ? (
+                        <div
+                          className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em]"
+                          style={{
+                            background: "var(--material-floating-background)",
+                            borderColor: "var(--material-content-border)",
+                            color: "var(--text-tertiary)",
+                          }}
+                        >
+                          {activeProvider.provider_type ?? "custom"}
+                        </div>
+                      ) : null
+                    }
+                  />
 
                   {loading ? (
                     <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
                       正在加载模型配置...
                     </div>
                   ) : activeProvider ? (
-                    <div className="grid gap-5 xl:grid-cols-2">
+                    <div
+                      className="space-y-5"
+                      data-connection-layout="stacked"
+                      data-testid="models-connection-stack"
+                    >
                       <ProviderConnectionSection
                         activeProvider={activeProvider}
                         apiKey={apiKey}
@@ -229,7 +234,6 @@ export function ModelsSetting() {
                       testId="models-connection-empty-state"
                       eyebrow="Connection"
                       title="先选择一个平台"
-                      description="从左侧选择或添加模型平台后，这里会显示对应的 API Key、地址与连通性配置。"
                     />
                   )}
                 </SettingsSectionGroup>
@@ -240,9 +244,6 @@ export function ModelsSetting() {
                       <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                         默认模型与可用性
                       </h3>
-                      <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                        控制模型分组、启用状态和默认选择，让每个平台都保持清晰、可预测的工作集。
-                      </p>
                     </div>
 
                     <div
@@ -289,15 +290,13 @@ export function ModelsSetting() {
                       testId="models-library-empty-state"
                       eyebrow="Library"
                       title="模型库会跟随平台出现"
-                      description="选择平台后，这里会呈现默认模型、启用状态和分组管理，让工作集保持清晰稳定。"
                     />
                   )}
                 </SettingsSectionGroup>
               </div>
             </div>
-          </SettingsSectionShell>
-        </div>
-      </div>
+        </SettingsSectionShell>
+      </SettingsPageFrame>
       <AddProviderDialog
         open={isAddProviderDialogOpen}
         onOpenChange={setIsAddProviderDialogOpen}

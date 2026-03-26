@@ -33,15 +33,24 @@ describe("detectDesktopPlatform", () => {
   it("recognizes Windows and macOS desktop user agents", () => {
     expect(
       detectDesktopPlatform({
-        navigatorPlatform: "Win32",
+        platform: "Win32",
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       }),
     ).toBe("windows");
 
     expect(
       detectDesktopPlatform({
-        navigatorPlatform: "MacIntel",
+        platform: "MacIntel",
         userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)",
+      }),
+    ).toBe("macos");
+  });
+
+  it("does not misclassify Darwin user agents as Windows", () => {
+    expect(
+      detectDesktopPlatform({
+        platform: "MacIntel",
+        userAgent: "Mozilla/5.0 (Darwin; arm64) AppleWebKit/605.1.15",
       }),
     ).toBe("macos");
   });
@@ -76,6 +85,30 @@ describe("buildPlatformMarkerScript", () => {
     new Function(buildPlatformMarkerScript())();
 
     expect(document.documentElement).toHaveAttribute("data-platform", "windows");
+    expect(document.documentElement).toHaveAttribute("data-runtime", "tauri");
+  });
+
+  it("marks Darwin browsers as macOS before hydration", () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", {
+      configurable: true,
+      value: {},
+      writable: true,
+    });
+    Object.defineProperty(window.navigator, "platform", {
+      configurable: true,
+      value: "MacIntel",
+    });
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (Darwin; arm64) AppleWebKit/605.1.15",
+    });
+
+    document.documentElement.removeAttribute("data-platform");
+    document.documentElement.removeAttribute("data-runtime");
+
+    new Function(buildPlatformMarkerScript())();
+
+    expect(document.documentElement).toHaveAttribute("data-platform", "macos");
     expect(document.documentElement).toHaveAttribute("data-runtime", "tauri");
   });
 });

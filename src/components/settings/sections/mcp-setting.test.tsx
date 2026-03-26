@@ -94,6 +94,10 @@ describe("McpSetting", () => {
   it("renders MCP preferences inside the shared shell with grouped content surfaces", async () => {
     render(<McpSetting />);
 
+    expect(screen.getByTestId("settings-page-frame")).toHaveAttribute(
+      "data-settings-page-width",
+      "fluid",
+    );
     await waitFor(() => {
       expect(screen.getByTestId("settings-section-shell")).toHaveAttribute(
         "data-material-role",
@@ -104,6 +108,18 @@ describe("McpSetting", () => {
     await screen.findByText("还没有 MCP 服务器");
 
     expect(screen.getAllByTestId("settings-section-group").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByTestId("mcp-content-stage").closest("[data-mcp-layout='matched']")).not.toBeNull();
+    expect(screen.getByTestId("mcp-browser-header-row")).toHaveAttribute(
+      "data-settings-title-row",
+      "shared",
+    );
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("sm:p-0");
+    expect(screen.getByTestId("mcp-browser-header").className).toContain("flex-none");
+    expect(screen.getByTestId("mcp-browser-body").className).toContain("flex-1");
+    expect(screen.getByTestId("mcp-connected-header-row")).toHaveAttribute(
+      "data-settings-title-row",
+      "shared",
+    );
     expect(screen.getByRole("tab", { name: /MCP 服务器/ })).toHaveAttribute(
       "data-surface-tone",
       "liquid-nav-item",
@@ -112,6 +128,28 @@ describe("McpSetting", () => {
       "data-surface-tone",
       "liquid-nav-item",
     );
+    expect(screen.queryByText("当前")).not.toBeInTheDocument();
+  });
+
+  it("pins the MCP add action to a full-width footer row when servers exist", async () => {
+    loadServersMock.mockResolvedValue([
+      {
+        id: "server-1",
+        name: "GitHub MCP",
+        description: "Repo tools",
+        type: "stdio",
+        command: "npx",
+        args: "-y\n@modelcontextprotocol/server-github",
+        env_vars: "GITHUB_PERSONAL_ACCESS_TOKEN=token",
+        is_enabled: true,
+      },
+    ]);
+
+    await renderSetting("GitHub MCP");
+
+    const addButton = screen.getByRole("button", { name: "添加 MCP 服务器" });
+    expect(addButton.className).toContain("w-full");
+    expect(screen.getByText("GitHub MCP").closest("[data-mcp-server-list-scroll='true']")).not.toBeNull();
   });
 
   it("shows a guided empty state with shortcuts for the next MCP action", async () => {
@@ -158,7 +196,7 @@ describe("McpSetting", () => {
     expect(screen.getByDisplayValue("npx")).toBeInTheDocument();
     expect(
       screen.getByDisplayValue(/@modelcontextprotocol\/server-filesystem/),
-    ).toHaveAttribute("data-surface-tone", "liquid-mcp-textarea");
+    ).toHaveAttribute("data-surface-tone", "liquid-textarea-field");
   });
 
   it("does not expose unsupported MCP detail controls", async () => {

@@ -5,6 +5,10 @@ import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import {
+  getLiquidSelectionState,
+  getLiquidSelectionStyle,
+} from "@/components/ui/liquid-selection";
 
 interface NavItemProps {
   /** HugeIcons 图标组件 */
@@ -69,15 +73,13 @@ export function NavItem({
       data-active={isActive ? "true" : "false"}
       data-hover-surface={isActive ? "accent" : "content"}
       data-material-role="content"
+      data-selection-style={getLiquidSelectionState(isActive)}
       data-surface-tone="liquid-nav-item"
-      style={{
-        ...getMaterialSurfaceStyle(isActive ? "accent" : "content", "sm"),
-        background: isActive
-          ? "linear-gradient(180deg, rgba(59,130,246,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-accent-background)"
-          : "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.04) 100%), var(--material-content-background)",
-        borderColor: isActive ? "var(--material-accent-border)" : "var(--material-content-border)",
-        color: isActive ? "var(--brand-primary)" : "var(--text-secondary)",
-      }}
+      style={getLiquidSelectionStyle({
+        active: isActive,
+        inactiveRole: "content",
+        inactiveTextColor: "var(--text-secondary)",
+      })}
       whileHover={shouldReduceMotion ? undefined : { y: -1 }}
       whileTap={shouldReduceMotion ? undefined : { scale: 0.99 }}
     >
@@ -85,7 +87,7 @@ export function NavItem({
       {isActive && (
         <motion.div
           className="pointer-events-none absolute inset-0 rounded-[inherit] border"
-          style={{ borderColor: "var(--material-accent-border)" }}
+          style={{ borderColor: "var(--selection-active-border)" }}
           layoutId={`${layoutId}Border`}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />
@@ -107,14 +109,21 @@ export function NavItem({
         )}
         style={{
           ...getMaterialSurfaceStyle(isActive ? "accent" : "floating", "sm"),
-          background: isActive ? "var(--material-accent-background)" : "var(--material-floating-background)",
-          borderColor: isActive ? "var(--material-accent-border)" : "var(--material-floating-border)",
+          background: isActive ? "var(--selection-active-chip-fill)" : "var(--material-floating-background)",
+          borderColor: isActive ? "var(--selection-active-chip-border)" : "var(--material-floating-border)",
+          boxShadow: isActive
+            ? "var(--selection-active-chip-shadow)"
+            : "var(--liquid-material-rest-shadow)",
         }}
       >
         <HugeiconsIcon
           icon={icon}
           size={description ? 18 : 17}
-          style={{ color: isActive ? "var(--brand-primary)" : "var(--text-tertiary)" }}
+          style={{
+            color: isActive
+              ? "var(--selection-active-foreground, var(--brand-primary))"
+              : "var(--icon-muted)",
+          }}
         />
       </div>
 
@@ -123,7 +132,11 @@ export function NavItem({
           <div className="flex items-start justify-between gap-3">
             <span
               className="font-medium"
-              style={{ color: isActive ? "var(--brand-primary)" : "var(--text-primary)" }}
+              style={{
+                color: isActive
+                  ? "var(--selection-active-foreground, var(--brand-primary))"
+                  : "var(--text-primary)",
+              }}
             >
               {label}
             </span>
@@ -140,15 +153,6 @@ export function NavItem({
         </>
       )}
 
-      {/* 左侧激活指示条动画 */}
-      {isActive && (
-        <motion.div
-          className="absolute left-0 h-5 w-1 rounded-r-full"
-          style={{ background: "var(--brand-primary)", boxShadow: "0 0 18px var(--brand-primary-glow)" }}
-          layoutId={`${layoutId}Indicator`}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        />
-      )}
     </motion.button>
   );
 }

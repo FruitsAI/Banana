@@ -15,6 +15,10 @@ import { Label } from "@/components/ui/label";
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { ModelIcon } from "@/components/models/model-selector";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import {
+  getLiquidSelectionState,
+  getLiquidSelectionStyle,
+} from "@/components/ui/liquid-selection";
 import type { Model } from "@/domain/models/types";
 
 interface ModelGroupsPanelProps {
@@ -96,7 +100,7 @@ export function ModelGroupsPanel({
               key={groupName}
               defaultOpen={true}
               title={groupName}
-              iconColor="var(--brand-primary)"
+              iconColor="var(--selection-active-indicator)"
               className="group/panel rounded-none border-0"
               headerStyle={{
                 background:
@@ -137,16 +141,20 @@ export function ModelGroupsPanel({
                     }}
                   >
                     <button
-                      className="material-interactive flex min-w-0 items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors duration-200"
+                      className="material-interactive relative flex w-full min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-[20px] border px-3 py-2.5 text-left transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-out hover:-translate-y-px"
                       data-hover-surface={isDefaultModel ? "accent" : "content"}
-                      style={{
-                        background: isDefaultModel
-                          ? "linear-gradient(180deg, rgba(59,130,246,0.14) 0%, rgba(255,255,255,0.04) 100%), var(--material-accent-background)"
-                          : "transparent",
-                        boxShadow: isDefaultModel
-                          ? "0 10px 24px rgba(59,130,246,0.12), inset 0 1px 0 rgba(255,255,255,0.34)"
-                          : "none",
-                      }}
+                      data-material-role="content"
+                      data-testid={isDefaultModel ? "default-model-selection-button" : undefined}
+                      data-model-row-width="uniform"
+                      data-selection-style={getLiquidSelectionState(isDefaultModel)}
+                      style={getLiquidSelectionStyle({
+                        active: isDefaultModel,
+                        depth: "md",
+                        inactiveRole: "content",
+                        inactiveFill:
+                          "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%), color-mix(in srgb, var(--material-content-background) 56%, transparent)",
+                        inactiveBorderColor: "var(--material-content-border)",
+                      })}
                       disabled={model.is_enabled === false}
                       onClick={() => onSelectDefaultModel(model.id)}
                       type="button"
@@ -157,30 +165,33 @@ export function ModelGroupsPanel({
                         showBorder={isDefaultModel}
                         className="shrink-0"
                       />
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="truncate text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div
+                            className="truncate text-[13px] font-medium"
+                            style={{
+                              color: isDefaultModel
+                                ? "var(--selection-active-foreground)"
+                                : "var(--text-primary)",
+                            }}
+                          >
                             {model.name}
                           </div>
-                          {isDefaultModel ? (
-                            <span
-                              className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
-                              style={{
-                                background: "var(--material-accent-background)",
-                                borderColor: "var(--material-accent-border)",
-                                color: "var(--brand-primary)",
-                              }}
-                            >
-                              默认模型
-                            </span>
-                          ) : null}
                         </div>
-                        <div className="truncate text-[11px] opacity-60" style={{ color: "var(--text-tertiary)" }}>
+                        <div
+                          className="truncate text-[11px]"
+                          style={{
+                            color: isDefaultModel
+                              ? "var(--selection-active-foreground-muted)"
+                              : "var(--text-tertiary)",
+                            opacity: isDefaultModel ? 0.92 : 0.6,
+                          }}
+                        >
                           {model.id}
                         </div>
                       </div>
                     </button>
-                    <div className="flex shrink-0 items-center gap-3">
+                    <div className="ml-3 flex shrink-0 items-center gap-3">
                       <button
                         className="material-interactive inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] opacity-0 transition-all duration-150 group-hover/panel:opacity-100 hover:opacity-100 motion-safe:hover:-translate-y-px"
                         data-hover-surface="content"

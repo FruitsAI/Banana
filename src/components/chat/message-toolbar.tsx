@@ -46,7 +46,7 @@ export function MessageToolbar({
         title="重新生成"
         type="button"
       >
-        <HugeiconsIcon icon={Refresh01Icon} size={14} style={{ color: "var(--text-tertiary)" }} />
+        <HugeiconsIcon icon={Refresh01Icon} size={14} style={{ color: "var(--icon-secondary)" }} />
       </button>
       {canEdit ? (
         <button
@@ -57,7 +57,7 @@ export function MessageToolbar({
           title="编辑"
           type="button"
         >
-          <HugeiconsIcon icon={PencilEdit01Icon} size={14} style={{ color: "var(--text-tertiary)" }} />
+          <HugeiconsIcon icon={PencilEdit01Icon} size={14} style={{ color: "var(--icon-secondary)" }} />
         </button>
       ) : null}
       <button
@@ -68,7 +68,7 @@ export function MessageToolbar({
         title="复制"
         type="button"
       >
-        <HugeiconsIcon icon={Copy01Icon} size={14} style={{ color: "var(--text-tertiary)" }} />
+        <HugeiconsIcon icon={Copy01Icon} size={14} style={{ color: "var(--icon-secondary)" }} />
       </button>
     </div>
   );

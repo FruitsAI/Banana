@@ -132,5 +132,9 @@ describe("ModelSelector", () => {
     expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-surface-clarity", "high");
     expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-align", "start");
     expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-side-offset", "10");
+    expect(screen.getByPlaceholderText("搜索模型...").closest("[data-surface-tone]")).toHaveAttribute(
+      "data-surface-tone",
+      "liquid-search-field",
+    );
   });
 });

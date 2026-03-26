@@ -9,7 +9,6 @@ describe("SettingsSectionShell", () => {
         sectionId="test"
         eyebrow="Test"
         title="测试设置"
-        description="用于验证共享设置壳子的层级与交互属性。"
         headerAccessory={<button type="button">操作</button>}
       >
         <SettingsSectionGroup>内容组</SettingsSectionGroup>
@@ -20,6 +19,13 @@ describe("SettingsSectionShell", () => {
       "data-settings-section",
       "test",
     );
+    expect(screen.getByTestId("settings-section-shell")).toHaveAttribute(
+      "data-settings-stage-fill",
+      "true",
+    );
+    expect(screen.getByTestId("settings-section-shell")).toHaveStyle({
+      boxShadow: "var(--liquid-material-rest-shadow)",
+    });
     expect(screen.getByTestId("settings-section-header")).toHaveAttribute(
       "data-sticky-header",
       "true",
@@ -58,7 +64,6 @@ describe("SettingsSectionShell", () => {
         <SettingsSectionShell
           sectionId="test"
           title="测试设置"
-          description="用于验证滚动时的标题压缩状态。"
         >
           <SettingsSectionGroup>内容组</SettingsSectionGroup>
         </SettingsSectionShell>
