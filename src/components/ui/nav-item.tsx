@@ -153,6 +153,15 @@ export function NavItem({
         </>
       )}
 
+      {isActive && (
+        <motion.div
+          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full"
+          style={{ background: "var(--selection-active-indicator)" }}
+          layoutId={`${layoutId}Indicator`}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        />
+      )}
+
     </motion.button>
   );
 }

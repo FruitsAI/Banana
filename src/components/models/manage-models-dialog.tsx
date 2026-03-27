@@ -259,7 +259,7 @@ export function ManageModelsDialog({
                   className={cn(
                     "material-interactive whitespace-nowrap rounded-xl border px-3 py-1.5 text-[12px] font-medium transition-colors relative",
                     activeCategory === cat.value
-                      ? "text-[var(--brand-primary)]"
+                      ? "text-[var(--selection-active-foreground)]"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   )}
                   data-hover-surface={activeCategory === cat.value ? "accent" : "floating"}
@@ -275,7 +275,7 @@ export function ManageModelsDialog({
                     <motion.div
                       layoutId="activeCat"
                       className="absolute inset-x-2 -bottom-0.5 h-0.5 rounded-full"
-                      style={{ background: "var(--brand-primary)" }}
+                      style={{ background: "var(--selection-active-indicator)" }}
                     />
                   )}
                 </motion.button>

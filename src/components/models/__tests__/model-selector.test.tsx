@@ -137,4 +137,21 @@ describe("ModelSelector", () => {
       "liquid-search-field",
     );
   });
+
+  it("uses shared selection tokens for the active trigger and selected row", async () => {
+    render(<ModelSelector />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "选择模型" })).toBeInTheDocument();
+    });
+
+    const trigger = screen.getByRole("button", { name: "选择模型" });
+    expect(trigger.getAttribute("style")).toContain("var(--selection-active-fill)");
+    expect(trigger.getAttribute("style")).toContain("var(--selection-active-foreground)");
+
+    const selectedRow = document.querySelector('div[style*="var(--selection-active-soft-fill)"]');
+    expect(selectedRow).not.toBeNull();
+    expect(selectedRow?.textContent).toContain("gpt-4o-mini");
+    expect(selectedRow?.getAttribute("style")).toContain("var(--selection-active-border)");
+  });
 });

@@ -117,6 +117,7 @@ function ThreadItemComponent({
       data-selection-style={getLiquidSelectionState(selected)}
       style={getLiquidSelectionStyle({
         active: selected,
+        activeFill: "var(--selection-active-soft-fill, var(--selection-active-fill))",
         inactiveRole: "content",
         inactiveFill:
           "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
@@ -149,9 +150,20 @@ function ThreadItemComponent({
       >
         {thread.title || "新会话"}
       </div>
-      <div className="text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 relative z-10" style={{ color: "var(--text-secondary)" }}>
+      <div
+        className="text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 relative z-10"
+        style={{
+          color: selected ? "var(--selection-active-foreground-muted)" : "var(--text-secondary)",
+        }}
+      >
         <span>{formatTime(thread.created_at)}</span>
-        <span style={{ color: "var(--text-quaternary)" }}>·</span>
+        <span
+          style={{
+            color: selected ? "var(--selection-active-foreground-muted)" : "var(--text-quaternary)",
+          }}
+        >
+          ·
+        </span>
         <span className="truncate">{thread.model_id || "默认模型"}</span>
       </div>
     </motion.button>

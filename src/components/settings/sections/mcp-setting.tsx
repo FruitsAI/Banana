@@ -558,15 +558,14 @@ export function McpSetting() {
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
                     style={{
-                      ...getMaterialSurfaceStyle("accent", "sm"),
-                      background: "var(--selection-active-chip-fill)",
-                      borderColor: "var(--selection-active-chip-border)",
+                      background: "var(--selection-active-soft-fill)",
+                      borderColor: "var(--selection-active-border)",
                     }}
                   >
                     <HugeiconsIcon
                       icon={McpServerIcon}
                       size={18}
-                      style={{ color: "var(--selection-active-foreground)" }}
+                      style={{ color: "var(--selection-active-indicator)" }}
                     />
                   </div>
 
@@ -764,10 +763,9 @@ export function McpSetting() {
                             <span
                               className="rounded-full border px-2.5 py-1 text-[11px] font-medium"
                               style={{
-                                ...getMaterialSurfaceStyle("accent", "sm"),
                                 color: "var(--selection-active-foreground)",
-                                background: "var(--selection-active-chip-fill)",
-                                borderColor: "var(--selection-active-chip-border)",
+                                background: "var(--selection-active-soft-fill)",
+                                borderColor: "var(--selection-active-border)",
                               }}
                             >
                               {server.type.toUpperCase()}
@@ -815,7 +813,7 @@ export function McpSetting() {
                             size="icon-sm"
                             surface="floating"
                             aria-label={`编辑 MCP 服务器 ${server.name}`}
-                            className="rounded-xl"
+                            className="rounded-xl hover:text-[var(--selection-active-indicator)]"
                             style={{ color: "var(--text-tertiary)" }}
                             onClick={() => handleEdit(server)}
                           >

@@ -40,15 +40,18 @@ export function SelectionCard({ isActive, onClick, children, className }: Select
       style={{
         ...getMaterialSurfaceStyle(isActive ? "accent" : "content", "sm"),
         background: isActive
-          ? "linear-gradient(180deg, rgba(59,130,246,0.16) 0%, rgba(255,255,255,0.08) 100%), var(--material-accent-background)"
+          ? "var(--selection-active-fill)"
           : "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 100%), var(--material-content-background)",
-        borderColor: isActive ? "var(--material-accent-border)" : "var(--material-content-border)",
+        borderColor: isActive ? "var(--selection-active-border)" : "var(--material-content-border)",
+        boxShadow: isActive ? "var(--selection-active-shadow)" : "none",
       }}
       whileHover={
         shouldReduceMotion
           ? undefined
           : {
               y: -2,
+              background: isActive ? "var(--selection-active-fill-hover)" : undefined,
+              borderColor: isActive ? "var(--selection-active-border)" : undefined,
             }
       }
       whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
@@ -69,7 +72,7 @@ export function SelectionCard({ isActive, onClick, children, className }: Select
           animate={{ scale: 1, opacity: 1 }}
           className="absolute right-3 top-3 flex h-6 w-6 flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
           style={{
-            background: "linear-gradient(180deg, #8bb9ff 0%, #5c9cff 52%, #3c82f6 100%)",
+            background: "var(--selection-active-indicator)",
             boxShadow:
               "0 8px 18px rgba(59,130,246,0.2), inset 0 0.5px 0 rgba(255,255,255,0.14)",
           }}

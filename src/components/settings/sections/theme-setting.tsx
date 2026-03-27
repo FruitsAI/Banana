@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTheme } from "next-themes";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -14,6 +14,7 @@ import { SettingsPageFrame } from "@/components/settings/settings-page-frame";
 import { SettingsSectionGroup, SettingsSectionShell } from "@/components/settings/settings-section-shell";
 import { SelectionCard } from "@/components/ui/selection-card";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { useHydrated } from "@/hooks/use-hydrated";
 import type { AnimationIntensity } from "@/lib/animation-intensity";
 
 const THEME_OPTIONS = [
@@ -34,14 +35,8 @@ const INTENSITY_OPTIONS: Array<{
 export function ThemeSetting() {
   const { theme, setTheme } = useTheme();
   const { intensity, setIntensity } = useAnimationIntensity();
-
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const [savingIntensity, setSavingIntensity] = useState<AnimationIntensity | null>(null);
-
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(raf);
-  }, []);
 
   const handleIntensityChange = async (next: AnimationIntensity) => {
     if (next === intensity) return;
@@ -140,7 +135,7 @@ export function ThemeSetting() {
                         style={{
                           color: isActive
                             ? "var(--selection-active-foreground, var(--brand-primary))"
-                            : "var(--text-tertiary)",
+                            : "var(--icon-muted)",
                         }}
                       />
                     </div>

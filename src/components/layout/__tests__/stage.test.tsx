@@ -261,6 +261,28 @@ describe("Stage", () => {
     });
   });
 
+  it("uses shared selection tokens for enabled composer controls", () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [],
+      append: vi.fn(async () => true),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    const searchToggle = screen.getByLabelText("切换联网搜索");
+    const thinkingToggle = screen.getByLabelText("切换深度思考");
+
+    expect(searchToggle.getAttribute("style")).toContain("var(--selection-active-fill)");
+    expect(searchToggle.getAttribute("style")).toContain(
+      "var(--selection-active-foreground, var(--brand-primary))",
+    );
+    expect(thinkingToggle.getAttribute("style")).toContain("var(--selection-active-fill)");
+  });
+
   it("preserves the composer draft when append reports a failed send", async () => {
     const append = vi.fn(async () => false);
 

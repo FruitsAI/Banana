@@ -105,7 +105,7 @@ export function ModelGroupsPanel({
               headerStyle={{
                 background:
                   "color-mix(in srgb, var(--material-floating-background) 88%, transparent)",
-                color: "var(--text-primary)",
+                color: "var(--selection-active-foreground)",
                 borderBottom: "1px solid var(--divider)",
               }}
               headerActions={

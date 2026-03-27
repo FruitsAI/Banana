@@ -81,6 +81,8 @@
     rgba(59, 130, 246, 0.22) 0%,
     rgba(255, 255, 255, 0.08) 100%
   ), var(--material-accent-background);
+  --selection-active-soft-fill: rgba(59, 130, 246, 0.12);
+  --selection-active-soft-fill-hover: rgba(59, 130, 246, 0.18);
   --selection-active-border: var(--material-accent-border);
   --selection-active-chip-fill: var(--material-accent-background);
   --selection-active-chip-border: var(--material-accent-border);
@@ -303,6 +305,8 @@
     rgba(91, 141, 219, 0.95) 46%,
     rgba(34, 68, 118, 1) 100%
   );
+  --selection-active-soft-fill: rgba(74, 120, 192, 0.46);
+  --selection-active-soft-fill-hover: rgba(88, 136, 214, 0.58);
   --selection-active-border: rgba(177, 208, 255, 0.4);
   --selection-active-chip-fill: linear-gradient(
     180deg,

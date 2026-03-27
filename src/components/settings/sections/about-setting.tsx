@@ -39,9 +39,9 @@ export function AboutSetting() {
           <div
             className="inline-flex items-center justify-center self-start rounded-full border px-3 py-1 text-xs font-medium"
             style={{
-              background: "var(--brand-primary-light)",
-              borderColor: "var(--brand-primary-border)",
-              color: "var(--brand-primary)",
+              background: "var(--selection-active-soft-fill)",
+              borderColor: "var(--selection-active-border)",
+              color: "var(--selection-active-foreground)",
             }}
           >
             {APP_DISPLAY_VERSION}

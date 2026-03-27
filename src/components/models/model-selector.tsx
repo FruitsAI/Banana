@@ -236,9 +236,10 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
           className="material-interactive flex items-center justify-center h-8 sm:h-9 px-3.5 rounded-2xl text-xs font-semibold cursor-pointer border"
           style={{
             ...getMaterialSurfaceStyle("accent", "sm"),
-            color: activeModel
-              ? "var(--selection-active-foreground, var(--brand-primary))"
-              : "var(--text-secondary)",
+            background: "var(--selection-active-fill)",
+            color: "var(--selection-active-foreground)",
+            borderColor: "var(--selection-active-border)",
+            boxShadow: "var(--selection-active-shadow)",
             opacity: disabled || models.length === 0 ? 0.5 : 1,
             pointerEvents: disabled || models.length === 0 ? "none" : "auto",
           }}
@@ -283,7 +284,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                 }
 
                 return (
-                <div
+                  <div
                     key={capability}
                     className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px]"
                     style={{
@@ -328,9 +329,13 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                             data-hover-surface={isSelected ? "accent" : "floating"}
                             style={{
                               ...getMaterialSurfaceStyle(isSelected ? "accent" : "floating", "sm"),
+                              background: isSelected
+                                ? "var(--selection-active-soft-fill)"
+                                : undefined,
                               borderColor: isSelected
-                                ? "var(--material-accent-border)"
+                                ? "var(--selection-active-border)"
                                 : "var(--material-content-border)",
+                              boxShadow: isSelected ? "var(--selection-active-shadow)" : undefined,
                             }}
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -371,9 +376,11 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                                           className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
                                           style={{
                                             background: isSelected
-                                              ? "var(--bg-white)"
+                                              ? "var(--selection-active-chip-fill)"
                                               : "color-mix(in srgb, var(--material-content-background) 96%, rgba(15, 23, 42, 0.08))",
-                                            color: config.color,
+                                            color: isSelected
+                                              ? "var(--selection-active-foreground)"
+                                              : config.color,
                                             border: "1px solid var(--material-content-border)",
                                           }}
                                         >
