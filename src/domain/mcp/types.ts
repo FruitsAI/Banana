@@ -10,6 +10,9 @@ export interface McpServer {
 }
 
 export interface McpTool {
+  name?: string;
+  description?: string;
+  inputSchema?: unknown;
   [key: string]: unknown;
 }
 

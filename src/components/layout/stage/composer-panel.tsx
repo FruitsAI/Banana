@@ -5,6 +5,7 @@ import {
   AiBrain01Icon,
   ArrowUp02Icon,
   InternetIcon,
+  StopIcon,
 } from "@hugeicons/core-free-icons";
 import { motion } from "framer-motion";
 import { KeyboardEvent, useCallback, useLayoutEffect, useRef } from "react";
@@ -29,6 +30,7 @@ interface ComposerPanelProps {
   onInputChange: (value: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSend: () => void;
+  onStop: () => void;
   onToggleSearch: () => void;
   onToggleThinking: () => void;
   motionDistance: (value: number) => number;
@@ -52,6 +54,7 @@ export function ComposerPanel({
   onInputChange,
   onKeyDown,
   onSend,
+  onStop,
   onToggleSearch,
   onToggleThinking,
   motionDistance,
@@ -67,6 +70,10 @@ export function ComposerPanel({
     scale: motionScale,
     scaleFactor,
   });
+  const isStopAvailable = isLoading;
+  const isActionEnabled = canSend || isStopAvailable;
+  const sendButtonLabel = isStopAvailable ? "停止对话" : "发送消息";
+  const sendButtonState = isStopAvailable ? "stop" : canSend ? "enabled" : "disabled";
 
   const syncTextareaHeight = useCallback(() => {
     if (!textareaRef.current) {
@@ -141,26 +148,22 @@ export function ComposerPanel({
         >
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div
-              className="flex items-center gap-1 rounded-full border px-1 py-1"
+              className="flex items-center gap-2"
               role="group"
               aria-label="功能开关"
-              style={{
-                ...getMaterialSurfaceStyle("content", "sm"),
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), rgba(255,255,255,0.04)",
-              }}
+              data-testid="composer-utility-controls"
             >
               <div className="relative group">
                 <motion.button
                   onClick={onToggleSearch}
                   aria-label="切换联网搜索"
                   aria-pressed={isSearchEnabled}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border sm:h-9 sm:w-9"
-                  data-hover-surface={isSearchEnabled ? "accent" : "content"}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border sm:h-11 sm:w-11"
+                  data-hover-surface={isSearchEnabled ? "accent" : "floating"}
                   data-selection-style={getLiquidSelectionState(isSearchEnabled)}
                   style={getLiquidSelectionStyle({
                     active: isSearchEnabled,
-                    inactiveRole: "content",
+                    inactiveRole: "floating",
                   })}
                   type="button"
                   whileHover={motionPresets.control.hover}
@@ -195,12 +198,12 @@ export function ComposerPanel({
                   aria-pressed={isThinkingEnabled}
                   title={thinkingTooltip}
                   data-thinking-mode={thinkingMode}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border sm:h-9 sm:w-9"
-                  data-hover-surface={isThinkingEnabled ? "accent" : "content"}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border sm:h-11 sm:w-11"
+                  data-hover-surface={isThinkingEnabled ? "accent" : "floating"}
                   data-selection-style={getLiquidSelectionState(isThinkingEnabled)}
                   style={getLiquidSelectionStyle({
                     active: isThinkingEnabled,
-                    inactiveRole: "content",
+                    inactiveRole: "floating",
                     activeTextColor:
                       thinkingMode === "native"
                         ? "var(--selection-active-foreground, var(--brand-primary))"
@@ -242,29 +245,42 @@ export function ComposerPanel({
             className="stage-action-button"
             data-testid="composer-send-control"
             style={{
-              boxShadow: canSend ? "0 10px 24px var(--brand-primary-glow)" : "none",
+              boxShadow: isStopAvailable
+                ? "0 10px 24px var(--danger-glow)"
+                : canSend
+                  ? "0 10px 24px var(--brand-primary-glow)"
+                  : "none",
             }}
             whileHover={
-              canSend && !motionReduced
+              isActionEnabled && !motionReduced
                 ? {
                     scale: motionPresets.focus.active.scale,
                     y: motionDistance(-1),
                   }
                 : undefined
             }
-            whileTap={canSend ? motionPresets.control.tap : undefined}
+            whileTap={isActionEnabled ? motionPresets.control.tap : undefined}
             transition={motionPresets.focus.transition}
           >
             <Button
-              variant={canSend ? "default" : "glass"}
-              surface={canSend ? undefined : "content"}
+              variant={isActionEnabled ? "default" : "glass"}
+              surface={isActionEnabled ? undefined : "content"}
               className="h-10 w-10 rounded-full px-0 disabled:opacity-100 sm:h-11 sm:w-11"
-              aria-label="发送消息"
-              data-send-state={canSend ? "enabled" : "disabled"}
-              onClick={onSend}
-              disabled={!canSend}
+              aria-label={sendButtonLabel}
+              data-send-state={sendButtonState}
+              onClick={isStopAvailable ? onStop : onSend}
+              disabled={!isActionEnabled}
               style={
-                canSend
+                isStopAvailable
+                  ? {
+                      background:
+                        "linear-gradient(180deg, #FB7185 0%, #F43F5E 100%)",
+                      border: "1px solid rgba(244, 63, 94, 0.34)",
+                      boxShadow:
+                        "0 14px 30px rgba(244, 63, 94, 0.28), inset 0 1px 0 rgba(255,255,255,0.24)",
+                      color: "#ffffff",
+                    }
+                  : canSend
                   ? {
                       background:
                         "linear-gradient(180deg, #60A5FA 0%, var(--brand-primary) 100%)",
@@ -284,18 +300,14 @@ export function ComposerPanel({
               }
             >
               <motion.span
-                animate={isLoading && !motionReduced ? { rotate: [0, 180, 360] } : { rotate: 0 }}
-                transition={
-                  isLoading && !motionReduced
-                    ? {
-                        duration: motionDuration(0.9),
-                        repeat: Number.POSITIVE_INFINITY,
-                        ease: "linear",
-                      }
-                    : { duration: motionDuration(0.2) }
-                }
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ duration: motionDuration(0.2) }}
               >
-                <HugeiconsIcon icon={ArrowUp02Icon} size={20} color={canSend ? "#ffffff" : undefined} />
+                <HugeiconsIcon
+                  icon={isStopAvailable ? StopIcon : ArrowUp02Icon}
+                  size={20}
+                  color={isActionEnabled ? "#ffffff" : undefined}
+                />
               </motion.span>
             </Button>
           </motion.div>

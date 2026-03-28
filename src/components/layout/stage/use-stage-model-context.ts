@@ -8,6 +8,7 @@ import {
   supportsNativeThinking,
 } from "@/lib/model-settings";
 import type { Model } from "@/domain/models/types";
+import { getMcpServersForChat, preloadRuntimeToolDiscovery } from "@/services/chat";
 
 type ThinkingMode = "native" | "prompt-only";
 
@@ -52,6 +53,29 @@ export function useStageModelContext(threadId: string, messageCount: number) {
       window.removeEventListener("refresh-active-model", handleRefresh);
     };
   }, [messageCount, threadId]);
+
+  useEffect(() => {
+    let ignore = false;
+    const warmupTimer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const servers = await getMcpServersForChat();
+          if (ignore || !servers.some((server) => server.is_enabled)) {
+            return;
+          }
+
+          await preloadRuntimeToolDiscovery(servers);
+        } catch {
+          // Background MCP warmup is opportunistic; failures should not interrupt chat startup.
+        }
+      })();
+    }, 0);
+
+    return () => {
+      ignore = true;
+      window.clearTimeout(warmupTimer);
+    };
+  }, [threadId]);
 
   const modelsByScopedId = useMemo(() => {
     const entries = allModels.map((model) => [`${model.provider_id}::${model.id}`, model] as const);

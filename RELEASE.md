@@ -19,8 +19,7 @@ Both paths create or update a GitHub Release draft named `Banana v<version>`.
 Run locally:
 
 ```bash
-pnpm changelog:check
-pnpm version:check
+pnpm release:prepare
 pnpm lint
 pnpm test
 pnpm build
@@ -30,7 +29,12 @@ pnpm desktop:build:debug
 
 ## Version source of truth
 - Edit version through `package.json` only.
-- Preferred commands:
+- Preferred release preparation commands:
+  - `pnpm release:prepare` (defaults to a patch bump)
+  - `pnpm release:prepare minor`
+  - `pnpm release:prepare major`
+  - `pnpm release:prepare 0.2.0`
+- Lower-level version commands:
   - `pnpm version:patch`
   - `pnpm version:minor`
   - `pnpm version:major`

@@ -40,9 +40,10 @@ export function ToolInvocationCard({ tool }: ToolInvocationCardProps) {
       data-tool-state={tool.state}
       data-tool-tone={statusTone}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3" data-testid="tool-invocation-layout">
         <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border"
+          className="flex h-9 w-9 shrink-0 self-center items-center justify-center rounded-2xl border"
+          data-testid="tool-invocation-icon-shell"
           style={{
             background: "rgba(255,255,255,0.14)",
             borderColor: "rgba(255,255,255,0.18)",
@@ -64,36 +65,35 @@ export function ToolInvocationCard({ tool }: ToolInvocationCardProps) {
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="truncate font-mono text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                {tool.toolName}
-              </div>
-              <div className="text-[10px]" style={{ color: "var(--text-secondary)" }}>
-                {argumentCount} 个参数
-              </div>
+          <div className="min-w-0">
+            <div className="truncate font-mono text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
+              {tool.toolName}
             </div>
-
-            <div
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                borderColor: "rgba(255,255,255,0.16)",
-                color: statusColor,
-              }}
-            >
-              {tool.state === "call" ? (
-                <HugeiconsIcon
-                  icon={Loading01Icon}
-                  size={14}
-                  className={motionReduced ? "opacity-70" : "animate-spin opacity-70"}
-                />
-              ) : (
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
-              )}
-              <span className="text-[10px] font-medium">{statusLabel}</span>
+            <div className="text-[10px]" style={{ color: "var(--text-secondary)" }}>
+              {argumentCount} 个参数
             </div>
           </div>
+        </div>
+
+        <div
+          className="inline-flex shrink-0 self-center items-center gap-1.5 rounded-full border px-2.5 py-1"
+          data-testid="tool-invocation-status"
+          style={{
+            background: "rgba(255,255,255,0.12)",
+            borderColor: "rgba(255,255,255,0.16)",
+            color: statusColor,
+          }}
+        >
+          {tool.state === "call" ? (
+            <HugeiconsIcon
+              icon={Loading01Icon}
+              size={14}
+              className={motionReduced ? "opacity-70" : "animate-spin opacity-70"}
+            />
+          ) : (
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
+          )}
+          <span className="text-[10px] font-medium leading-none">{statusLabel}</span>
         </div>
       </div>
     </MessageSurface>

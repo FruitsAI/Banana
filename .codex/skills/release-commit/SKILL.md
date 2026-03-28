@@ -33,6 +33,8 @@ Confirm whether the user is asking for:
 - a release tag
 - a full GitHub release preparation pass
 
+If the request is release-facing and the user does not specify the bump level, default to a `patch` bump via `pnpm release:prepare`.
+
 ### 2. Update the changelog first
 
 Keep `CHANGELOG.md` compatible with Keep a Changelog:
@@ -50,6 +52,8 @@ If cutting a release:
 
 For Banana:
 - edit version via `package.json` only
+- prefer `pnpm release:prepare` for the default release path; it runs changelog validation, bumps `patch` by default, checks version metadata, and prints the next tag
+- use `pnpm release:prepare minor`, `pnpm release:prepare major`, or `pnpm release:prepare 0.2.0` when the release needs a non-patch target
 - use `pnpm version:patch`, `pnpm version:minor`, `pnpm version:major`, or `pnpm version:set -- <x.y.z>`
 - run `pnpm version:check`
 - confirm `pnpm release:tag:print` matches the changelog version
@@ -85,5 +89,6 @@ In the final response or commit summary:
 - Forgetting to update `CHANGELOG.md` for docs, config, CI, or tooling commits
 - Dumping commit messages into the changelog instead of curating the change summary
 - Letting `CHANGELOG.md`, `package.json.version`, and Git tag drift apart
+- Running a release-facing commit flow without a version bump when a new release version is expected
 - Hiding breaking changes inside vague `Changed` bullets
 - Pushing a release tag before verifying the GitHub draft release inputs

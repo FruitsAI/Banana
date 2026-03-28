@@ -129,13 +129,25 @@ describe("ThreadsSidebar", () => {
     render(<ThreadsSidebar />);
 
     expect(screen.getByTestId("threads-sidebar-toolbar")).toBeInTheDocument();
-    expect(screen.getByTestId("threads-sidebar-toolbar").className).toContain("px-1.5");
-    expect(screen.getByTestId("threads-sidebar-toolbar").className).toContain("sm:px-2");
+    expect(screen.getByTestId("threads-sidebar-toolbar")).toHaveAttribute(
+      "data-sidebar-floating-layer",
+      "toolbar",
+    );
+    expect(screen.getByTestId("threads-sidebar-toolbar").className).toContain("absolute");
+    expect(screen.getByTestId("threads-sidebar-toolbar")).toHaveStyle({
+      top: "var(--workspace-sidebar-safe-area-top, 0px)",
+    });
+    expect(screen.getByTestId("threads-sidebar-scroll-region")).toHaveStyle({
+      paddingTop: "calc(var(--workspace-sidebar-safe-area-top, 0px) + 8.75rem)",
+      paddingBottom: "6rem",
+    });
+    expect(screen.getByTestId("threads-sidebar-search-row").className).toContain("items-center");
     expect(screen.getByTestId("threads-sidebar-empty-state")).toHaveAttribute(
       "data-empty-tone",
       "guided",
     );
     expect(screen.getByRole("button", { name: "新建会话" }).className).toContain("border");
+    expect(screen.getByTestId("threads-sidebar-create-button").className).toContain("h-11");
     expect(screen.queryByText("快捷指令")).not.toBeInTheDocument();
   });
 
@@ -147,6 +159,11 @@ describe("ThreadsSidebar", () => {
 
     render(<ThreadsSidebar />);
 
+    expect(screen.getByTestId("threads-sidebar-dock-layer")).toHaveAttribute(
+      "data-sidebar-floating-layer",
+      "dock",
+    );
+    expect(screen.getByTestId("threads-sidebar-dock-layer").className).toContain("absolute");
     expect(screen.getByTestId("sidebar-utility-dock")).toHaveAttribute(
       "data-sidebar-dock-position",
       "bottom",
@@ -256,6 +273,7 @@ describe("ThreadsSidebar", () => {
     const selectedThreadButton = screen.getByRole("button", { name: /selected thread/i });
     expect(selectedThreadButton).toHaveAttribute("aria-current", "page");
     expect(selectedThreadButton).toHaveAttribute("data-selection-style", "liquid-accent");
+    expect(selectedThreadButton.getAttribute("style")).toContain("var(--selection-active-list-shadow");
     expect(screen.getByText("selected thread").closest("[data-material-role]")).toHaveAttribute(
       "data-material-role",
       "content",

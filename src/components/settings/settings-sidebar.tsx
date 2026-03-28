@@ -65,8 +65,8 @@ export function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps
         </h1>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-1.5 sm:px-2 py-2">
-        <div className="space-y-1" role="tablist" aria-label="设置分组">
+      <div className="flex-1 min-h-0 overflow-y-auto px-2.5 sm:px-3 py-3">
+        <div className="space-y-2" role="tablist" aria-label="设置分组">
           {tabs.map((tab) => (
             <NavItem
               key={tab.id}

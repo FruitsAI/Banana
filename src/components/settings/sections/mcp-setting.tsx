@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { McpServer } from "@/domain/mcp/types";
 import { Button } from "@/components/ui/button";
+import { getAccentOutlineButtonStyle } from "@/components/ui/accent-outline-button-style";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NavItem } from "@/components/ui/nav-item";
@@ -33,6 +40,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { useToast } from "@/hooks/use-toast";
 import { useMcpStore } from "@/stores/mcp/useMcpStore";
 import { createMotionPresets } from "@/lib/motion-presets";
+import { getErrorMessage } from "@/shared/errors";
 
 interface McpProviderTab {
   id: "builtin" | "market";
@@ -50,6 +58,17 @@ interface McpMarketTemplate {
   env_vars?: string;
   tags: string[];
   setupNote?: string;
+}
+
+interface McpToolSummary {
+  description?: string;
+  name: string;
+}
+
+interface McpToolDiscoveryState {
+  error?: string;
+  status: "idle" | "loading" | "ready" | "error";
+  tools: McpToolSummary[];
 }
 
 const MCP_STAGES: McpProviderTab[] = [
@@ -138,6 +157,14 @@ function createServerFromTemplate(template: McpMarketTemplate): Partial<McpServe
   };
 }
 
+function isMcpToolSummary(candidate: unknown): candidate is McpToolSummary {
+  return (
+    typeof candidate === "object" &&
+    candidate !== null &&
+    typeof (candidate as { name?: unknown }).name === "string"
+  );
+}
+
 function getTemplateCommandPreview(template: McpMarketTemplate): string {
   const argsPreview = template.args
     .split("\n")
@@ -150,7 +177,12 @@ function getTemplateCommandPreview(template: McpMarketTemplate): string {
 }
 
 export function McpSetting() {
-  const { loadServers: loadServersFromStore, removeServer, saveServer } = useMcpStore();
+  const {
+    loadServers: loadServersFromStore,
+    loadServerTools,
+    removeServer,
+    saveServer,
+  } = useMcpStore();
   const confirm = useConfirm();
   const toast = useToast();
   const shouldReduceMotion = useReducedMotion();
@@ -162,6 +194,8 @@ export function McpSetting() {
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [activeTabId, setActiveTabId] = useState<"builtin" | "market">("builtin");
   const [editingServer, setEditingServer] = useState<Partial<McpServer>>({});
+  const [serverTools, setServerTools] = useState<Record<string, McpToolDiscoveryState>>({});
+  const [toolsDialogServerId, setToolsDialogServerId] = useState<string | null>(null);
 
   const motionReduced = shouldReduceMotion || intensity === "low";
   const motionDuration = (value: number) => Number((value * factors.duration).toFixed(3));
@@ -181,6 +215,15 @@ export function McpSetting() {
       setLoading(true);
       const data = await loadServersFromStore();
       setServers(data);
+      setServerTools((prev) => {
+        const next: Record<string, McpToolDiscoveryState> = {};
+        for (const server of data) {
+          if (prev[server.id]) {
+            next[server.id] = prev[server.id];
+          }
+        }
+        return next;
+      });
     } catch (error) {
       console.error("Failed to load MCP servers:", error);
       toast.error("加载 MCP 服务器失败");
@@ -192,6 +235,85 @@ export function McpSetting() {
   useEffect(() => {
     void loadServers();
   }, [loadServers]);
+
+  const discoverServerTools = useCallback(
+    async (
+      server: Pick<McpServer, "id" | "command" | "args" | "env_vars">,
+      options?: { force?: boolean },
+    ) => {
+      const force = options?.force ?? false;
+      const current = serverTools[server.id];
+
+      if (!force && current && current.status !== "idle" && current.status !== "error") {
+        return;
+      }
+
+      setServerTools((prev) => {
+        const existing = prev[server.id];
+        if (!force && current && current.status !== "idle" && current.status !== "error") {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [server.id]: {
+            error: undefined,
+            status: "loading",
+            tools: existing?.tools ?? [],
+          },
+        };
+      });
+
+      try {
+        const result = await loadServerTools(server);
+        const tools: McpToolSummary[] = result.tools.flatMap((tool) => {
+          if (!isMcpToolSummary(tool)) {
+            return [];
+          }
+
+          return [
+            {
+              name: tool.name,
+              description: tool.description,
+            },
+          ];
+        });
+
+        setServerTools((prev) => ({
+          ...prev,
+          [server.id]: {
+            status: "ready",
+            tools,
+          },
+        }));
+      } catch (error) {
+        setServerTools((prev) => ({
+          ...prev,
+          [server.id]: {
+            error: getErrorMessage(error),
+            status: "error",
+            tools: prev[server.id]?.tools ?? [],
+          },
+        }));
+      }
+    },
+    [loadServerTools, serverTools],
+  );
+
+  useEffect(() => {
+    if (viewMode !== "list" || activeTabId !== "builtin" || servers.length === 0) {
+      return;
+    }
+
+    for (const server of servers) {
+      const state = serverTools[server.id];
+      if (state) {
+        continue;
+      }
+
+      void discoverServerTools(server);
+    }
+  }, [activeTabId, discoverServerTools, serverTools, servers, viewMode]);
 
   const handleToggleEnable = async (server: McpServer, enabled: boolean) => {
     try {
@@ -219,6 +341,15 @@ export function McpSetting() {
     setViewMode("detail");
   };
 
+  const handleViewServerTools = (server: McpServer) => {
+    setToolsDialogServerId(server.id);
+    const state = serverTools[server.id];
+
+    if (!state || state.status === "idle" || state.status === "error") {
+      void discoverServerTools(server, { force: state?.status === "error" });
+    }
+  };
+
   const handleSave = async () => {
     if (!editingServer.name || !editingServer.command) {
       toast.error("请填入名称和命令");
@@ -234,6 +365,11 @@ export function McpSetting() {
       } as McpServer;
 
       await saveServer(serverToSave);
+      setServerTools((prev) => {
+        const next = { ...prev };
+        delete next[serverToSave.id];
+        return next;
+      });
       await loadServers();
       setViewMode("list");
       toast.success("保存成功");
@@ -261,6 +397,14 @@ export function McpSetting() {
     try {
       await removeServer(id);
       setServers((prev) => prev.filter((item) => item.id !== id));
+      setServerTools((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      if (toolsDialogServerId === id) {
+        setToolsDialogServerId(null);
+      }
       if (editingServer.id === id) {
         setEditingServer({});
         setViewMode("list");
@@ -305,77 +449,15 @@ export function McpSetting() {
     </div>
   );
 
+  const activeToolsServer = toolsDialogServerId
+    ? servers.find((server) => server.id === toolsDialogServerId) ?? null
+    : null;
+  const activeToolsState = activeToolsServer
+    ? serverTools[activeToolsServer.id] ?? { status: "idle", tools: [] }
+    : null;
+
   const detailStage = (
     <>
-      <SettingsSectionGroup>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                概览
-              </h3>
-              <HugeiconsIcon
-                icon={Settings01Icon}
-                size={16}
-                style={{ color: "var(--text-tertiary)" }}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col items-stretch gap-3 sm:items-end">
-            <label
-              className="inline-flex items-center justify-end gap-3 rounded-full border px-3 py-2 text-xs font-medium"
-              style={{
-                ...getMaterialSurfaceStyle("floating", "sm"),
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), var(--material-floating-background)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <span>启用</span>
-              <Switch
-                checked={editingServer.is_enabled ?? true}
-                onCheckedChange={(value) =>
-                  setEditingServer({ ...editingServer, is_enabled: value })
-                }
-              />
-            </label>
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 rounded-xl px-6"
-              onClick={() => {
-                void handleSave();
-              }}
-              disabled={saving}
-            >
-              {saving ? "保存中..." : "保存"}
-            </Button>
-          </div>
-        </div>
-
-        {editingServer.id ? (
-          <div className="mt-5 border-t pt-5" style={{ borderColor: "var(--divider)" }}>
-            <Button
-              type="button"
-              variant="outline"
-              surface="floating"
-              aria-label={`删除 MCP 服务器 ${editingServer.name || "当前服务器"}`}
-              className="h-9 rounded-xl px-4 text-sm font-medium"
-              style={{ color: "var(--danger)" }}
-              onClick={() => {
-                if (editingServer.id) {
-                  void handleDelete(editingServer.id, editingServer.name);
-                }
-              }}
-            >
-              <HugeiconsIcon icon={Delete01Icon} size={16} />
-              删除当前配置
-            </Button>
-          </div>
-        ) : null}
-      </SettingsSectionGroup>
-
       <SettingsSectionGroup>
         <div className="mb-5">
           <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
@@ -510,6 +592,25 @@ export function McpSetting() {
               surface="content"
             />
           </div>
+        </div>
+      </SettingsSectionGroup>
+
+      <SettingsSectionGroup interactive={false}>
+        <div
+          className="flex justify-end"
+          data-testid="mcp-detail-actions"
+        >
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 w-full rounded-xl px-6 sm:w-auto sm:min-w-[112px]"
+            onClick={() => {
+              void handleSave();
+            }}
+            disabled={saving}
+          >
+            {saving ? "保存中..." : "保存"}
+          </Button>
         </div>
       </SettingsSectionGroup>
     </>
@@ -719,6 +820,7 @@ export function McpSetting() {
                     className="h-9 rounded-xl px-4 text-sm"
                     surface="floating"
                     aria-label="浏览模板"
+                    style={getAccentOutlineButtonStyle("sm")}
                     onClick={() => setActiveTabId("market")}
                   >
                     浏览模板
@@ -776,6 +878,21 @@ export function McpSetting() {
                             >
                               {server.command}
                             </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="xs"
+                              surface="floating"
+                              className="rounded-full px-3"
+                              aria-label={`查看 ${server.name} 的全部工具`}
+                              onClick={() => handleViewServerTools(server)}
+                            >
+                              {serverTools[server.id]?.status === "ready"
+                                ? `工具 ${serverTools[server.id]?.tools.length ?? 0}`
+                                : serverTools[server.id]?.status === "loading"
+                                  ? "工具 ..."
+                                  : "工具"}
+                            </Button>
                           </div>
                         </div>
 
@@ -849,6 +966,7 @@ export function McpSetting() {
                   className="h-10 w-full justify-center rounded-[18px] px-4 text-sm font-medium"
                   surface="floating"
                   aria-label="添加 MCP 服务器"
+                  style={getAccentOutlineButtonStyle("sm")}
                   onClick={handleAddNew}
                 >
                   添加 MCP 服务器
@@ -876,10 +994,10 @@ export function McpSetting() {
           headerAccessory={headerAccessory}
         >
           <div
-            className="grid min-h-0 gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]"
+            className="grid min-h-0 items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]"
             data-mcp-layout="matched"
           >
-            <SettingsSectionGroup className="flex min-h-full flex-col overflow-hidden p-0 sm:p-0">
+            <SettingsSectionGroup className="flex self-start flex-col overflow-hidden p-0 sm:p-0">
               <div
                 className="flex-none px-5 pb-5 pt-5 sm:px-6 sm:pb-5 sm:pt-6"
                 data-testid="mcp-browser-header"
@@ -948,6 +1066,147 @@ export function McpSetting() {
             </div>
           </div>
       </SettingsSectionShell>
+
+      <Dialog
+        open={Boolean(activeToolsServer)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setToolsDialogServerId(null);
+          }
+        }}
+      >
+        <DialogContent
+          aria-describedby={undefined}
+          className="max-w-2xl overflow-hidden border-0 bg-transparent p-0 shadow-none"
+        >
+          <motion.div
+            initial={motionReduced ? false : { opacity: 0, scale: 0.985, y: 14 }}
+            animate={motionReduced ? {} : { opacity: 1, scale: 1, y: 0 }}
+            transition={
+              motionReduced
+                ? { duration: 0 }
+                : { type: "spring", stiffness: 260, damping: 24, mass: 0.8 }
+            }
+            className="relative flex max-h-[72vh] flex-col rounded-2xl border"
+            style={{
+              background:
+                "linear-gradient(145deg, color-mix(in srgb, var(--material-floating-background) 96%, transparent) 0%, color-mix(in srgb, var(--material-content-background) 94%, transparent) 100%)",
+              borderColor: "var(--material-content-border)",
+              boxShadow: "0 22px 54px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255,255,255,0.42)",
+              backdropFilter: "blur(24px) saturate(190%)",
+              WebkitBackdropFilter: "blur(24px) saturate(190%)",
+            }}
+          >
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full"
+              style={{
+                background: "radial-gradient(circle, var(--brand-primary-glow) 0%, transparent 74%)",
+                filter: "blur(8px)",
+              }}
+              animate={
+                motionReduced
+                  ? undefined
+                  : { scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }
+              }
+              transition={
+                motionReduced
+                  ? undefined
+                  : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
+              }
+            />
+
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-6 top-0 h-px opacity-85"
+              style={{
+                background:
+                  "linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--material-highlight) 68%, transparent) 22%, color-mix(in srgb, var(--brand-primary-light) 32%, transparent) 78%, transparent 100%)",
+              }}
+            />
+
+            <DialogHeader className="relative z-10 space-y-2 px-6 pb-5 pt-6 text-left sm:px-7">
+              <div className="flex items-center justify-between gap-3">
+                <DialogTitle>{activeToolsServer?.name ?? "MCP 工具"}</DialogTitle>
+                <span
+                  className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  style={{
+                    background: "var(--material-floating-background)",
+                    borderColor: "var(--material-content-border)",
+                    color: "var(--text-tertiary)",
+                  }}
+                >
+                  Tools
+                </span>
+              </div>
+            </DialogHeader>
+
+            <div className="relative z-10 max-h-[65vh] overflow-y-auto px-6 pb-8 pt-4 sm:px-7 sm:pb-10">
+              {activeToolsState?.status === "loading" || activeToolsState?.status === "idle" ? (
+                <div
+                  className="flex min-h-40 items-center justify-center text-sm"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  正在加载工具列表...
+                </div>
+              ) : activeToolsState?.status === "error" ? (
+                <div
+                  className="rounded-[24px] border px-5 py-5"
+                  style={{
+                    ...getMaterialSurfaceStyle("content", "sm"),
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
+                  }}
+                >
+                  <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                    暂时无法读取工具
+                  </div>
+                  <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                    {activeToolsState.error}
+                  </p>
+                </div>
+              ) : activeToolsState && activeToolsState.tools.length > 0 ? (
+                <div
+                  className="space-y-3 pb-8 sm:pb-10"
+                  data-testid="mcp-tools-list"
+                >
+                  {activeToolsState.tools.map((tool) => (
+                    <div
+                      key={tool.name}
+                      className="rounded-[24px] border px-5 py-4"
+                      style={{
+                        ...getMaterialSurfaceStyle("content", "sm"),
+                        background:
+                          "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
+                      }}
+                    >
+                      <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                        {tool.name}
+                      </div>
+                      {tool.description ? (
+                        <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                          {tool.description}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-tertiary)" }}>
+                          这个工具暂时没有描述信息。
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className="flex min-h-40 items-center justify-center text-sm"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  当前服务器还没有暴露可用工具。
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
     </SettingsPageFrame>
   );
 }

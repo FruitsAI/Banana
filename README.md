@@ -49,12 +49,10 @@ pnpm check:rust
 
 ### 统一管理版本号
 ```bash
-pnpm changelog:check
-pnpm version:patch
-pnpm version:minor
-pnpm version:major
-pnpm version:set -- 0.2.0
-pnpm version:check
+pnpm release:prepare
+pnpm release:prepare minor
+pnpm release:prepare major
+pnpm release:prepare 0.2.0
 pnpm release:tag:print
 pnpm release:tag
 ```
@@ -64,6 +62,8 @@ pnpm release:tag
 - `src-tauri/tauri.conf.json` 已直接跟随 `package.json`。
 - `src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 通过版本脚本自动同步。
 - `pnpm changelog:check` 会检查当前变更是否已同步更新 `CHANGELOG.md`。
+- `pnpm release:prepare` 会先校验 changelog，再默认执行 `patch` bump，最后确认下一条 release tag 可用。
+- 如果不是 patch release，可以改用 `pnpm release:prepare minor`、`pnpm release:prepare major` 或 `pnpm release:prepare 0.2.0`。
 - 提交前跑一次 `pnpm version:check`，发布时让 Git tag 与 `package.json.version` 保持一致。
 - `pnpm release:tag` 会基于当前版本创建本地 annotated tag。
 - `pnpm release:tag:push` 会创建并推送 tag 到 `origin`，从而触发 GitHub Release workflow。

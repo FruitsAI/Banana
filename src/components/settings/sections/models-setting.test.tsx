@@ -345,11 +345,15 @@ describe("ModelsSetting", () => {
       "data-provider-sidebar-layout",
       "equal-height",
     );
+    expect(
+      screen.getByTestId("models-provider-list-body").closest("[data-preferences-layout='two-column']")?.className,
+    ).toContain("items-start");
     expect(screen.getByTestId("models-provider-list-header")).toHaveAttribute(
       "data-provider-sidebar-header-align",
       "section-group",
     );
     expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("sm:p-0");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("self-start");
     expect(screen.getByTestId("models-provider-list-header").className).toContain("flex-none");
     expect(screen.getByTestId("models-provider-list-header").className).toContain("sm:px-6");
     expect(screen.getByTestId("models-provider-list-header-row")).toHaveAttribute(
@@ -372,12 +376,24 @@ describe("ModelsSetting", () => {
     expect(defaultModelButton).toHaveAttribute("data-selection-style", "liquid-accent");
     expect(idleModelButton).toHaveAttribute("data-selection-style", "idle");
     expect(activeProviderOption.getAttribute("style")).toContain("var(--selection-active-fill)");
+    expect(activeProviderOption.getAttribute("style")).toContain("var(--selection-active-list-shadow");
     expect(defaultModelButton.getAttribute("style")).toContain("var(--selection-active-fill)");
+    expect(defaultModelButton.getAttribute("style")).toContain("var(--selection-active-list-shadow");
     expect(idleProviderOption.getAttribute("style")).not.toContain("border-color: transparent");
     expect(idleModelButton.getAttribute("style")).not.toContain("border-color: transparent");
     expect(defaultModelButton.className).toContain("w-full");
     expect(defaultModelButton.className).toContain("border");
     expect(providerAddButton.className).toContain("w-full");
+    expect(providerAddButton).toHaveAttribute("data-variant", "default");
+    expect(screen.getAllByRole("button", { name: "添加" })[1]?.getAttribute("style")).toContain(
+      "var(--selection-active-list-border",
+    );
+    expect(screen.getAllByRole("button", { name: "添加" })[1]?.getAttribute("style")).toContain(
+      "var(--brand-primary)",
+    );
+    expect(screen.getAllByRole("button", { name: "添加" })[1]?.getAttribute("style")).toContain(
+      "var(--selection-active-list-shadow",
+    );
     expect(screen.queryByText("默认模型")).not.toBeInTheDocument();
     expect(screen.getByTestId("models-connection-stack")).toHaveAttribute(
       "data-connection-layout",

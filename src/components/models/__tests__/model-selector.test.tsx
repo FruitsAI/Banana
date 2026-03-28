@@ -128,6 +128,7 @@ describe("ModelSelector", () => {
     });
 
     expect(screen.getByTestId("model-selector-trigger")).toHaveAttribute("data-trigger-shape", "pill");
+    expect(screen.getByTestId("model-selector-trigger").className).toContain("h-10");
     expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-material-role", "floating");
     expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-surface-clarity", "high");
     expect(screen.getByTestId("model-selector-popover")).toHaveAttribute("data-align", "start");
@@ -149,9 +150,13 @@ describe("ModelSelector", () => {
     expect(trigger.getAttribute("style")).toContain("var(--selection-active-fill)");
     expect(trigger.getAttribute("style")).toContain("var(--selection-active-foreground)");
 
-    const selectedRow = document.querySelector('div[style*="var(--selection-active-soft-fill)"]');
+    const selectedRow = screen
+      .getByTestId("model-selector-popover")
+      .querySelector('[data-selection-style="liquid-accent"]');
     expect(selectedRow).not.toBeNull();
     expect(selectedRow?.textContent).toContain("gpt-4o-mini");
-    expect(selectedRow?.getAttribute("style")).toContain("var(--selection-active-border)");
+    expect(selectedRow?.getAttribute("style")).toContain("var(--selection-active-list-fill");
+    expect(selectedRow?.getAttribute("style")).toContain("var(--selection-active-list-shadow");
+    expect(selectedRow?.getAttribute("style")).toContain("var(--selection-active-list-border");
   });
 });

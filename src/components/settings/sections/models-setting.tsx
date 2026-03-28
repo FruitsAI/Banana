@@ -151,11 +151,11 @@ export function ModelsSetting() {
             }
           >
             <div
-              className="grid min-h-0 gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[320px_minmax(0,1fr)]"
+              className="grid min-h-0 items-start gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[320px_minmax(0,1fr)]"
               data-preferences-layout="two-column"
               data-preferences-height="matched"
             >
-              <SettingsSectionGroup className="flex min-h-full flex-col overflow-hidden p-0 sm:p-0">
+              <SettingsSectionGroup className="flex self-start flex-col overflow-hidden p-0 sm:p-0">
                 <div
                   className="flex-none px-5 pb-5 pt-5 sm:px-6 sm:pb-5 sm:pt-6"
                   data-provider-sidebar-header-align="section-group"

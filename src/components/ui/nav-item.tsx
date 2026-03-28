@@ -31,6 +31,8 @@ interface NavItemProps {
   className?: string;
   /** 右侧补充内容 */
   accessory?: ReactNode;
+  /** 激活态阴影覆写，用于需要更明显悬浮感的导航区域 */
+  activeShadow?: string;
   /** 透传给底层 button 的附加语义属性 */
   semanticProps?: {
     "aria-controls"?: string;
@@ -55,6 +57,7 @@ export function NavItem({
   layoutId = "navActiveIndicator",
   className,
   accessory,
+  activeShadow,
   semanticProps,
 }: NavItemProps) {
   const shouldReduceMotion = useReducedMotion();
@@ -75,11 +78,15 @@ export function NavItem({
       data-material-role="content"
       data-selection-style={getLiquidSelectionState(isActive)}
       data-surface-tone="liquid-nav-item"
-      style={getLiquidSelectionStyle({
-        active: isActive,
-        inactiveRole: "content",
-        inactiveTextColor: "var(--text-secondary)",
-      })}
+      style={{
+        ...getLiquidSelectionStyle({
+          active: isActive,
+          activeShadow:
+            activeShadow ?? "var(--selection-active-list-shadow, var(--selection-active-shadow))",
+          inactiveRole: "content",
+          inactiveTextColor: "var(--text-secondary)",
+        }),
+      }}
       whileHover={shouldReduceMotion ? undefined : { y: -1 }}
       whileTap={shouldReduceMotion ? undefined : { scale: 0.99 }}
     >
@@ -161,7 +168,6 @@ export function NavItem({
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />
       )}
-
     </motion.button>
   );
 }

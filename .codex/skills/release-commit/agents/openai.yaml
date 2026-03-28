@@ -1,4 +1,4 @@
 interface:
   display_name: "Release Commit"
   short_description: "Prepare changelog, version, and release tag"
-  default_prompt: "Use $release-commit to update CHANGELOG.md, verify release metadata, and prepare a release-oriented commit."
+  default_prompt: "Use $release-commit to update CHANGELOG.md, default to a patch bump with pnpm release:prepare unless told otherwise, verify release metadata, and prepare a release-oriented commit."

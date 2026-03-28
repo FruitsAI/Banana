@@ -278,6 +278,49 @@ describe("useChatSession", () => {
     expect(dispatchEventSpy.mock.calls.map(([event]) => event.type)).toContain("refresh-threads");
   });
 
+  it("resolves sendMessage as soon as the user turn is accepted, before the assistant stream finishes", async () => {
+    const deferred = createDeferred<BananaUIMessage[]>();
+
+    mockCreateChatRuntime.mockImplementation(({ onStatusChange }) => ({
+      send: vi.fn(async () => {
+        onStatusChange("streaming");
+        return await deferred.promise;
+      }),
+    }));
+
+    const { result } = renderHook(() => useChatSession("thread-1"));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    let accepted = false;
+
+    await act(async () => {
+      const sendPromise = result.current.sendMessage("hello banana", { isSearch: true });
+      await sendPromise.then((value) => {
+        accepted = value;
+      });
+    });
+
+    expect(accepted).toBe(true);
+    expect(result.current.messages).toHaveLength(1);
+    expect(result.current.messages[0].role).toBe("user");
+    expect(result.current.status).toBe("streaming");
+
+    await act(async () => {
+      deferred.resolve([
+        ...result.current.messages,
+        createAssistantMessage("msg-assistant-late", "assistant reply"),
+      ]);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(2);
+    });
+  });
+
   it("does not expose search tools to the runtime when search is disabled", async () => {
     mockGetMcpServersForChat.mockResolvedValueOnce([
       {

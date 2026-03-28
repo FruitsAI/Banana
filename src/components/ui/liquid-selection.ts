@@ -10,6 +10,7 @@ interface LiquidSelectionStyleOptions {
   depth?: MaterialDepth;
   inactiveRole?: LiquidSelectionInactiveRole;
   activeFill?: string;
+  activeShadow?: string;
   inactiveFill?: string;
   activeBorderColor?: string;
   inactiveBorderColor?: string;
@@ -38,6 +39,7 @@ export function getLiquidSelectionStyle({
   depth = "sm",
   inactiveRole = "content",
   activeFill = "var(--selection-active-fill)",
+  activeShadow = "var(--selection-active-shadow, var(--liquid-material-base-shadow))",
   inactiveFill,
   activeBorderColor = "var(--selection-active-border)",
   inactiveBorderColor,
@@ -47,8 +49,8 @@ export function getLiquidSelectionStyle({
   if (active) {
     return {
       ...getMaterialSurfaceStyle("accent", depth),
-      ["--liquid-selection-rest-shadow" as string]: "var(--selection-active-shadow, var(--liquid-material-base-shadow))",
-      ["--liquid-selection-hover-shadow" as string]: "var(--selection-active-shadow, var(--liquid-material-base-shadow))",
+      ["--liquid-selection-rest-shadow" as string]: activeShadow,
+      ["--liquid-selection-hover-shadow" as string]: activeShadow,
       background: activeFill,
       borderColor: activeBorderColor,
       boxShadow: LIQUID_SELECTION_SHADOW,

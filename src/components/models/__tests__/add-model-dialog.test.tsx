@@ -44,6 +44,13 @@ describe("AddModelDialog", () => {
       />,
     );
 
+    expect(
+      screen.queryByText("录入模型 ID、模型名称和分组名称后，将保存到当前 Provider。"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("必填，例如 gpt-4o-mini").className).not.toContain("h-10");
+    expect(screen.getByPlaceholderText("例如 GPT-4o Mini").className).not.toContain("h-10");
+    expect(screen.getByPlaceholderText("例如 OpenAI").className).not.toContain("h-10");
+
     fireEvent.change(screen.getByPlaceholderText("必填，例如 gpt-4o-mini"), {
       target: { value: "gpt-5.3-codex" },
     });

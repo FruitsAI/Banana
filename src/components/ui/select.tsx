@@ -144,6 +144,11 @@ export function Select<Value extends string = string>({
                 data-selection-style={getLiquidSelectionState(isSelected)}
                 style={getLiquidSelectionStyle({
                   active: isSelected,
+                  activeFill: "var(--selection-active-list-fill, var(--selection-active-fill))",
+                  activeShadow:
+                    "var(--selection-active-list-shadow, var(--selection-active-shadow))",
+                  activeBorderColor:
+                    "var(--selection-active-list-border, var(--selection-active-border))",
                   inactiveRole: "floating",
                   inactiveFill:
                     "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%), var(--material-floating-background)",

@@ -74,6 +74,9 @@ describe("SettingsSidebar", () => {
     expect(screen.queryByTestId("settings-sidebar-current-card")).not.toBeInTheDocument();
     expect(screen.queryByText("当前")).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /模型设置/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /模型设置/ }).getAttribute("style")).toContain(
+      "var(--selection-active-list-shadow",
+    );
     expect(screen.getByRole("tab", { name: /MCP 设置/ })).toHaveAttribute("aria-selected", "false");
 
     fireEvent.click(screen.getByRole("tab", { name: /MCP 设置/ }));

@@ -775,17 +775,25 @@ export function useChatSession(threadId: string) {
 
         await persistIfActive(turn, nextMessages);
 
-        const finalMessages = await runAssistantTurn(nextMessages, turn, options, context);
+        void (async () => {
+          try {
+            const finalMessages = await runAssistantTurn(nextMessages, turn, options, context);
 
-        if (isFirstTurn) {
-          updateThreadTitleInBackground(context, finalMessages);
-        }
+            if (isFirstTurn) {
+              updateThreadTitleInBackground(context, finalMessages);
+            }
+          } catch (error) {
+            handleTurnFailure(turn, error);
+          } finally {
+            clearTurn(turn);
+          }
+        })();
+
         return true;
       } catch (error) {
         handleTurnFailure(turn, error);
-        return false;
-      } finally {
         clearTurn(turn);
+        return false;
       }
     },
     [

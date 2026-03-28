@@ -1,10 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createRuntimeToolMap } from "@/services/chat/mcp-tools";
+import { createRuntimeToolMap, resetRuntimeToolDiscoveryCache } from "@/services/chat/mcp-tools";
 import {
   buildChatRequestBody,
   createChatRuntime,
   type RuntimeTransportMessage,
 } from "@/services/chat/runtime";
+
+function createDeferred<T>() {
+  let resolve:
+    | ((value: T | PromiseLike<T>) => void)
+    | undefined;
+  let reject:
+    | ((reason?: unknown) => void)
+    | undefined;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return {
+    promise,
+    resolve: (value: T) => resolve?.(value),
+    reject: (reason?: unknown) => reject?.(reason),
+  };
+}
 
 const {
   mockListMcpTools,
@@ -48,6 +67,7 @@ const sampleMessages: RuntimeTransportMessage[] = [
 describe("chat runtime tools", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetRuntimeToolDiscoveryCache();
 
     mockListMcpTools.mockResolvedValue({
       tools: [
@@ -170,6 +190,70 @@ describe("chat runtime tools", () => {
       serverId: "server-1",
       error: expect.any(Error),
     });
+  });
+
+  it("starts MCP tool discovery for enabled servers in parallel", async () => {
+    const firstDiscovery = createDeferred<{ tools: Array<{ name: string; description: string; inputSchema: { type: string } }> }>();
+    const secondDiscovery = createDeferred<{ tools: Array<{ name: string; description: string; inputSchema: { type: string } }> }>();
+
+    mockListMcpTools.mockImplementation((server: { id: string }) => {
+      if (server.id === "server-1") {
+        return firstDiscovery.promise;
+      }
+
+      return secondDiscovery.promise;
+    });
+
+    const pendingTools = createRuntimeToolMap([
+      {
+        id: "server-1",
+        command: "clock",
+        is_enabled: true,
+      },
+      {
+        id: "server-2",
+        command: "calendar",
+        is_enabled: true,
+      },
+    ]);
+
+    await Promise.resolve();
+
+    expect(mockListMcpTools).toHaveBeenCalledTimes(2);
+
+    firstDiscovery.resolve({
+      tools: [{ name: "get_current_time", description: "Clock", inputSchema: { type: "object" } }],
+    });
+    secondDiscovery.resolve({
+      tools: [{ name: "get_current_date", description: "Calendar", inputSchema: { type: "object" } }],
+    });
+
+    const tools = await pendingTools;
+    expect(tools.get_current_time).toBeDefined();
+    expect(tools.get_current_date).toBeDefined();
+  });
+
+  it("reuses discovered MCP tool lists across compatible runtime tool map requests", async () => {
+    await createRuntimeToolMap([
+      {
+        id: "server-1",
+        command: "clock",
+        is_enabled: true,
+      },
+    ]);
+
+    await createRuntimeToolMap(
+      [
+        {
+          id: "server-1",
+          command: "clock",
+          is_enabled: true,
+        },
+      ],
+      { capabilityMode: { searchEnabled: false } },
+    );
+
+    expect(mockListMcpTools).toHaveBeenCalledTimes(1);
   });
 });
 

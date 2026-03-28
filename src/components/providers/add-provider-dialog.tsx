@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -127,6 +126,7 @@ export function AddProviderDialog({
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         showCloseButton={!isSubmitting}
         className="max-w-2xl overflow-hidden border-0 bg-transparent p-0 shadow-none"
       >
@@ -188,12 +188,6 @@ export function AddProviderDialog({
                   Provider
                 </span>
               </div>
-              <DialogDescription
-                className="text-[13px]"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                录入提供商信息后，将添加到左侧 Provider 列表。
-              </DialogDescription>
             </DialogHeader>
 
             <div
@@ -254,7 +248,7 @@ export function AddProviderDialog({
                     value={providerName}
                     onChange={(event) => setProviderName(event.target.value)}
                     placeholder="例如 OpenAI"
-                    className="h-10 text-sm md:text-sm"
+                    className="text-sm md:text-sm"
                     surface="floating"
                   />
                 </motion.div>

@@ -17,7 +17,7 @@ import { ConversationView } from "@/components/layout/stage/conversation-view";
 function StageContent() {
   const searchParams = useSearchParams();
   const threadId = searchParams.get("thread") || "default-thread";
-  const { messages, append, isLoading, error, regenerate, updateMessageContent } = useBananaChat(threadId);
+  const { messages, append, isLoading, error, regenerate, updateMessageContent, stop } = useBananaChat(threadId);
   const toast = useToast();
   const [input, setInput] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -174,6 +174,9 @@ function StageContent() {
           onKeyDown={handleKeyDown}
           onSend={() => {
             void handleSend();
+          }}
+          onStop={() => {
+            stop();
           }}
           onToggleSearch={() => setIsSearchEnabled(!isSearchEnabled)}
           onToggleThinking={() => setIsThinkingEnabled(!isThinkingEnabled)}

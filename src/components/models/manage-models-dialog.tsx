@@ -8,6 +8,7 @@ import {
   CheckmarkCircle01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { getAccentOutlineButtonStyle } from "@/components/ui/accent-outline-button-style";
 import {
   Dialog,
   DialogContent,
@@ -186,7 +187,10 @@ export function ManageModelsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[720px] p-0 overflow-hidden bg-transparent border-0 shadow-none">
+      <DialogContent
+        aria-describedby={undefined}
+        className="!w-[min(820px,calc(100vw-1.5rem))] !max-w-none sm:!w-[min(820px,calc(100vw-4rem))] sm:!max-w-none p-0 overflow-hidden bg-transparent border-0 shadow-none"
+      >
         <motion.div
            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.98, y: 10 }}
            animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -218,13 +222,10 @@ export function ManageModelsDialog({
           {/* Header */}
           <div className="px-6 pt-6 pb-2 space-y-4 border-b" style={{ borderColor: "var(--divider)" }}>
             <div className="flex items-center justify-between">
-              <div className="space-y-1">
+              <div>
                 <DialogTitle className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">
                   {activeProvider?.name || "Provider"} 模型市场
                 </DialogTitle>
-                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                  搜索并添加可用模型，保持现有分组规则与能力过滤逻辑。
-                </p>
               </div>
               <span
                 className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
@@ -336,6 +337,7 @@ export function ManageModelsDialog({
                       size="sm"
                       className="h-8 rounded-xl text-[11px] font-bold border"
                       surface="floating"
+                      style={getAccentOutlineButtonStyle("sm")}
                       onClick={() => handleAddGroup(group, models)}
                     >
                       一键添加
@@ -397,6 +399,7 @@ export function ManageModelsDialog({
                               variant="outline"
                               className="h-9 px-4 rounded-xl text-[11px] font-bold transition-all border"
                               surface="floating"
+                              style={getAccentOutlineButtonStyle("sm")}
                               onClick={() => handleAddSingle(m)}
                             >
                               添加

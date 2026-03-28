@@ -284,6 +284,7 @@ describe("material primitives", () => {
     expect(activeItem).toHaveAttribute("data-selection-style", "liquid-accent");
     expect(activeItem.getAttribute("style")).toContain("var(--selection-active-fill)");
     expect(activeItem.getAttribute("style")).toContain("var(--selection-active-border)");
+    expect(activeItem.getAttribute("style")).toContain("var(--selection-active-shadow)");
   });
 
   it("keeps idle selection rows flat until hover while preserving a lifted resting shadow for active rows", () => {
@@ -311,6 +312,21 @@ describe("material primitives", () => {
     );
     expect(activeStyle["--liquid-selection-hover-shadow" as keyof typeof activeStyle]).toBe(
       "var(--selection-active-shadow, var(--liquid-material-base-shadow))",
+    );
+  });
+
+  it("allows list rows to opt into the stronger shared list shadow token", () => {
+    const activeStyle = getLiquidSelectionStyle({
+      active: true,
+      inactiveRole: "content",
+      activeShadow: "var(--selection-active-list-shadow, var(--selection-active-shadow))",
+    });
+
+    expect(activeStyle["--liquid-selection-rest-shadow" as keyof typeof activeStyle]).toBe(
+      "var(--selection-active-list-shadow, var(--selection-active-shadow))",
+    );
+    expect(activeStyle["--liquid-selection-hover-shadow" as keyof typeof activeStyle]).toBe(
+      "var(--selection-active-list-shadow, var(--selection-active-shadow))",
     );
   });
 });

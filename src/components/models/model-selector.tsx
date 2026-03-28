@@ -18,6 +18,10 @@ import { cn } from "@/lib/utils";
 import { getProviderIcon } from "@/components/icons/provider-icons";
 import { useModelsStore } from "@/stores/models/useModelsStore";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import {
+  getLiquidSelectionState,
+  getLiquidSelectionStyle,
+} from "@/components/ui/liquid-selection";
 import { SearchInput } from "@/components/ui/search-input";
 
 const CAPABILITY_CONFIG: Record<string, { icon: typeof ViewIcon; color: string }> = {
@@ -233,7 +237,7 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
       <PopoverTrigger asChild>
         <button
           disabled={disabled || models.length === 0}
-          className="material-interactive flex items-center justify-center h-8 sm:h-9 px-3.5 rounded-2xl text-xs font-semibold cursor-pointer border"
+          className="material-interactive flex items-center justify-center h-10 px-3.5 rounded-2xl text-xs font-semibold cursor-pointer border sm:h-11"
           style={{
             ...getMaterialSurfaceStyle("accent", "sm"),
             background: "var(--selection-active-fill)",
@@ -327,15 +331,19 @@ export function ModelSelector({ disabled }: { disabled?: boolean }) {
                             onClick={() => handleSelect(model.provider_id, model.id)}
                             className="group material-interactive flex items-center justify-between px-4 py-2.5 mx-2 rounded-2xl cursor-pointer border"
                             data-hover-surface={isSelected ? "accent" : "floating"}
+                            data-selection-style={getLiquidSelectionState(isSelected)}
                             style={{
-                              ...getMaterialSurfaceStyle(isSelected ? "accent" : "floating", "sm"),
-                              background: isSelected
-                                ? "var(--selection-active-soft-fill)"
-                                : undefined,
-                              borderColor: isSelected
-                                ? "var(--selection-active-border)"
-                                : "var(--material-content-border)",
-                              boxShadow: isSelected ? "var(--selection-active-shadow)" : undefined,
+                              ...getLiquidSelectionStyle({
+                                active: isSelected,
+                                activeFill:
+                                  "var(--selection-active-list-fill, var(--selection-active-fill))",
+                                activeShadow:
+                                  "var(--selection-active-list-shadow, var(--selection-active-shadow))",
+                                activeBorderColor:
+                                  "var(--selection-active-list-border, var(--selection-active-border))",
+                                inactiveRole: "floating",
+                                inactiveTextColor: "var(--text-primary)",
+                              }),
                             }}
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">

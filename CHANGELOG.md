@@ -12,6 +12,7 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 
 - Add reusable platform detection helpers, pre-hydration runtime marking, and targeted desktop QA tests for titlebar and thread-sidebar behavior. 新增可复用的平台检测工具、预水合运行时标记，以及覆盖标题栏与线程侧边栏行为的桌面 QA 定向测试。
 - Add a shared liquid-glass runtime model, provider, and regression coverage so ambient light, adaptive clarity, and pointer optics can be driven as one system instead of isolated component styling. 新增共享的液态玻璃运行时模型、provider 与回归测试，使环境光、自适应清晰度和指针光学反馈可以作为统一系统驱动，而不再只是零散组件样式。
+- Add a `pnpm release:prepare` entrypoint that validates the changelog, defaults release-facing bumps to `patch`, and preflights the next tag before tagging. 新增 `pnpm release:prepare` 入口，在发版前先校验 changelog、默认执行 `patch` 升级，并在打 tag 前预检下一个版本标签是否可用。
 
 ### Changed
 

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
+import { getAccentOutlineButtonStyle } from "@/components/ui/accent-outline-button-style";
 import { ModelIcon } from "@/components/models/model-selector";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 import {
@@ -150,6 +151,11 @@ export function ModelGroupsPanel({
                       style={getLiquidSelectionStyle({
                         active: isDefaultModel,
                         depth: "md",
+                        activeFill: "var(--selection-active-list-fill, var(--selection-active-fill))",
+                        activeShadow:
+                          "var(--selection-active-list-shadow, var(--selection-active-shadow))",
+                        activeBorderColor:
+                          "var(--selection-active-list-border, var(--selection-active-border))",
                         inactiveRole: "content",
                         inactiveFill:
                           "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%), color-mix(in srgb, var(--material-content-background) 56%, transparent)",
@@ -256,6 +262,7 @@ export function ModelGroupsPanel({
           size="sm"
           className="h-9 rounded-full border px-4 text-xs motion-safe:hover:-translate-y-px"
           surface="floating"
+          style={getAccentOutlineButtonStyle("sm")}
           onClick={onOpenAddModel}
         >
           <HugeiconsIcon icon={Add01Icon} size={14} className="mr-1.5" /> 添加

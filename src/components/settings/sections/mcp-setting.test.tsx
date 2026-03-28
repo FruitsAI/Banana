@@ -1,10 +1,11 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { McpServer } from "@/domain/mcp/types";
 import { McpSetting } from "./mcp-setting";
 
 const loadServersMock = vi.fn<() => Promise<McpServer[]>>();
+const loadServerToolsMock = vi.fn();
 const saveServerMock = vi.fn();
 const removeServerMock = vi.fn();
 const confirmMock = vi.fn();
@@ -16,6 +17,7 @@ const toastMock = {
 vi.mock("@/stores/mcp/useMcpStore", () => ({
   useMcpStore: () => ({
     loadServers: loadServersMock,
+    loadServerTools: loadServerToolsMock,
     saveServer: saveServerMock,
     removeServer: removeServerMock,
   }),
@@ -73,7 +75,9 @@ describe("McpSetting", () => {
         throw new Error("native confirm should not be used");
       }),
     );
+    loadServerToolsMock.mockReset();
     loadServersMock.mockResolvedValue([]);
+    loadServerToolsMock.mockResolvedValue({ tools: [] });
     saveServerMock.mockReset();
     removeServerMock.mockReset();
     confirmMock.mockReset();
@@ -109,13 +113,18 @@ describe("McpSetting", () => {
 
     expect(screen.getAllByTestId("settings-section-group").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByTestId("mcp-content-stage").closest("[data-mcp-layout='matched']")).not.toBeNull();
+    expect(
+      screen.getByTestId("mcp-content-stage").closest("[data-mcp-layout='matched']")?.className,
+    ).toContain("items-start");
     expect(screen.getByTestId("mcp-browser-header-row")).toHaveAttribute(
       "data-settings-title-row",
       "shared",
     );
     expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("sm:p-0");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("self-start");
     expect(screen.getByTestId("mcp-browser-header").className).toContain("flex-none");
     expect(screen.getByTestId("mcp-browser-body").className).toContain("flex-1");
+    expect(screen.getByTestId("mcp-content-stage").className).toBe("min-w-0");
     expect(screen.getByTestId("mcp-connected-header-row")).toHaveAttribute(
       "data-settings-title-row",
       "shared",
@@ -149,6 +158,8 @@ describe("McpSetting", () => {
 
     const addButton = screen.getByRole("button", { name: "添加 MCP 服务器" });
     expect(addButton.className).toContain("w-full");
+    expect(addButton.getAttribute("style")).toContain("var(--brand-primary)");
+    expect(addButton.getAttribute("style")).toContain("var(--selection-active-list-shadow");
     expect(screen.getByText("GitHub MCP").closest("[data-mcp-server-list-scroll='true']")).not.toBeNull();
   });
 
@@ -157,6 +168,12 @@ describe("McpSetting", () => {
 
     expect(screen.getByRole("button", { name: "添加空白配置" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "浏览模板" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "浏览模板" }).getAttribute("style")).toContain(
+      "var(--brand-primary)",
+    );
+    expect(screen.getByRole("button", { name: "浏览模板" }).getAttribute("style")).toContain(
+      "var(--selection-active-list-shadow",
+    );
     expect(screen.getByTestId("mcp-content-stage")).toHaveAttribute("data-mcp-stage", "builtin");
     expect(screen.getByTestId("mcp-content-stage")).toHaveAttribute(
       "data-mcp-view-mode",
@@ -207,6 +224,75 @@ describe("McpSetting", () => {
     expect(screen.queryByRole("button", { name: "日志" })).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "SSE" })).not.toBeInTheDocument();
     expect(screen.queryByText("长时间运行模式")).not.toBeInTheDocument();
+  });
+
+  it("removes the overview card and pins detail actions to the bottom of the editor", async () => {
+    await renderSetting("还没有 MCP 服务器");
+
+    fireEvent.click(screen.getByRole("button", { name: "添加空白配置" }));
+
+    expect(screen.queryByText("概览")).not.toBeInTheDocument();
+    expect(screen.queryByText("启用")).not.toBeInTheDocument();
+    expect(screen.queryByText("删除当前配置")).not.toBeInTheDocument();
+
+    const detailActions = screen.getByTestId("mcp-detail-actions");
+    const groups = screen.getAllByTestId("settings-section-group");
+
+    expect(groups.at(-1)?.contains(detailActions)).toBe(true);
+    expect(within(detailActions).getByRole("button", { name: "保存" })).toBeInTheDocument();
+  });
+
+  it("shows MCP tool counts on the server list and opens a dialog with all tools", async () => {
+    loadServersMock.mockResolvedValue([
+      {
+        id: "server-1",
+        name: "GitHub MCP",
+        description: "Repo tools",
+        type: "stdio",
+        command: "npx",
+        args: "-y\n@modelcontextprotocol/server-github",
+        env_vars: "GITHUB_PERSONAL_ACCESS_TOKEN=token",
+        is_enabled: true,
+      },
+    ]);
+    loadServerToolsMock.mockResolvedValue({
+      tools: [
+        { name: "list_issues", description: "列出仓库中的 Issues" },
+        { name: "create_issue", description: "创建新的 Issue" },
+      ],
+    });
+
+    await renderSetting("GitHub MCP");
+
+    await waitFor(() => {
+      expect(loadServerToolsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "server-1" }),
+      );
+    });
+
+    const toolsButton = await screen.findByRole("button", {
+      name: "查看 GitHub MCP 的全部工具",
+    });
+
+    expect(toolsButton).toHaveTextContent("工具 2");
+
+    fireEvent.click(toolsButton);
+
+    expect(await screen.findByText("list_issues")).toBeInTheDocument();
+    expect(screen.getByTestId("dialog-overlay")).toHaveAttribute(
+      "data-backdrop-style",
+      "transparent-intercept",
+    );
+    expect(screen.getByTestId("dialog-overlay").className).toContain("bg-transparent");
+    expect(screen.getByTestId("dialog-content").className).toContain("bg-transparent");
+    expect(screen.getByTestId("dialog-content").className).toContain("border-0");
+    expect(screen.queryByText("共 2 个工具")).not.toBeInTheDocument();
+    expect(within(screen.getByTestId("dialog-content")).getByText("GitHub MCP").closest("[data-slot='dialog-header']")?.className).not.toContain(
+      "border-b",
+    );
+    expect(screen.getByTestId("mcp-tools-list").className).toContain("pb-8");
+    expect(screen.getByText("list_issues")).toBeInTheDocument();
+    expect(screen.getByText("create_issue")).toBeInTheDocument();
   });
 
   it("uses the global confirm flow before deleting a server", async () => {

@@ -9,7 +9,10 @@ const motionPreference = vi.hoisted(() => ({
 }));
 
 const { mockCodeToHtml } = vi.hoisted(() => ({
-  mockCodeToHtml: vi.fn(async (code: string) => `<pre class="shiki"><code>${code}</code></pre>`),
+  mockCodeToHtml: vi.fn(
+    async (code: string, options?: { theme?: string }) =>
+      `<pre class="shiki ${options?.theme ?? ""}"><code>${code}</code></pre>`,
+  ),
 }));
 
 const { mockMermaidInitialize, mockMermaidRender } = vi.hoisted(() => ({
@@ -103,6 +106,7 @@ function renderAssistant(content: string, overrides?: Partial<ChatMessage>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  document.documentElement.classList.remove("dark");
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText: vi.fn() },
@@ -111,6 +115,7 @@ beforeEach(() => {
 
 afterEach(() => {
   motionPreference.value = false;
+  document.documentElement.classList.remove("dark");
 });
 
 describe("AssistantMessageBody", () => {
@@ -171,6 +176,7 @@ describe("AssistantMessageBody", () => {
     await waitFor(() => {
       expect(container.querySelector(".shiki")).not.toBeNull();
     });
+    expect(screen.getByText("1 行")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "复制代码" }));
 
@@ -184,6 +190,20 @@ describe("AssistantMessageBody", () => {
       expect(screen.getByLabelText("TS language icon")).toBeInTheDocument();
     });
     expect(screen.getByText("ts")).toBeInTheDocument();
+  });
+
+  it("switches code highlighting to the dark shiki theme when the app is in dark mode", async () => {
+    document.documentElement.classList.add("dark");
+
+    const { container } = renderAssistant("```ts\nconst dark = true;\n```");
+
+    await waitFor(() => {
+      expect(container.querySelector(".shiki.github-dark")).not.toBeNull();
+    });
+    expect(mockCodeToHtml).toHaveBeenCalledWith(
+      "const dark = true;",
+      expect.objectContaining({ theme: "github-dark" }),
+    );
   });
 
   it("collapses long code blocks by default and expands them on demand", async () => {
@@ -207,6 +227,8 @@ line 12
     await waitFor(() => {
       expect(container.querySelector("[data-code-collapsed='true']")).not.toBeNull();
     });
+    expect(screen.getByText("已折叠 12 行代码")).toBeInTheDocument();
+    expect(screen.getByText("展开查看更多")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "展开代码" }));
 
@@ -252,6 +274,8 @@ line 12
 
     const image = screen.getByRole("img", { name: "Banana 截图" });
     expect(image).toHaveAttribute("src", "https://example.com/banana.png");
+    expect(screen.getByText("点击放大")).toBeInTheDocument();
+    expect(screen.getAllByText("example.com")).toHaveLength(2);
   });
 
   it("renders standalone links as preview cards with favicon, protocol badge, and copy action", async () => {
@@ -283,9 +307,10 @@ line 12
   });
 
   it("opens a larger image preview dialog when a markdown image is clicked", async () => {
-    renderAssistant("![Banana 截图](https://example.com/banana.png)");
+    const { container } = renderAssistant("![Banana 截图](https://example.com/banana.png)");
 
     const previewImage = await screen.findByRole("img", { name: "Banana 截图" });
+    expect(container.querySelector("[data-markdown-image-card='true']")).not.toBeNull();
     fireEvent.click(previewImage);
 
     await waitFor(() => {
@@ -297,6 +322,75 @@ line 12
       "href",
       "https://example.com/banana.png",
     );
+  });
+
+  it("navigates between multiple markdown images in the same message preview", async () => {
+    const content = [
+      "![第一张](https://example.com/first.png)",
+      "",
+      "![第二张](https://example.com/second.png)",
+    ].join("\n");
+
+    renderAssistant(content);
+
+    const secondPreview = await screen.findByRole("img", { name: "第二张" });
+    fireEvent.click(secondPreview);
+
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "第二张 预览" })).toBeInTheDocument();
+    });
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "上一张" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "第一张 预览" })).toBeInTheDocument();
+    });
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "第二张 预览" })).toBeInTheDocument();
+    });
+  });
+
+  it("supports zoom, drag, and per-image reset inside the markdown image preview dialog", async () => {
+    const content = [
+      "![第一张](https://example.com/first.png)",
+      "",
+      "![第二张](https://example.com/second.png)",
+    ].join("\n");
+
+    renderAssistant(content);
+
+    fireEvent.click(await screen.findByRole("img", { name: "第一张" }));
+
+    const preview = await screen.findByRole("img", { name: "第一张 预览" });
+    expect(preview).toHaveStyle({
+      transform: "translate3d(0px, 0px, 0) scale(1)",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "放大图片" }));
+
+    await waitFor(() => {
+      expect(preview.style.transform).toContain("scale(1.4)");
+    });
+
+    fireEvent.mouseDown(preview, { clientX: 120, clientY: 100 });
+    fireEvent.mouseMove(preview, { clientX: 168, clientY: 136 });
+    fireEvent.mouseUp(preview);
+
+    await waitFor(() => {
+      expect(preview.style.transform).toContain("translate3d(48px, 36px, 0)");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "下一张" }));
+
+    const secondPreview = await screen.findByRole("img", { name: "第二张 预览" });
+    expect(secondPreview).toHaveStyle({
+      transform: "translate3d(0px, 0px, 0) scale(1)",
+    });
   });
 
   it("does not activate unsafe links or raw html payloads", async () => {

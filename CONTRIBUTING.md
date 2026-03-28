@@ -33,6 +33,8 @@ pnpm check:rust
 
 ## Version workflow
 - `package.json` is the single editable version source.
+- Preferred release entrypoint: `pnpm release:prepare` (defaults to a patch bump).
+- Use `pnpm release:prepare minor`, `pnpm release:prepare major`, or `pnpm release:prepare 0.2.0` when the release needs a different target.
 - Use `pnpm version:patch`, `pnpm version:minor`, or `pnpm version:major` for normal bumps.
 - Use `pnpm version:set -- <x.y.z>` when you need an exact version.
 - Run `pnpm changelog:check` before opening a PR or tagging a release.

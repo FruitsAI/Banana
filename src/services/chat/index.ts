@@ -20,6 +20,7 @@ import {
 import {
   createRuntimeToolMap as createRuntimeToolMapInternal,
   normalizeToolFailure as normalizeToolFailureInternal,
+  preloadRuntimeToolDiscovery as preloadRuntimeToolDiscoveryInternal,
   normalizeToolSuccess as normalizeToolSuccessInternal,
 } from "./mcp-tools";
 import {
@@ -133,6 +134,16 @@ export async function createRuntimeToolMap(
     return await createRuntimeToolMapInternal(...args);
   } catch (error) {
     throw wrapError("createRuntimeToolMap", error);
+  }
+}
+
+export async function preloadRuntimeToolDiscovery(
+  ...args: Parameters<typeof preloadRuntimeToolDiscoveryInternal>
+): ReturnType<typeof preloadRuntimeToolDiscoveryInternal> {
+  try {
+    return await preloadRuntimeToolDiscoveryInternal(...args);
+  } catch (error) {
+    throw wrapError("preloadRuntimeToolDiscovery", error);
   }
 }
 

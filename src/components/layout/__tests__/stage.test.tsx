@@ -14,6 +14,11 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }));
 
+const { mockGetMcpServersForChat, mockPreloadRuntimeToolDiscovery } = vi.hoisted(() => ({
+  mockGetMcpServersForChat: vi.fn(),
+  mockPreloadRuntimeToolDiscovery: vi.fn(),
+}));
+
 const {
   mockEnsureProviderModelsReady,
   mockEnsureProvidersReady,
@@ -48,6 +53,11 @@ vi.mock("@/hooks/use-toast", () => ({
     success: mockToastSuccess,
     error: mockToastError,
   }),
+}));
+
+vi.mock("@/services/chat", () => ({
+  getMcpServersForChat: mockGetMcpServersForChat,
+  preloadRuntimeToolDiscovery: mockPreloadRuntimeToolDiscovery,
 }));
 
 vi.mock("@/lib/model-settings", () => ({
@@ -91,6 +101,7 @@ vi.mock("@hugeicons/core-free-icons", () => ({
   AiIdeaIcon: "icon",
   RoboticIcon: "icon",
   ArrowUp02Icon: "icon",
+  StopIcon: "icon",
   InternetIcon: "icon",
   AiBrain01Icon: "icon",
   ArrowRight01Icon: "icon",
@@ -157,6 +168,8 @@ describe("Stage", () => {
       configurable: true,
       value: vi.fn(),
     });
+    mockGetMcpServersForChat.mockResolvedValue([]);
+    mockPreloadRuntimeToolDiscovery.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -203,6 +216,38 @@ describe("Stage", () => {
     });
 
     expect(screen.getByLabelText("消息输入框")).toHaveValue("");
+  });
+
+  it("warms MCP tool discovery in the background after the stage mounts", async () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [],
+      append: vi.fn(async () => true),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+      stop: vi.fn(),
+    });
+    mockGetMcpServersForChat.mockResolvedValue([
+      {
+        id: "server-1",
+        command: "clock",
+        is_enabled: true,
+      },
+    ]);
+
+    render(<Stage />);
+
+    await waitFor(() => {
+      expect(mockGetMcpServersForChat).toHaveBeenCalledTimes(1);
+      expect(mockPreloadRuntimeToolDiscovery).toHaveBeenCalledWith([
+        {
+          id: "server-1",
+          command: "clock",
+          is_enabled: true,
+        },
+      ]);
+    });
   });
 
   it("sends the message with search disabled after toggling the search control off", async () => {
@@ -281,6 +326,8 @@ describe("Stage", () => {
       "var(--selection-active-foreground, var(--brand-primary))",
     );
     expect(thinkingToggle.getAttribute("style")).toContain("var(--selection-active-fill)");
+    expect(searchToggle.className).toContain("h-10");
+    expect(thinkingToggle.className).toContain("h-10");
   });
 
   it("preserves the composer draft when append reports a failed send", async () => {
@@ -306,6 +353,58 @@ describe("Stage", () => {
     });
 
     expect(screen.getByLabelText("消息输入框")).toHaveValue("hello banana");
+  });
+
+  it("turns the composer action into a stop control while streaming and aborts the active reply", () => {
+    const stop = vi.fn();
+
+    mockUseBananaChat.mockReturnValue({
+      messages: [userMessage],
+      append: vi.fn(),
+      isLoading: true,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+      stop,
+    });
+
+    render(<Stage />);
+
+    const stopButton = screen.getByLabelText("停止对话");
+
+    expect(stopButton).toHaveAttribute("data-send-state", "stop");
+    expect(screen.queryByLabelText("发送消息")).not.toBeInTheDocument();
+
+    fireEvent.click(stopButton);
+
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the streaming thinking indicator as a left-aligned liquid accent chip", () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [userMessage],
+      append: vi.fn(),
+      isLoading: true,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+      stop: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    const indicator = screen.getByTestId("stage-thinking-indicator");
+
+    expect(indicator).toHaveAttribute("data-selection-style", "liquid-accent");
+    expect(indicator).toHaveAttribute("data-thinking-motion", "animated");
+    expect(indicator.className).toContain("self-start");
+    expect(indicator.className).toContain("ml-1");
+    expect(indicator.className).toContain("w-fit");
+    expect(indicator.getAttribute("style")).toContain("var(--selection-active-list-fill");
+    expect(indicator.getAttribute("style")).toContain("var(--selection-active-list-shadow");
+    expect(screen.getByText("AI 正在思考")).toBeInTheDocument();
+    expect(screen.queryByText("AI 正在思考...")).not.toBeInTheDocument();
+    expect(indicator.querySelectorAll("[data-thinking-orbs='true']")).toHaveLength(2);
   });
 
   it("exits edit mode immediately after saving so reruns stream in the normal message view", async () => {
@@ -413,10 +512,12 @@ describe("Stage", () => {
 
     const userSurface = screen.getByText("hello banana").closest("[data-message-variant='user']");
     const assistantSurface = screen.getByText("assistant reply").closest("[data-message-variant='assistant']");
+    const userBody = screen.getByText("hello banana").closest("[data-user-message-body='true']");
 
     expect(userSurface).toBeTruthy();
     expect(userSurface?.className).toContain("w-fit");
     expect(userSurface?.className).toContain("max-w-[calc(100%-80px)]");
+    expect(userBody).toBeTruthy();
 
     expect(assistantSurface).toBeTruthy();
     expect(assistantSurface?.className).toContain("w-[calc(100%-80px)]");
@@ -424,6 +525,35 @@ describe("Stage", () => {
     expect(assistantSurface?.parentElement?.className).toContain("w-full");
     expect(screen.getByTestId("stage-conversation-scroll").className).toContain("pb-14");
     expect(screen.getByTestId("stage-conversation-scroll").className).toContain("sm:pb-16");
+  });
+
+  it("renders user messages as lightweight plain text instead of assistant markdown chrome", async () => {
+    mockUseBananaChat.mockReturnValue({
+      messages: [
+        {
+          id: "msg-user-markdown-literal",
+          role: "user",
+          content: "**literal**\n```ts\nconst demo = true;\n```",
+          createdAt: "2026-03-20T12:00:00.000Z",
+        },
+      ],
+      append: vi.fn(),
+      isLoading: false,
+      error: null,
+      regenerate: vi.fn(),
+      updateMessageContent: vi.fn(),
+    });
+
+    render(<Stage />);
+
+    await waitFor(() => {
+      const userBody = screen.getByTestId("stage-conversation-scroll").querySelector(
+        "[data-user-message-body='true']",
+      );
+
+      expect(userBody?.textContent).toBe("**literal**\n```ts\nconst demo = true;\n```");
+    });
+    expect(screen.queryByRole("button", { name: "复制代码" })).not.toBeInTheDocument();
   });
 
   it("shows failed MCP tool results with an error state instead of a success badge", () => {
@@ -620,9 +750,17 @@ describe("Stage", () => {
 
     const searchToggle = screen.getByLabelText("切换联网搜索");
     const thinkingToggle = screen.getByLabelText("切换深度思考");
+    const utilityControls = screen.getByTestId("composer-utility-controls");
+    const sendButton = screen.getByLabelText("发送消息");
 
     expect(searchToggle).toHaveAttribute("aria-pressed", "true");
     expect(thinkingToggle).toHaveAttribute("aria-pressed", "true");
+    expect(utilityControls.className).toContain("gap-2");
+    expect(utilityControls.className).not.toContain("rounded-full");
+    expect(utilityControls.className).not.toContain("border");
+    expect(searchToggle.className).toContain("h-10");
+    expect(thinkingToggle.className).toContain("h-10");
+    expect(sendButton.className).toContain("h-10");
 
     fireEvent.click(searchToggle);
     await waitFor(() => {

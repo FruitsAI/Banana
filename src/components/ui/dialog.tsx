@@ -57,16 +57,12 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      data-backdrop-style="frosted-atmosphere"
+      data-backdrop-style="transparent-intercept"
       data-testid="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-[rgba(6,10,18,0.26)] backdrop-blur-[18px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:duration-250 data-[state=closed]:duration-200",
+        "fixed inset-0 z-50 bg-transparent data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:duration-250 data-[state=closed]:duration-200",
         className
       )}
-      style={{
-        background:
-          "radial-gradient(circle at top, rgba(59,130,246,0.1), transparent 26%), radial-gradient(circle at bottom, rgba(255,255,255,0.08), transparent 34%), rgba(6,10,18,0.22)",
-      }}
       {...props}
     />
   )
@@ -88,24 +84,30 @@ function DialogContent({
         data-surface-tone="liquid-modal"
         data-testid="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-1.5rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden rounded-[32px] border p-6 shadow-[0_36px_90px_rgba(15,23,42,0.22)] outline-none sm:max-w-lg motion-safe:will-change-transform data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-3 data-[state=open]:duration-300 data-[state=closed]:duration-200",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-1.5rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden rounded-[30px] border bg-transparent p-6 outline-none sm:max-w-lg motion-safe:will-change-transform data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-3 data-[state=open]:duration-300 data-[state=closed]:duration-200",
           className
         )}
         style={{
           ...getMaterialSurfaceStyle("floating", "lg"),
           ["--liquid-surface-fill" as string]:
-            "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.08) 100%), var(--liquid-material-base-background)",
+            "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 100%), color-mix(in srgb, var(--material-floating-background) 84%, transparent)",
+          ["--liquid-surface-shadow" as string]:
+            "0 24px 64px rgba(15,23,42,0.14), inset 0 1px 0 rgba(255,255,255,0.54)",
+          ["--liquid-surface-backdrop-filter" as string]:
+            "blur(calc(24px + var(--liquid-surface-blur-boost, 0px))) saturate(calc(176% + var(--liquid-surface-saturate-boost, 0%))) brightness(calc(1.02 + var(--liquid-surface-brightness-boost, 0)))",
+          ["--liquid-surface-ambient-opacity" as string]: "0.14",
+          ["--liquid-clarity-strength" as string]: "0.08",
         }}
         data-material-role="floating"
         data-surface-clarity="high"
         {...props}
       >
         <div
-          className="pointer-events-none absolute inset-0 opacity-95"
+          className="pointer-events-none absolute inset-0 opacity-80"
           aria-hidden="true"
           style={{
             background:
-              "radial-gradient(circle at top left, rgba(255,255,255,0.3), transparent 28%), radial-gradient(circle at bottom right, rgba(59,130,246,0.14), transparent 34%)",
+              "radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 28%), radial-gradient(circle at bottom right, rgba(59,130,246,0.1), transparent 36%)",
           }}
         />
         <div
@@ -113,7 +115,7 @@ function DialogContent({
           aria-hidden="true"
           style={{
             background:
-              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.82) 16%, rgba(255,255,255,0.18) 84%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.74) 16%, rgba(255,255,255,0.12) 84%, transparent 100%)",
           }}
         />
         {children}
@@ -122,8 +124,11 @@ function DialogContent({
             data-slot="dialog-close"
             className="absolute top-4 right-4 z-10 rounded-full border p-2 text-[var(--icon-secondary)] opacity-90 transition-[transform,opacity,background-color,color,border-color] duration-200 ease-out hover:opacity-100 motion-safe:hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary-light)]"
             style={{
-              background: "rgba(255,255,255,0.12)",
-              borderColor: "rgba(255,255,255,0.16)",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 100%)",
+              borderColor:
+                "color-mix(in srgb, var(--material-floating-border) 88%, rgba(255,255,255,0.12))",
+              boxShadow: "0 10px 22px rgba(15,23,42,0.08)",
             }}
           >
             <HugeiconsIcon icon={Cancel01Icon} size={16} />

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -110,10 +109,6 @@ export function AddModelDialog({
   }, [initialValues, open]);
 
   const dialogTitle = mode === "edit" ? "修改模型" : "添加模型";
-  const dialogDescription =
-    mode === "edit"
-      ? "修改模型 ID、模型名称和分组名称后，将保存到当前 Provider。"
-      : "录入模型 ID、模型名称和分组名称后，将保存到当前 Provider。";
   const submitIdleText = mode === "edit" ? "保存修改" : "添加模型";
   const submitBusyText = mode === "edit" ? "保存中..." : "添加中...";
 
@@ -174,6 +169,7 @@ export function AddModelDialog({
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         showCloseButton={!isSubmitting}
         className="max-w-2xl overflow-hidden border-0 bg-transparent p-0 shadow-none"
       >
@@ -235,12 +231,6 @@ export function AddModelDialog({
                   Model
                 </span>
               </div>
-              <DialogDescription
-                className="text-[13px]"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {dialogDescription}
-              </DialogDescription>
             </DialogHeader>
 
             <motion.div
@@ -277,7 +267,7 @@ export function AddModelDialog({
                   value={modelId}
                   onChange={(event) => handleModelIdChange(event.target.value)}
                   placeholder="必填，例如 gpt-4o-mini"
-                  className="h-10 text-sm md:text-sm"
+                  className="text-sm md:text-sm"
                   surface="floating"
                 />
               </motion.div>
@@ -299,7 +289,7 @@ export function AddModelDialog({
                     setModelName(event.target.value);
                   }}
                   placeholder="例如 GPT-4o Mini"
-                  className="h-10 text-sm md:text-sm"
+                  className="text-sm md:text-sm"
                   surface="floating"
                 />
               </motion.div>
@@ -321,7 +311,7 @@ export function AddModelDialog({
                     setGroupName(event.target.value);
                   }}
                   placeholder="例如 OpenAI"
-                  className="h-10 text-sm md:text-sm"
+                  className="text-sm md:text-sm"
                   surface="floating"
                 />
               </motion.div>

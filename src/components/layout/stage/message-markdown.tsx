@@ -5,12 +5,14 @@ import {
   Children,
   cloneElement,
   isValidElement,
+  useRef,
   startTransition,
   useEffect,
   useId,
   useState,
   type HTMLAttributes,
   type ImgHTMLAttributes,
+  type MouseEvent as ReactMouseEvent,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -23,7 +25,6 @@ import { codeToHtml } from "shiki";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -31,6 +32,13 @@ import { cn } from "@/lib/utils";
 
 const MARKDOWN_BASE_URL = "https://banana.local/";
 const CODE_COLLAPSE_LINE_THRESHOLD = 10;
+const IMAGE_PREVIEW_MIN_SCALE = 1;
+const IMAGE_PREVIEW_MAX_SCALE = 4;
+const IMAGE_PREVIEW_SCALE_STEP = 0.4;
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
 
 function extractTextContent(value: ReactNode): string {
   if (typeof value === "string" || typeof value === "number") {
@@ -86,6 +94,37 @@ function isAllowedUrl(
 function normalizeCodeLanguage(className?: string): string {
   const match = /language-([\w-]+)/.exec(className ?? "");
   return match?.[1]?.toLowerCase() ?? "text";
+}
+
+function useDocumentThemeMode(): "light" | "dark" {
+  const [themeMode, setThemeMode] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const syncThemeMode = () => {
+      setThemeMode(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    };
+
+    syncThemeMode();
+
+    const observer = new MutationObserver(() => {
+      syncThemeMode();
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return themeMode;
 }
 
 function getLanguageBadge(language: string): { iconLabel: string; badgeText: string } {
@@ -152,6 +191,24 @@ function getFaviconUrl(href: string): string | null {
     return `https://www.google.com/s2/favicons?domain=${parsed.hostname}&sz=64`;
   } catch {
     return null;
+  }
+}
+
+function getImageSourceLabel(src: string): string {
+  if (/^data:image\//i.test(src)) {
+    return "内嵌图像";
+  }
+
+  try {
+    const parsed = new URL(src, MARKDOWN_BASE_URL);
+
+    if (parsed.protocol === "file:" || parsed.protocol === "blob:" || parsed.host === "banana.local") {
+      return "本地资源";
+    }
+
+    return parsed.host || "图像预览";
+  } catch {
+    return "图像预览";
   }
 }
 
@@ -243,50 +300,404 @@ function MarkdownImage({
 }: ImgHTMLAttributes<HTMLImageElement> & { node?: unknown }) {
   void _node;
   const [isOpen, setIsOpen] = useState(false);
-
-  if (typeof src !== "string") {
-    return null;
-  }
-
-  if (
-    !isAllowedUrl(src, new Set(["http:", "https:", "file:", "blob:"]), {
+  const [galleryItems, setGalleryItems] = useState<Array<{ alt: string; src: string }>>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [touchStartPoint, setTouchStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [previewScale, setPreviewScale] = useState(IMAGE_PREVIEW_MIN_SCALE);
+  const [previewOffset, setPreviewOffset] = useState({ x: 0, y: 0 });
+  const [dragState, setDragState] = useState<{
+    originX: number;
+    originY: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const previewFrameRef = useRef<HTMLDivElement | null>(null);
+  const previewImageRef = useRef<HTMLImageElement | null>(null);
+  const imageSrc = typeof src === "string" ? src : null;
+  const isSafeImageSource =
+    imageSrc !== null &&
+    isAllowedUrl(imageSrc, new Set(["http:", "https:", "file:", "blob:"]), {
       allowDataImage: true,
-    })
-  ) {
-    return null;
-  }
+    });
 
   const accessibleAlt = alt?.trim() || "Markdown image";
+  const sourceLabel = imageSrc ? getImageSourceLabel(imageSrc) : "图像预览";
+  const activeItem = galleryItems[activeIndex] ?? { alt: accessibleAlt, src: imageSrc ?? "" };
+  const hasGallery = galleryItems.length > 1;
+  const canPanPreview = previewScale > IMAGE_PREVIEW_MIN_SCALE + 0.01;
+
+  const clampPreviewOffset = (offset: { x: number; y: number }, scale: number) => {
+    if (scale <= IMAGE_PREVIEW_MIN_SCALE) {
+      return { x: 0, y: 0 };
+    }
+
+    const frame = previewFrameRef.current;
+    const preview = previewImageRef.current;
+
+    if (
+      !frame ||
+      !preview ||
+      frame.clientWidth === 0 ||
+      frame.clientHeight === 0 ||
+      preview.clientWidth === 0 ||
+      preview.clientHeight === 0
+    ) {
+      return offset;
+    }
+
+    const maxX = Math.max(0, ((preview.clientWidth * scale) - frame.clientWidth) / 2);
+    const maxY = Math.max(0, ((preview.clientHeight * scale) - frame.clientHeight) / 2);
+
+    return {
+      x: clampNumber(offset.x, -maxX, maxX),
+      y: clampNumber(offset.y, -maxY, maxY),
+    };
+  };
+
+  const resetPreviewState = () => {
+    setPreviewScale(IMAGE_PREVIEW_MIN_SCALE);
+    setPreviewOffset({ x: 0, y: 0 });
+    setDragState(null);
+    setTouchStartPoint(null);
+  };
+
+  const openPreview = () => {
+    const currentButton = triggerRef.current;
+    const markdownRoot = currentButton?.closest("[data-markdown-content='true']");
+    const buttons = markdownRoot
+      ? Array.from(markdownRoot.querySelectorAll<HTMLButtonElement>("[data-markdown-image-card='true']"))
+      : [];
+
+    const items = buttons
+      .map((button) => {
+        const previewImage = button.querySelector<HTMLImageElement>("img.markdown-image");
+
+        if (!previewImage?.src) {
+          return null;
+        }
+
+        return {
+          alt: previewImage.alt?.trim() || "Markdown image",
+          src: previewImage.src,
+        };
+      })
+      .filter((item): item is { alt: string; src: string } => Boolean(item));
+
+    const nextGallery = items.length > 0 ? items : [{ alt: accessibleAlt, src: imageSrc ?? "" }];
+    const nextIndex = buttons.length > 0 && currentButton ? Math.max(buttons.indexOf(currentButton), 0) : 0;
+
+    setGalleryItems(nextGallery);
+    setActiveIndex(nextIndex);
+    resetPreviewState();
+    setIsOpen(true);
+  };
+
+  const moveGallery = (direction: "next" | "prev") => {
+    if (galleryItems.length <= 1) {
+      return;
+    }
+
+    resetPreviewState();
+    setActiveIndex((current) => {
+      if (direction === "next") {
+        return (current + 1) % galleryItems.length;
+      }
+
+      return (current - 1 + galleryItems.length) % galleryItems.length;
+    });
+  };
+
+  const updatePreviewScale = (updater: (current: number) => number) => {
+    const nextScale = clampNumber(
+      Number(updater(previewScale).toFixed(2)),
+      IMAGE_PREVIEW_MIN_SCALE,
+      IMAGE_PREVIEW_MAX_SCALE,
+    );
+
+    setPreviewScale(nextScale);
+    setPreviewOffset((currentOffset) => clampPreviewOffset(currentOffset, nextScale));
+
+    if (nextScale <= IMAGE_PREVIEW_MIN_SCALE) {
+      setDragState(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen || galleryItems.length <= 1) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        resetPreviewState();
+        setActiveIndex((current) => (current - 1 + galleryItems.length) % galleryItems.length);
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        resetPreviewState();
+        setActiveIndex((current) => (current + 1) % galleryItems.length);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [galleryItems.length, isOpen]);
+
+  useEffect(() => {
+    if (!dragState) {
+      return;
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      setPreviewOffset(
+        clampPreviewOffset(
+          {
+            x: dragState.originX + event.clientX - dragState.startX,
+            y: dragState.originY + event.clientY - dragState.startY,
+          },
+          previewScale,
+        ),
+      );
+    };
+
+    const stopDragging = () => {
+      setDragState(null);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", stopDragging);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", stopDragging);
+    };
+  }, [dragState, previewScale]);
+
+  const handleTouchEnd = (clientX: number) => {
+    if (canPanPreview) {
+      setTouchStartPoint(null);
+      return;
+    }
+
+    if (touchStartPoint === null || galleryItems.length <= 1) {
+      setTouchStartPoint(null);
+      return;
+    }
+
+    const deltaX = clientX - touchStartPoint.x;
+    setTouchStartPoint(null);
+
+    if (Math.abs(deltaX) < 48) {
+      return;
+    }
+
+    moveGallery(deltaX < 0 ? "next" : "prev");
+  };
+
+  const handlePreviewMouseDown = (event: ReactMouseEvent<HTMLImageElement>) => {
+    if (!canPanPreview) {
+      return;
+    }
+
+    event.preventDefault();
+    setDragState({
+      originX: previewOffset.x,
+      originY: previewOffset.y,
+      startX: event.clientX,
+      startY: event.clientY,
+    });
+  };
+
+  if (!isSafeImageSource || !imageSrc) {
+    return null;
+  }
 
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         className="markdown-image-link"
+        data-markdown-image-card="true"
         data-markdown-image-link="true"
-        onClick={() => setIsOpen(true)}
+        onClick={openPreview}
       >
-        <img
-          {...props}
-          alt={accessibleAlt}
-          className={cn("markdown-image", className)}
-          loading="lazy"
-          src={src}
-        />
+        <span className="markdown-image-shell">
+          <span className="markdown-image-frame">
+            <img
+              {...props}
+              alt={accessibleAlt}
+              className={cn("markdown-image", className)}
+              loading="lazy"
+              src={src}
+            />
+            <span className="markdown-image-zoom-badge" aria-hidden="true">
+              点击放大
+            </span>
+          </span>
+          <span className="markdown-image-meta">
+            <span className="markdown-image-caption">{accessibleAlt}</span>
+            <span className="markdown-image-hint">{sourceLabel}</span>
+          </span>
+        </span>
       </button>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="markdown-image-dialog max-w-[min(96vw,64rem)] p-4 sm:p-5">
+      <Dialog
+        open={isOpen}
+        onOpenChange={(nextOpen) => {
+          setIsOpen(nextOpen);
+
+          if (!nextOpen) {
+            resetPreviewState();
+          }
+        }}
+      >
+        <DialogContent
+          aria-describedby={undefined}
+          className="markdown-image-dialog max-w-[min(96vw,64rem)] p-4 sm:p-5"
+        >
           <DialogHeader className="space-y-1">
-            <DialogTitle>{accessibleAlt}</DialogTitle>
-            <DialogDescription>点击下方链接可在新窗口查看原图。</DialogDescription>
+            <div className="markdown-image-dialog-heading">
+              <div className="markdown-image-dialog-copy">
+                <DialogTitle>{activeItem.alt}</DialogTitle>
+              </div>
+              {hasGallery && (
+                <div className="markdown-image-dialog-nav" data-markdown-image-nav="true">
+                  <button
+                    type="button"
+                    className="markdown-image-dialog-arrow"
+                    aria-label="上一张"
+                    onClick={() => moveGallery("prev")}
+                  >
+                    上一张
+                  </button>
+                  <span className="markdown-image-dialog-counter" aria-live="polite">
+                    {activeIndex + 1} / {galleryItems.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="markdown-image-dialog-arrow"
+                    aria-label="下一张"
+                    onClick={() => moveGallery("next")}
+                  >
+                    下一张
+                  </button>
+                </div>
+              )}
+            </div>
           </DialogHeader>
-          <div className="markdown-image-dialog-body">
-            <img alt={`${accessibleAlt} 预览`} className="markdown-image-dialog-preview" src={src} />
+          <div className="markdown-image-dialog-toolbar" data-markdown-image-zoom-controls="true">
+            <button
+              type="button"
+              className="markdown-image-dialog-arrow"
+              aria-label="缩小图片"
+              disabled={previewScale <= IMAGE_PREVIEW_MIN_SCALE}
+              onClick={() => {
+                updatePreviewScale((current) => current - IMAGE_PREVIEW_SCALE_STEP);
+              }}
+            >
+              缩小
+            </button>
+            <span className="markdown-image-dialog-zoom" aria-live="polite">
+              {Math.round(previewScale * 100)}%
+            </span>
+            <button
+              type="button"
+              className="markdown-image-dialog-arrow"
+              aria-label="放大图片"
+              disabled={previewScale >= IMAGE_PREVIEW_MAX_SCALE}
+              onClick={() => {
+                updatePreviewScale((current) => current + IMAGE_PREVIEW_SCALE_STEP);
+              }}
+            >
+              放大
+            </button>
+            <button
+              type="button"
+              className="markdown-image-dialog-arrow"
+              aria-label="重置预览"
+              disabled={
+                previewScale <= IMAGE_PREVIEW_MIN_SCALE &&
+                previewOffset.x === 0 &&
+                previewOffset.y === 0
+              }
+              onClick={resetPreviewState}
+            >
+              重置
+            </button>
+          </div>
+          <div
+            ref={previewFrameRef}
+            className="markdown-image-dialog-body"
+            data-preview-dragging={dragState ? "true" : "false"}
+            data-preview-zoomed={canPanPreview ? "true" : "false"}
+            onTouchEnd={(event) => {
+              const touch = event.changedTouches[0];
+              if (touch) {
+                handleTouchEnd(touch.clientX);
+              }
+            }}
+            onTouchMove={(event) => {
+              if (!canPanPreview) {
+                return;
+              }
+
+              const touch = event.touches[0];
+
+              if (!touch) {
+                return;
+              }
+
+              event.preventDefault();
+              setPreviewOffset((currentOffset) =>
+                clampPreviewOffset(
+                  {
+                    x: currentOffset.x + touch.clientX - (touchStartPoint?.x ?? touch.clientX),
+                    y: currentOffset.y + touch.clientY - (touchStartPoint?.y ?? touch.clientY),
+                  },
+                  previewScale,
+                ),
+              );
+              setTouchStartPoint({ x: touch.clientX, y: touch.clientY });
+            }}
+            onTouchStart={(event) => {
+              const touch = event.touches[0];
+              if (touch) {
+                setTouchStartPoint({ x: touch.clientX, y: touch.clientY });
+              }
+            }}
+            onWheel={(event) => {
+              event.preventDefault();
+              updatePreviewScale((current) =>
+                current + (event.deltaY < 0 ? IMAGE_PREVIEW_SCALE_STEP / 2 : -IMAGE_PREVIEW_SCALE_STEP / 2),
+              );
+            }}
+          >
+            <img
+              alt={`${activeItem.alt} 预览`}
+              className="markdown-image-dialog-preview"
+              data-preview-dragging={dragState ? "true" : "false"}
+              draggable={false}
+              onDragStart={(event) => {
+                event.preventDefault();
+              }}
+              onMouseDown={handlePreviewMouseDown}
+              ref={previewImageRef}
+              src={activeItem.src}
+              style={{
+                transform: `translate3d(${previewOffset.x}px, ${previewOffset.y}px, 0) scale(${previewScale})`,
+              }}
+            />
           </div>
           <a
             className="markdown-image-dialog-open"
-            href={src}
+            href={activeItem.src}
             rel="noopener noreferrer nofollow"
             target="_blank"
           >
@@ -462,18 +873,21 @@ function MarkdownParagraph({
 function CodeBlock({ code, language }: { code: string; language: string }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const themeMode = useDocumentThemeMode();
   const lineCount = code.split(/\r?\n/).length;
   const isCollapsible = lineCount > CODE_COLLAPSE_LINE_THRESHOLD;
   const [userExpanded, setUserExpanded] = useState(false);
   const isExpanded = !isCollapsible || userExpanded;
   const badge = getLanguageBadge(language);
+  const lineCountLabel = `${lineCount} 行`;
+  const shikiTheme = themeMode === "dark" ? "github-dark" : "github-light";
 
   useEffect(() => {
     let cancelled = false;
 
     void codeToHtml(code, {
       lang: language || "text",
-      theme: "github-light",
+      theme: shikiTheme,
     })
       .then((html: string) => {
         if (cancelled) {
@@ -497,7 +911,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
     return () => {
       cancelled = true;
     };
-  }, [code, language]);
+  }, [code, language, shikiTheme]);
 
   useEffect(() => {
     if (!copied) {
@@ -527,13 +941,18 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
       className="markdown-code-block"
       data-markdown-code-block="true"
       data-code-collapsed={isCollapsible && !isExpanded ? "true" : "false"}
+      data-code-lines={lineCount}
+      data-code-theme={themeMode}
     >
       <div className="markdown-code-toolbar">
         <div className="markdown-code-meta">
           <span aria-label={badge.iconLabel} className="markdown-code-icon">
             {badge.badgeText}
           </span>
-          <span className="markdown-code-language">{language}</span>
+          <div className="markdown-code-labels">
+            <span className="markdown-code-language">{language}</span>
+            <span className="markdown-code-line-count">{lineCountLabel}</span>
+          </div>
         </div>
         <div className="markdown-code-actions">
           {isCollapsible && (
@@ -574,6 +993,12 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
           <pre className="markdown-pre-fallback">
             <code>{code}</code>
           </pre>
+        )}
+        {isCollapsible && !isExpanded && (
+          <div className="markdown-code-collapse-hint" data-code-collapse-hint="true">
+            <span className="markdown-code-collapse-label">已折叠 {lineCount} 行代码</span>
+            <span className="markdown-code-collapse-help">展开查看更多</span>
+          </div>
         )}
       </div>
     </div>

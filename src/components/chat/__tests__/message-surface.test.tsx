@@ -176,6 +176,10 @@ describe("ToolInvocationCard", () => {
     expect(screen.getByText("工具调用")).toBeInTheDocument();
     expect(screen.getByText("1 个参数")).toBeInTheDocument();
     expect(screen.getByText("已完成")).toBeInTheDocument();
+    expect(screen.getByTestId("tool-invocation-layout").className).toContain("items-center");
+    expect(screen.getByTestId("tool-invocation-layout").className).not.toContain("items-start");
+    expect(screen.getByTestId("tool-invocation-icon-shell").className).toContain("self-center");
+    expect(screen.getByTestId("tool-invocation-status").className).toContain("self-center");
   });
 
   it("mounts and shows status text when reduced motion preference is null", () => {

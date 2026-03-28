@@ -17,11 +17,13 @@ import { IridescentBorder } from "@/components/ui/iridescent-border";
 import { TextareaField } from "@/components/ui/textarea-field";
 import { AssistantMessageBody } from "@/components/layout/stage/assistant-message";
 import { formatMessageTime } from "@/components/layout/stage-message-utils";
+import { UserMessageBody } from "@/components/layout/stage/user-message-body";
 import type { ChatMessage } from "@/domain/chat/types";
 import type { Model } from "@/domain/models/types";
 import { createMotionPresets } from "@/lib/motion-presets";
 import { cn } from "@/lib/utils";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
+import { getLiquidSelectionState, getLiquidSelectionStyle } from "@/components/ui/liquid-selection";
 
 const QUICK_ACTIONS = [
   { icon: ArtificialIntelligence08Icon, label: "帮我写一段代码" },
@@ -372,7 +374,12 @@ export function ConversationView({
                 )}
               >
                 <div
-                  className="prose dark:prose-invert relative z-10 max-w-none w-full text-current"
+                  className={cn(
+                    "relative z-10 text-current",
+                    message.role === "user"
+                      ? "inline-block max-w-full"
+                      : "prose dark:prose-invert max-w-none w-full",
+                  )}
                   style={{ overflowWrap: "anywhere" }}
                 >
                 {editingMessageId === message.id ? (
@@ -421,7 +428,11 @@ export function ConversationView({
                     <div className="text-[10px] opacity-30 text-right -mt-2">⌘ + Enter 快速保存</div>
                   </div>
                 ) : (
-                  <AssistantMessageBody message={message} />
+                  message.role === "user" ? (
+                    <UserMessageBody content={message.content} />
+                  ) : (
+                    <AssistantMessageBody message={message} />
+                  )
                 )}
               </div>
 
@@ -445,34 +456,39 @@ export function ConversationView({
 
       {isLoading && (
         <motion.div
-          className="ai-thinking self-start ml-14 mb-6"
+          className="ai-thinking self-start ml-1 mb-6 w-fit max-w-[calc(100%-96px)] text-left"
+          data-testid="stage-thinking-indicator"
+          data-thinking-motion={motionReduced ? "still" : "animated"}
+          data-thinking-surface="true"
+          data-selection-style={getLiquidSelectionState(true)}
           initial={motionReduced ? false : { opacity: 0, y: motionDistance(8) }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
           transition={{ duration: motionDuration(0.22) }}
+          style={getLiquidSelectionStyle({
+            active: true,
+            activeFill: "var(--selection-active-list-fill, var(--selection-active-fill))",
+            activeShadow: "var(--selection-active-list-shadow, var(--selection-active-shadow))",
+            activeBorderColor: "var(--selection-active-list-border, var(--selection-active-border))",
+            activeTextColor: "var(--selection-active-foreground, var(--brand-primary))",
+          })}
         >
-          <div className="flex items-center gap-2.5 text-[13px]" style={{ color: "var(--text-secondary)" }}>
-            <div className="flex gap-1 px-0.5">
-              <div
-                className={cn(
-                  "w-1 h-1 rounded-full bg-brand-primary",
-                  !motionReduced && "animate-bounce [animation-duration:1s]",
-                )}
-              />
-              <div
-                className={cn(
-                  "w-1 h-1 rounded-full bg-brand-primary",
-                  !motionReduced && "animate-bounce [animation-duration:1s] [animation-delay:0.2s]",
-                )}
-              />
-              <div
-                className={cn(
-                  "w-1 h-1 rounded-full bg-brand-primary",
-                  !motionReduced && "animate-bounce [animation-duration:1s] [animation-delay:0.4s]",
-                )}
-              />
+          <div className="ai-thinking-content" data-thinking-copy="true">
+            <div className="ai-thinking-orbs" data-thinking-orbs="true" aria-hidden="true">
+              <div className="ai-thinking-dot" />
+              <div className="ai-thinking-dot" />
+              <div className="ai-thinking-dot" />
             </div>
-            <span className="font-medium opacity-80 tracking-tight">AI 正在思考...</span>
+            <span className="ai-thinking-label">AI 正在思考</span>
+            <div
+              className="ai-thinking-orbs ai-thinking-orbs-end"
+              data-thinking-orbs="true"
+              aria-hidden="true"
+            >
+              <div className="ai-thinking-dot" />
+              <div className="ai-thinking-dot" />
+              <div className="ai-thinking-dot" />
+            </div>
           </div>
         </motion.div>
       )}

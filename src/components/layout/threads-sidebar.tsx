@@ -23,6 +23,8 @@ import { WorkspaceSidebarShell } from "@/components/layout/workspace-sidebar-she
 const CONTEXT_MENU_WIDTH = 168;
 const CONTEXT_MENU_HEIGHT = 60;
 const CONTEXT_MENU_MARGIN = 12;
+const THREADS_TOOLBAR_FLOAT_CLEARANCE = "8.75rem";
+const THREADS_DOCK_FLOAT_CLEARANCE = "6rem";
 
 function parseThreadDate(dateStr: string) {
   // Stored timestamps may arrive as UTC strings without a timezone suffix.
@@ -117,7 +119,11 @@ function ThreadItemComponent({
       data-selection-style={getLiquidSelectionState(selected)}
       style={getLiquidSelectionStyle({
         active: selected,
-        activeFill: "var(--selection-active-soft-fill, var(--selection-active-fill))",
+        activeFill: "var(--selection-active-list-fill, var(--selection-active-fill))",
+        activeShadow:
+          "var(--selection-active-list-shadow, var(--selection-active-shadow))",
+        activeBorderColor:
+          "var(--selection-active-list-border, var(--selection-active-border))",
         inactiveRole: "content",
         inactiveFill:
           "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%), var(--material-content-background)",
@@ -334,98 +340,113 @@ function ThreadsSidebarContent() {
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: motionDuration(0.35), ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="px-1.5 sm:px-2 pt-3 sm:pt-4 pb-2 sm:pb-3" data-testid="threads-sidebar-toolbar">
-        <div
-          className="rounded-[26px] border px-3 py-3 sm:px-4 sm:py-4"
-          style={{
-            ...getMaterialSurfaceStyle("floating", "sm"),
-            boxShadow: "none",
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 100%), rgba(255,255,255,0.04)",
-          }}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="text-[10px] font-medium uppercase tracking-[0.18em]" style={{ color: "var(--text-tertiary)" }}>
-                Library
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-20"
+        data-testid="threads-sidebar-toolbar"
+        data-sidebar-floating-layer="toolbar"
+        style={{ top: "var(--workspace-sidebar-safe-area-top, 0px)" }}
+      >
+        <div className="pointer-events-auto px-1.5 sm:px-2 pt-3 sm:pt-4 pb-2 sm:pb-3">
+          <div
+            className="rounded-[26px] border px-3 py-3 sm:px-4 sm:py-4"
+            style={{
+              ...getMaterialSurfaceStyle("floating", "sm"),
+              boxShadow: "none",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 100%), rgba(255,255,255,0.04)",
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-[10px] font-medium uppercase tracking-[0.18em]" style={{ color: "var(--text-tertiary)" }}>
+                  Library
+                </div>
+                <h1 className="mt-1 text-sm sm:text-base font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                  会话流
+                </h1>
               </div>
-              <h1 className="mt-1 text-sm sm:text-base font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-                会话流
-              </h1>
-            </div>
-            <motion.div
-              className="flex items-center gap-1.5 rounded-full border px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-medium flex-shrink-0"
-              style={{
-                background: "var(--material-floating-background)",
-                border: "1px solid var(--material-content-border)",
-                color: "var(--success)",
-              }}
-              whileHover={motionReduced ? undefined : { y: motionDistance(-1) }}
-            >
               <motion.div
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ background: "var(--success)" }}
-                animate={
+                className="flex items-center gap-1.5 rounded-full border px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-medium flex-shrink-0"
+                style={{
+                  background: "var(--material-floating-background)",
+                  border: "1px solid var(--material-content-border)",
+                  color: "var(--success)",
+                }}
+                whileHover={motionReduced ? undefined : { y: motionDistance(-1) }}
+              >
+                <motion.div
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: "var(--success)" }}
+                  animate={
+                    motionReduced
+                      ? undefined
+                      : {
+                          opacity: [0.8, 1, 0.8],
+                          boxShadow: [
+                            "0 0 0 0 var(--success-glow)",
+                            "0 0 0 4px transparent",
+                            "0 0 0 0 var(--success-glow)",
+                          ],
+                        }
+                  }
+                  transition={{
+                    duration: motionDuration(1.8),
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "easeInOut",
+                  }}
+                />
+                <span className="hidden sm:inline">本地已就绪</span>
+                <span className="sm:hidden">就绪</span>
+              </motion.div>
+            </div>
+
+            <div className="mt-3 flex min-w-0 items-center gap-2" data-testid="threads-sidebar-search-row">
+              <SearchInput
+                containerClassName="flex-1 min-w-0"
+                placeholder="搜索会话..."
+                aria-label="搜索会话记录"
+                surface="floating"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+
+              <motion.button
+                onClick={handleCreateThread}
+                className="sidebar-create-button material-interactive sidebar-glow-btn stage-action-button flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[22px] border"
+                data-hover-surface="floating"
+                data-testid="threads-sidebar-create-button"
+                style={{
+                  ...getMaterialSurfaceStyle("floating", "sm"),
+                  color: "var(--icon-secondary)",
+                }}
+                whileHover={
                   motionReduced
                     ? undefined
                     : {
-                        opacity: [0.8, 1, 0.8],
-                        boxShadow: [
-                          "0 0 0 0 var(--success-glow)",
-                          "0 0 0 4px transparent",
-                          "0 0 0 0 var(--success-glow)",
-                        ],
+                        y: motionDistance(-2),
+                        scale: Number((1 + 0.04 * factors.scale).toFixed(3)),
                       }
                 }
-                transition={{
-                  duration: motionDuration(1.8),
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: "easeInOut",
-                }}
-              />
-              <span className="hidden sm:inline">本地已就绪</span>
-              <span className="sm:hidden">就绪</span>
-            </motion.div>
-          </div>
-
-          <div className="mt-3 flex gap-2 min-w-0">
-            <SearchInput
-              containerClassName="flex-1 min-w-0"
-              placeholder="搜索会话..."
-              aria-label="搜索会话记录"
-              surface="floating"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-
-            <motion.button
-              onClick={handleCreateThread}
-              className="sidebar-create-button material-interactive sidebar-glow-btn stage-action-button flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border"
-              data-hover-surface="floating"
-              style={{
-                ...getMaterialSurfaceStyle("floating", "sm"),
-                color: "var(--icon-secondary)",
-              }}
-              whileHover={
-                motionReduced
-                  ? undefined
-                  : {
-                      y: motionDistance(-2),
-                      scale: Number((1 + 0.04 * factors.scale).toFixed(3)),
-                    }
-              }
-              whileTap={motionReduced ? undefined : { scale: motionScale(0.96) }}
-              title="新建会话"
-              aria-label="新建会话"
-              type="button"
-            >
-              <HugeiconsIcon icon={Add01Icon} size={16} />
-            </motion.button>
+                whileTap={motionReduced ? undefined : { scale: motionScale(0.96) }}
+                title="新建会话"
+                aria-label="新建会话"
+                type="button"
+              >
+                <HugeiconsIcon icon={Add01Icon} size={16} />
+              </motion.button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-1.5 sm:px-2 py-2 space-y-3 sm:space-y-4">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto px-1.5 sm:px-2 space-y-3 sm:space-y-4"
+        data-testid="threads-sidebar-scroll-region"
+        style={{
+          paddingTop: `calc(var(--workspace-sidebar-safe-area-top, 0px) + ${THREADS_TOOLBAR_FLOAT_CLEARANCE})`,
+          paddingBottom: THREADS_DOCK_FLOAT_CLEARANCE,
+        }}
+      >
         {filteredThreads.length === 0 && searchQuery.trim() === "" ? (
           <motion.div
             className="px-2 sm:px-3"
@@ -462,7 +483,7 @@ function ThreadsSidebarContent() {
             <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>
               今天
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {groupedThreads.today.map((thread, index) => (
                 <ThreadItemComponent
                   key={thread.id}
@@ -487,7 +508,7 @@ function ThreadsSidebarContent() {
             <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>
               昨天
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {groupedThreads.yesterday.map((thread, index) => (
                 <ThreadItemComponent
                   key={thread.id}
@@ -512,7 +533,7 @@ function ThreadsSidebarContent() {
             <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>
               更早
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {groupedThreads.earlier.map((thread, index) => (
                 <ThreadItemComponent
                   key={thread.id}
@@ -563,7 +584,15 @@ function ThreadsSidebarContent() {
         )}
       </div>
 
-      <SidebarUtilityDock activeView="home" />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20"
+        data-testid="threads-sidebar-dock-layer"
+        data-sidebar-floating-layer="dock"
+      >
+        <div className="pointer-events-auto">
+          <SidebarUtilityDock activeView="home" />
+        </div>
+      </div>
 
       {/* Context Menu - 使用 Portal 挂载到 body 以避免容器剪裁 */}
       {mounted && contextMenu && createPortal(

@@ -102,6 +102,9 @@ describe("AddProviderDialog", () => {
       />,
     );
 
+    expect(screen.queryByText("录入提供商信息后，将添加到左侧 Provider 列表。")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("例如 OpenAI").className).not.toContain("h-10");
+
     fireEvent.change(screen.getByPlaceholderText("例如 OpenAI"), {
       target: { value: " openai " },
     });
@@ -122,6 +125,9 @@ describe("AddProviderDialog", () => {
         onSubmitProvider={onSubmitProvider}
       />,
     );
+
+    expect(screen.queryByText("录入提供商信息后，将添加到左侧 Provider 列表。")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("例如 OpenAI").className).not.toContain("h-10");
 
     fireEvent.change(screen.getByPlaceholderText("例如 OpenAI"), {
       target: { value: "Gemini Cloud" },

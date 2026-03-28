@@ -6,7 +6,6 @@ import { Add01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
 import { ModelIcon } from "@/components/models/model-selector";
-import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 import {
   getLiquidSelectionState,
   getLiquidSelectionStyle,
@@ -52,7 +51,7 @@ export function ProviderSidebar({
       </div>
 
       <div
-        className="custom-scroll min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3"
+        className="custom-scroll min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3"
         aria-label="模型平台"
         data-provider-sidebar-scroll="true"
         role="listbox"
@@ -76,6 +75,8 @@ export function ProviderSidebar({
                 depth: "md",
                 inactiveRole: "content",
                 activeFill: "var(--selection-active-list-fill, var(--selection-active-fill))",
+                activeShadow:
+                  "var(--selection-active-list-shadow, var(--selection-active-shadow))",
                 activeBorderColor:
                   "var(--selection-active-list-border, var(--selection-active-border))",
                 inactiveFill:
@@ -133,13 +134,8 @@ export function ProviderSidebar({
       <div className="border-t px-4 py-3" style={{ borderColor: "var(--divider)" }}>
         <Button
           aria-label="添加"
-          variant="outline"
+          variant="default"
           className="h-10 w-full justify-center rounded-[18px] border px-3 text-xs"
-          style={{
-            ...getMaterialSurfaceStyle("content", "sm"),
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%), rgba(255,255,255,0.04)",
-          }}
           onClick={onOpenAddProvider}
         >
           <HugeiconsIcon icon={Add01Icon} size={14} className="mr-1.5" />

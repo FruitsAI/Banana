@@ -28,12 +28,14 @@
 
 1. Move release-ready notes from `Unreleased` to `## [x.y.z] - YYYY-MM-DD`.
 2. Refresh compare links at the bottom of `CHANGELOG.md`.
-3. Bump version with `pnpm version:patch|minor|major` or `pnpm version:set -- <x.y.z>`.
-4. Run `pnpm version:check`.
-5. Run `pnpm release:tag:print` and confirm the tag equals `v<x.y.z>`.
-6. Run `pnpm check:repo`.
-7. Create the local tag with `pnpm release:tag`.
-8. Push the tag with `pnpm release:tag:push` only when the GitHub draft release is meant to be triggered.
+3. Run `pnpm release:prepare` for the default patch release flow.
+4. Use `pnpm release:prepare minor`, `pnpm release:prepare major`, or `pnpm release:prepare 0.2.0` when the target is not a patch bump.
+5. If you are not using `release:prepare`, bump version with `pnpm version:patch|minor|major` or `pnpm version:set -- <x.y.z>`.
+6. Run `pnpm version:check`.
+7. Run `pnpm release:tag:print` and confirm the tag equals `v<x.y.z>`.
+8. Run `pnpm check:repo`.
+9. Create the local tag with `pnpm release:tag`.
+10. Push the tag with `pnpm release:tag:push` only when the GitHub draft release is meant to be triggered.
 
 ## Bilingual changelog pattern
 

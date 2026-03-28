@@ -26,7 +26,17 @@ vi.mock("@/lib/model-settings", () => ({
 
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogContent: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <div data-testid="manage-models-dialog-content" className={className}>
+      {children}
+    </div>
+  ),
   DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
 }));
 
@@ -118,6 +128,16 @@ describe("ManageModelsDialog", () => {
       />,
     );
 
+    expect(
+      screen.queryByText("搜索并添加可用模型，保持现有分组规则与能力过滤逻辑。"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("manage-models-dialog-content").className).toContain(
+      "!w-[min(820px,calc(100vw-1.5rem))]",
+    );
+    expect(screen.getByTestId("manage-models-dialog-content").className).toContain(
+      "sm:!max-w-none",
+    );
+
     await waitFor(() => {
       expect(screen.getByText("Reasoner Pro")).toBeInTheDocument();
     });
@@ -125,6 +145,18 @@ describe("ManageModelsDialog", () => {
     expect(screen.getByRole("button", { name: "推理" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "嵌入" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "联网" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "一键添加" }).getAttribute("style")).toContain(
+      "var(--brand-primary)",
+    );
+    expect(screen.getByRole("button", { name: "一键添加" }).getAttribute("style")).toContain(
+      "var(--selection-active-list-shadow",
+    );
+    expect(screen.getAllByRole("button", { name: "添加" })[0]?.getAttribute("style")).toContain(
+      "var(--brand-primary)",
+    );
+    expect(screen.getAllByRole("button", { name: "添加" })[0]?.getAttribute("style")).toContain(
+      "var(--selection-active-list-shadow",
+    );
     expect(screen.queryByRole("button", { name: "免费" })).not.toBeInTheDocument();
     expect(screen.getByText("Reasoner Pro").closest("[data-selection-style]")).toHaveAttribute(
       "data-selection-style",

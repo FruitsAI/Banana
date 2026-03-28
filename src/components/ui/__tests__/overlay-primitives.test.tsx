@@ -80,7 +80,7 @@ vi.mock("radix-ui", () => {
 });
 
 describe("overlay primitives", () => {
-  it("renders dialogs as liquid-glass modals with a frosted backdrop", () => {
+  it("renders dialogs as liquid-glass modals with a transparent interaction overlay", () => {
     render(
       <DialogContent showCloseButton={false}>
         <DialogTitle>删除确认</DialogTitle>
@@ -90,11 +90,16 @@ describe("overlay primitives", () => {
 
     expect(screen.getByTestId("dialog-overlay")).toHaveAttribute(
       "data-backdrop-style",
-      "frosted-atmosphere",
+      "transparent-intercept",
     );
+    expect(screen.getByTestId("dialog-overlay").className).toContain("bg-transparent");
+    expect(screen.getByTestId("dialog-overlay").className).not.toContain("backdrop-blur");
     expect(screen.getByTestId("dialog-content")).toHaveAttribute(
       "data-surface-tone",
       "liquid-modal",
+    );
+    expect(screen.getByTestId("dialog-content").className).not.toContain(
+      "shadow-[0_36px_90px_rgba(15,23,42,0.22)]",
     );
     expect(screen.getByTestId("dialog-content").getAttribute("style")).toContain(
       "--liquid-surface-fill",
