@@ -188,6 +188,7 @@ jobs:
           done
 
       - name: Inject updater public key into Tauri config
+        shell: bash
         env:
           BANANA_UPDATER_PUBLIC_KEY: ${{ secrets.BANANA_UPDATER_PUBLIC_KEY }}
         run: |

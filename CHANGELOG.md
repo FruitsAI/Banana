@@ -10,7 +10,7 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 
 ### Fixed
 
-- Inject the real updater public key into desktop release builds before packaging so GitHub releases no longer fail on placeholder values when generating signed updater assets. 在桌面发版打包前注入真实 updater 公钥，避免 GitHub Release 在生成签名更新产物时继续误用占位值而失败。
+- Inject the real updater public key into desktop release builds before packaging, using the same script path across macOS, Linux, and Windows so GitHub releases no longer fail on placeholder values or shell mismatches when generating signed updater assets. 在桌面发版打包前注入真实 updater 公钥，并统一 macOS、Linux、Windows 的执行方式，避免 GitHub Release 在生成签名更新产物时继续因为占位值或脚本环境不一致而失败。
 
 ## [0.1.1] - 2026-03-28
 
