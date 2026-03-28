@@ -175,7 +175,6 @@ jobs:
           NODE
 
       - name: Validate updater signing secrets
-        if: runner.os == 'macOS'
         shell: bash
         run: |
           for required_secret in \
@@ -189,7 +188,6 @@ jobs:
           done
 
       - name: Inject updater public key into Tauri config
-        if: runner.os == 'macOS'
         env:
           BANANA_UPDATER_PUBLIC_KEY: ${{ secrets.BANANA_UPDATER_PUBLIC_KEY }}
         run: |
