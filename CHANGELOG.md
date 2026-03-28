@@ -8,6 +8,10 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 
 ## [Unreleased]
 
+### Fixed
+
+- Inject the real updater public key into the macOS release build before packaging so stable GitHub releases can generate signed in-app update assets instead of failing on the placeholder value. 在 macOS 发版打包前注入真实 updater 公钥，避免稳定版 GitHub Release 继续误用占位值而导致应用内更新签名产物生成失败。
+
 ## [0.1.1] - 2026-03-28
 
 ### Added
