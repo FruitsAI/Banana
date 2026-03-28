@@ -11,7 +11,7 @@ For Banana, this skill assumes:
 - `CHANGELOG.md` follows Keep a Changelog structure
 - each changelog bullet is bilingual (`EN + 中文`)
 - `package.json` is the single editable version source
-- GitHub releases are unsigned draft releases
+- macOS stable GitHub releases include updater metadata and signing assets
 
 Load [references/banana-release-checklist.md](references/banana-release-checklist.md) when you need the Banana-specific checklist, release cautions, or example changelog patterns.
 
@@ -81,7 +81,7 @@ pnpm release:tag:print
 
 In the final response or commit summary:
 - state the changelog/version/tag status plainly
-- call out any unsigned-distribution caveats
+- call out updater, signing, notarization, or platform caveats plainly
 - mention anything intentionally not done, such as signing, notarization, or tag push
 
 ## Common Mistakes
@@ -91,4 +91,4 @@ In the final response or commit summary:
 - Letting `CHANGELOG.md`, `package.json.version`, and Git tag drift apart
 - Running a release-facing commit flow without a version bump when a new release version is expected
 - Hiding breaking changes inside vague `Changed` bullets
-- Pushing a release tag before verifying the GitHub draft release inputs
+- Pushing a release tag before verifying the stable GitHub release inputs and updater secrets

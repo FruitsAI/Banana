@@ -20,4 +20,30 @@ describe("release tag tools", () => {
       }),
     ).toThrow("Git tag already exists: v0.4.2");
   });
+
+  it("accepts a release trigger when the requested release version matches the project version", async () => {
+    const { assertReleaseVersionMatchesProjectVersion } = await import(
+      "../../../scripts/release-tools.mjs"
+    );
+
+    expect(() =>
+      assertReleaseVersionMatchesProjectVersion({
+        expectedVersion: "0.4.2",
+        projectVersion: "0.4.2",
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects a release trigger when the requested release version drifts from the project version", async () => {
+    const { assertReleaseVersionMatchesProjectVersion } = await import(
+      "../../../scripts/release-tools.mjs"
+    );
+
+    expect(() =>
+      assertReleaseVersionMatchesProjectVersion({
+        expectedVersion: "0.4.3",
+        projectVersion: "0.4.2",
+      }),
+    ).toThrow("Release version mismatch");
+  });
 });

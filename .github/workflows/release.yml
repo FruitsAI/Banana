@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without the leading v (for example 0.2.0)"
+        required: true
+        type: string
   push:
     tags:
       - "v*"
@@ -132,21 +137,76 @@ jobs:
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Resolve release metadata
+        id: release_meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG_NAME="${GITHUB_REF_NAME}"
+          else
+            VERSION_INPUT="${{ github.event.inputs.version }}"
+            if [[ -z "${VERSION_INPUT}" ]]; then
+              echo "workflow_dispatch requires a version input." >&2
+              exit 1
+            fi
+            TAG_NAME="v${VERSION_INPUT}"
+          fi
+
+          VERSION="${TAG_NAME#v}"
+
+          echo "tag_name=${TAG_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "release_name=Banana ${TAG_NAME}" >> "${GITHUB_OUTPUT}"
+
+      - name: Validate release version matches project metadata
+        shell: bash
+        run: |
+          EXPECTED_VERSION="${{ steps.release_meta.outputs.version }}"
+          PROJECT_VERSION="$(node -p "require('./package.json').version")"
+          export EXPECTED_VERSION PROJECT_VERSION
+
+          node --input-type=module <<'NODE'
+          import { assertReleaseVersionMatchesProjectVersion } from "./scripts/release-tools.mjs";
+
+          assertReleaseVersionMatchesProjectVersion({
+            expectedVersion: process.env.EXPECTED_VERSION,
+            projectVersion: process.env.PROJECT_VERSION,
+          });
+          NODE
+
+      - name: Validate updater signing secrets
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          for required_secret in \
+            "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" \
+            "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" \
+            "${{ secrets.BANANA_UPDATER_PUBLIC_KEY }}"; do
+            if [[ -z "${required_secret}" ]]; then
+              echo "Missing updater signing secret for macOS release." >&2
+              exit 1
+            fi
+          done
+
       - name: Build and upload release assets
         # Upstream no longer exposes a resolvable `v1` ref, so pin to the latest published action tag.
         uses: tauri-apps/tauri-action@action-v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          BANANA_UPDATER_PUBLIC_KEY: ${{ secrets.BANANA_UPDATER_PUBLIC_KEY }}
         with:
-          tagName: v__VERSION__
-          releaseName: Banana v__VERSION__
+          tagName: ${{ steps.release_meta.outputs.tag_name }}
+          releaseName: ${{ steps.release_meta.outputs.release_name }}
           releaseBody: |
-            Unsigned GitHub build for Banana.
+            Stable GitHub release for Banana.
 
             Notes:
+            - macOS assets include updater metadata for in-app updates.
+            - Only published stable releases are detected by the app updater.
             - macOS artifacts are not notarized.
-            - Windows artifacts are not code signed.
-            - No auto-update channel is configured.
-          releaseDraft: true
+            - Windows artifacts are not code signed and do not use in-app installation yet.
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

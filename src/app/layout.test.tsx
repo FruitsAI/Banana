@@ -22,6 +22,10 @@ vi.mock("@/components/layout/platform-marker", () => ({
   PlatformMarker: () => <div data-testid="platform-marker" />,
 }));
 
+vi.mock("@/stores/update/useAppUpdateStore", () => ({
+  AppUpdateProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock("@/components/liquid-glass-runtime-provider", () => ({
   LiquidGlassRuntimeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));

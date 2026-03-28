@@ -13,7 +13,7 @@
 - Write each bullet as concise English plus concise Chinese.
 - Keep `package.json` as the single editable version source.
 - Keep `CHANGELOG.md`, `package.json.version`, and Git tag names aligned.
-- GitHub releases stay unsigned and should remain drafts until reviewed.
+- macOS stable releases require updater signing secrets and publish updater metadata for in-app updates.
 
 ## Commit-time checklist
 
@@ -35,7 +35,7 @@
 7. Run `pnpm release:tag:print` and confirm the tag equals `v<x.y.z>`.
 8. Run `pnpm check:repo`.
 9. Create the local tag with `pnpm release:tag`.
-10. Push the tag with `pnpm release:tag:push` only when the GitHub draft release is meant to be triggered.
+10. Push the tag with `pnpm release:tag:push` only when the stable GitHub release and updater assets are meant to be published.
 
 ## Bilingual changelog pattern
 
@@ -46,7 +46,7 @@
 - Add unified release validation for changelog and version metadata. 新增针对 changelog 与版本元数据的统一发版校验。
 
 ### Changed
-- Clarify GitHub-only unsigned release flow in repository docs. 在仓库文档中明确仅面向 GitHub 的 unsigned 发版流程。
+- Clarify the macOS stable updater release flow in repository docs. 在仓库文档中明确 macOS stable 应用内更新的发版流程。
 ```
 
 ## What to watch for
@@ -54,4 +54,4 @@
 - If a change affects packaging, naming, update channels, or distribution constraints, mention that explicitly in the changelog.
 - If a change is mostly internal, still record the engineering impact in one concise line.
 - If a release includes a breaking change, call it out directly instead of hiding it inside a generic section.
-- Draft GitHub releases before review are safer than publishing immediately.
+- Verify updater secrets and release assets before pushing the stable tag that the app will detect as latest.

@@ -2,3 +2,4 @@
 pub mod chat;
 pub mod models;
 pub mod mcp;
+pub mod update;

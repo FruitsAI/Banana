@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Edit03Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,6 +35,8 @@ export interface AddProviderFormValues {
 interface AddProviderDialogProps {
   disabled?: boolean;
   existingProviderNames: string[];
+  initialValues?: AddProviderFormValues | null;
+  mode?: "create" | "edit";
   onOpenChange: (open: boolean) => void;
   onSubmitProvider: (values: AddProviderFormValues) => Promise<void>;
   open: boolean;
@@ -54,6 +56,8 @@ function toErrorMessage(error: unknown): string {
 export function AddProviderDialog({
   disabled = false,
   existingProviderNames,
+  initialValues = null,
+  mode = "create",
   onOpenChange,
   onSubmitProvider,
   open,
@@ -73,10 +77,10 @@ export function AddProviderDialog({
     if (!open) {
       return;
     }
-    setProviderName("");
-    setProviderType("openai");
+    setProviderName(initialValues?.providerName ?? "");
+    setProviderType(initialValues?.providerType ?? "openai");
     setErrorMessage(null);
-  }, [open]);
+  }, [initialValues, open]);
 
   function handleDialogOpenChange(nextOpen: boolean): void {
     if (isSubmitting) {
@@ -122,6 +126,16 @@ export function AddProviderDialog({
   }
 
   const previewIcon = providerName.trim().charAt(0).toUpperCase() || "P";
+  const isEditMode = mode === "edit";
+  const dialogTitle = isEditMode ? "编辑平台" : "添加提供商";
+  const submitLabel = isSubmitting
+    ? isEditMode
+      ? "保存中..."
+      : "添加中..."
+    : isEditMode
+      ? "保存"
+      : "确定";
+  const titleIcon = isEditMode ? Edit03Icon : Add01Icon;
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
@@ -171,10 +185,10 @@ export function AddProviderDialog({
                       color: "var(--brand-primary)",
                     }}
                   >
-                    <HugeiconsIcon icon={Add01Icon} size={15} />
+                    <HugeiconsIcon icon={titleIcon} size={15} />
                   </span>
                   <DialogTitle className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-                    添加提供商
+                    {dialogTitle}
                   </DialogTitle>
                 </div>
                 <span
@@ -309,7 +323,7 @@ export function AddProviderDialog({
                   className="h-9 rounded-xl px-4 text-xs"
                   disabled={disabled || isSubmitting || !providerName.trim()}
                 >
-                  {isSubmitting ? "添加中..." : "确定"}
+                  {submitLabel}
                 </Button>
               </motion.div>
             </DialogFooter>

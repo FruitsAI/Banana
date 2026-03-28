@@ -8,11 +8,14 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-28
+
 ### Added
 
 - Add reusable platform detection helpers, pre-hydration runtime marking, and targeted desktop QA tests for titlebar and thread-sidebar behavior. 新增可复用的平台检测工具、预水合运行时标记，以及覆盖标题栏与线程侧边栏行为的桌面 QA 定向测试。
 - Add a shared liquid-glass runtime model, provider, and regression coverage so ambient light, adaptive clarity, and pointer optics can be driven as one system instead of isolated component styling. 新增共享的液态玻璃运行时模型、provider 与回归测试，使环境光、自适应清晰度和指针光学反馈可以作为统一系统驱动，而不再只是零散组件样式。
 - Add a `pnpm release:prepare` entrypoint that validates the changelog, defaults release-facing bumps to `patch`, and preflights the next tag before tagging. 新增 `pnpm release:prepare` 入口，在发版前先校验 changelog、默认执行 `patch` 升级，并在打 tag 前预检下一个版本标签是否可用。
+- Add an app-wide update store plus About-page update controls so Banana can auto-check GitHub stable releases on startup and let macOS users download, install, and restart from the version area. 新增全局应用更新状态与关于页更新控件，让 Banana 可以在启动时自动检查 GitHub 稳定版，并让 macOS 用户直接在版本区完成检查、下载、安装准备与重启更新。
 
 ### Changed
 
@@ -34,6 +37,7 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 - Normalize idle-vs-active list elevation across shared tabs, sidebars, thread rows, provider/model lists, and select menus so only selected items keep a resting floating shadow while idle rows stay flatter until hover or keyboard focus. 统一共享 tab、侧边栏导航、会话行、Provider / 模型列表与下拉菜单的静止态与激活态抬升逻辑：只有选中项保留常驻浮层阴影，未选中项默认更平，直到 hover 或键盘聚焦时才临时抬起。
 - Restore subtle glass borders on idle provider/model rows and extend the same hover-lift selection language into the model-market dialog so list surfaces stay consistent across settings and overlays. 为未选中的平台 / 模型行恢复细腻的玻璃边框，并把同一套 hover 抬升选中语言扩展到模型市场弹窗，让设置页与浮层列表表面保持一致。
 - Rebuild the custom control system around shared `FieldShell` and `TextareaField` primitives, then migrate input, search, textarea, select, switch, button, composer, message editing, and toast banner surfaces onto one unified liquid-glass interaction model. 围绕共享的 `FieldShell` 与 `TextareaField` primitive 重建自定义控件系统，并将 input、search、textarea、select、switch、button、聊天输入器、消息编辑态与 toast 横幅统一迁移到同一套液态玻璃交互模型上。
+- Upgrade the release pipeline from GitHub-only unsigned drafts to a stable macOS updater flow, wiring Tauri updater config, updater permissions, signed release assets, and repository docs around published GitHub Releases only. 将发版链路从仅支持 GitHub unsigned draft 提升为面向 macOS stable 的应用内更新流程，补齐 Tauri updater 配置、权限、签名产物与仓库文档，并统一只识别 GitHub 已发布的正式 Release。
 
 ### Fixed
 
@@ -43,8 +47,6 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 - Add back a dedicated top drag strip for the frameless desktop window and remove the leftover “当前” status badges from the settings sidebar and MCP stage navigation. 为无标题栏桌面窗口补回专用顶部拖拽条，并移除设置侧栏与 MCP 分组导航里残留的“当前”状态徽标。
 - Add a macOS-specific traffic-light safe area to the shared workspace sidebar shell so the left sidebar content sits slightly lower and no longer crowds the window controls. 为共享工作区侧栏壳层增加 macOS 专属的交通灯安全留白，让左侧边栏内容整体下移一点，不再挤占窗口控制按钮区域。
 - Align the home sidebar header card to the same horizontal width rhythm as the thread list and remove the old blue left-edge marker from selected thread rows. 让首页左侧顶部“会话流”卡片与下方会话列表回到同一套横向宽度节奏，并移除会话选中态左侧旧的蓝色边缘指示条。
-### Fixed
-
 - Pin the GitHub Release workflow to `tauri-apps/tauri-action@action-v0.6.2` because the upstream `v1` ref is no longer resolvable. 将 GitHub Release 工作流固定到 `tauri-apps/tauri-action@action-v0.6.2`，因为上游 `v1` 引用已无法解析。
 - Switch the Intel macOS release runner from `macos-13` to `macos-15-intel` because GitHub no longer supports the old hosted runner label for this repository. 将 Intel macOS 发版 runner 从 `macos-13` 切换到 `macos-15-intel`，因为 GitHub 已不再为当前仓库支持旧的托管 runner 标签。
 - Upgrade GitHub Actions JavaScript runtimes by moving `actions/setup-node` to `v6` and `pnpm/action-setup` to `v5`, both of which run on Node 24. 通过将 `actions/setup-node` 升级到 `v6`、`pnpm/action-setup` 升级到 `v5`，把 GitHub Actions 的 JavaScript 运行时统一提升到 Node 24。
@@ -75,5 +77,6 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 - Sync the About page version badge with the project version source, make external links actionable, and update the copyright year dynamically. 将关于页版本徽标同步到项目统一版本源，使外链真正可点击，并将版权年份改为动态显示。
 - Align MCP `clientInfo.version` with the packaged application version instead of a stale hardcoded value. 将 MCP `clientInfo.version` 改为跟随打包应用版本，不再使用过期的硬编码值。
 
-[Unreleased]: https://github.com/FruitsAI/Banana/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/FruitsAI/Banana/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/FruitsAI/Banana/releases/tag/v0.1.1
 [0.1.0]: https://github.com/FruitsAI/Banana/releases/tag/v0.1.0

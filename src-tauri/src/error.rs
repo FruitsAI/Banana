@@ -18,6 +18,9 @@ pub enum AppError {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("Update error: {0}")]
+    Update(String),
 }
 
 /// 为 AppError 实现字符串序列化，使得前端 try/catch 能够捕获明确的信息文本

@@ -32,6 +32,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "publisher": "FruitsAI",
     "homepage": "https://github.com/FruitsAI/Banana",
@@ -49,6 +50,14 @@
     ],
     "macOS": {
       "bundleName": "Banana"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/FruitsAI/Banana/releases/latest/download/latest.json"
+      ],
+      "pubkey": "BANANA_UPDATER_PUBLIC_KEY_PLACEHOLDER"
     }
   }
 }

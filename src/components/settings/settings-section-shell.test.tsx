@@ -58,6 +58,31 @@ describe("SettingsSectionShell", () => {
     ).toHaveAttribute("data-group-edge-highlight", "true");
   });
 
+  it("supports a scrolling header mode for pages that should let the title area scroll away", () => {
+    render(
+      <SettingsSectionShell
+        sectionId="test"
+        eyebrow="Test"
+        title="测试设置"
+        headerMode="scroll"
+        shellOverflow="visible"
+      >
+        <SettingsSectionGroup>内容组</SettingsSectionGroup>
+      </SettingsSectionShell>,
+    );
+
+    expect(screen.getByTestId("settings-section-shell").className).toContain("overflow-visible");
+    expect(screen.getByTestId("settings-section-header")).toHaveAttribute(
+      "data-sticky-header",
+      "false",
+    );
+    expect(screen.getByTestId("settings-section-header")).not.toHaveClass("sticky");
+    expect(screen.getByTestId("settings-section-header").className).toContain(
+      "rounded-t-[inherit]",
+    );
+    expect(screen.getByTestId("settings-section-header").className).toContain("overflow-hidden");
+  });
+
   it("condenses the sticky header when its section reaches the scroll edge", async () => {
     render(
       <div data-testid="settings-scroll-root" style={{ height: 480, overflowY: "auto" }}>
@@ -121,7 +146,11 @@ describe("SettingsSectionShell", () => {
       }),
     });
 
-    expect(header).toHaveAttribute("data-header-condensed", "false");
+    fireEvent.scroll(scrollRoot);
+
+    await waitFor(() => {
+      expect(header).toHaveAttribute("data-header-condensed", "false");
+    });
 
     sectionTop = 20;
     fireEvent.scroll(scrollRoot);

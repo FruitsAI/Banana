@@ -6,6 +6,7 @@ import { Settings01Icon } from "@hugeicons/core-free-icons";
 import { ModelIcon } from "@/components/models/model-selector";
 import { AddModelDialog } from "@/components/models/add-model-dialog";
 import { AddProviderDialog } from "@/components/providers/add-provider-dialog";
+import type { AddProviderFormValues } from "@/components/providers/add-provider-dialog";
 import { ManageModelsDialog } from "@/components/models/manage-models-dialog";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 import { SettingsPageFrame } from "@/components/settings/settings-page-frame";
@@ -56,13 +57,16 @@ export function ModelsSetting() {
     apiKey,
     baseUrl,
     editingModel,
+    editingProvider,
     filteredProviders,
     handleAddRemoteModels,
     handleCreateModel,
     handleCreateProvider,
+    handleDeleteProvider,
     handleDeleteModel,
     handleDeleteModelGroup,
     handleEditModelDialogOpenChange,
+    handleProviderDialogOpenChange,
     handleSelectDefaultModel,
     handleTestConnection,
     handleToggleModel,
@@ -79,6 +83,7 @@ export function ModelsSetting() {
     openAddModelDialog,
     openAddProviderDialog,
     openEditModelDialog,
+    openEditProviderDialog,
     providers,
     saving,
     searchQuery,
@@ -86,7 +91,6 @@ export function ModelsSetting() {
     setApiKey,
     setBaseUrl,
     setIsAddModelDialogOpen,
-    setIsAddProviderDialogOpen,
     setIsManageModelsDialogOpen,
     setSearchQuery,
     showApiKey,
@@ -97,9 +101,13 @@ export function ModelsSetting() {
     <ProviderSidebar
       activeProviderId={activeProviderId}
       filteredProviders={filteredProviders}
+      onDeleteProvider={(provider) => {
+        void handleDeleteProvider(provider);
+      }}
       searchQuery={searchQuery}
       onSearchQueryChange={setSearchQuery}
       onOpenAddProvider={openAddProviderDialog}
+      onOpenEditProvider={openEditProviderDialog}
       onSelectProvider={(providerId) => {
         void selectProvider(providerId);
       }}
@@ -110,10 +118,11 @@ export function ModelsSetting() {
     <>
       <SettingsPageFrame>
         <SettingsSectionShell
-            sectionId="models"
-            eyebrow="Models"
-            title="模型与平台"
-            headerAccessory={
+          sectionId="models"
+          eyebrow="Models"
+          title="模型与平台"
+          shellOverflow="visible"
+          headerAccessory={
               <div
                 className="flex flex-col gap-2 rounded-[24px] border p-2.5 sm:flex-row sm:items-center"
                 data-testid="models-preferences-toolbar"
@@ -148,14 +157,17 @@ export function ModelsSetting() {
                   />
                 </label>
               </div>
-            }
+          }
+        >
+          <div
+            className="grid min-h-0 items-start gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[320px_minmax(0,1fr)]"
+            data-preferences-layout="two-column"
+            data-preferences-height="matched"
           >
-            <div
-              className="grid min-h-0 items-start gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[320px_minmax(0,1fr)]"
-              data-preferences-layout="two-column"
-              data-preferences-height="matched"
+            <SettingsSectionGroup
+              className="flex self-start flex-col overflow-hidden p-0 sm:p-0 lg:sticky lg:top-4 lg:h-[calc(100dvh-5rem)]"
+              contentClassName="flex h-full min-h-0 flex-col"
             >
-              <SettingsSectionGroup className="flex self-start flex-col overflow-hidden p-0 sm:p-0">
                 <div
                   className="flex-none px-5 pb-5 pt-5 sm:px-6 sm:pb-5 sm:pt-6"
                   data-provider-sidebar-header-align="section-group"
@@ -175,7 +187,10 @@ export function ModelsSetting() {
                 </div>
               </SettingsSectionGroup>
 
-              <div className="min-w-0 space-y-5">
+              <div
+                className="min-w-0 space-y-5"
+                data-testid="models-content-column"
+              >
                 <SettingsSectionGroup>
                   <SettingsSectionTitleRow
                     className="mb-5"
@@ -298,9 +313,21 @@ export function ModelsSetting() {
         </SettingsSectionShell>
       </SettingsPageFrame>
       <AddProviderDialog
+        mode={editingProvider ? "edit" : "create"}
         open={isAddProviderDialogOpen}
-        onOpenChange={setIsAddProviderDialogOpen}
-        existingProviderNames={providers.map((provider) => provider.name)}
+        onOpenChange={handleProviderDialogOpenChange}
+        initialValues={
+          editingProvider
+            ? {
+                providerName: editingProvider.name,
+                providerType:
+                  (editingProvider.provider_type ?? "openai") as AddProviderFormValues["providerType"],
+              }
+            : null
+        }
+        existingProviderNames={providers
+          .filter((provider) => provider.id !== editingProvider?.id)
+          .map((provider) => provider.name)}
         onSubmitProvider={handleCreateProvider}
       />
       <AddModelDialog

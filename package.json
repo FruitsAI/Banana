@@ -1,6 +1,6 @@
 {
   "name": "banana",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Banana is a local-first desktop AI assistant built with Next.js, Tauri, and SQLite.",
   "author": "FruitsAI",
   "license": "UNLICENSED",

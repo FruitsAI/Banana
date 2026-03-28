@@ -21,3 +21,17 @@ export function buildReleaseTagPlan({ version, existingTags }) {
     tagMessage: buildReleaseTagMessage(version),
   };
 }
+
+export function assertReleaseVersionMatchesProjectVersion({
+  expectedVersion,
+  projectVersion,
+}) {
+  assertValidSemver(expectedVersion);
+  assertValidSemver(projectVersion);
+
+  if (expectedVersion !== projectVersion) {
+    throw new Error(
+      `Release version mismatch: requested ${expectedVersion}, but package.json is ${projectVersion}.`,
+    );
+  }
+}

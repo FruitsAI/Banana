@@ -15,6 +15,7 @@ pub fn run() {
         .expect("Failed to initialize database pool");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(mcp::McpState::default())
         .manage(commands::AppState { db: db_instance })
         .setup(|app| {
@@ -47,7 +48,10 @@ pub fn run() {
             commands::db_delete_thread,
             commands::db_append_message,
             commands::db_get_messages,
-            commands::db_delete_messages_after
+            commands::db_delete_messages_after,
+            commands::app_check_update,
+            commands::app_install_update,
+            commands::app_restart_to_apply_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -3,7 +3,9 @@ use crate::error::Result;
 use crate::services::chat as chat_service;
 use crate::services::mcp as mcp_service;
 use crate::services::models as models_service;
-use tauri::State;
+use crate::services::update as update_service;
+use crate::services::update::{AppUpdateCheckResponse, AppUpdateInstallResponse};
+use tauri::{AppHandle, State};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -139,6 +141,22 @@ pub async fn db_delete_messages_after(
     chat_service::delete_messages_after(&state.db, &thread_id, &message_id).await
 }
 
+/// ---- App Update ----
+#[tauri::command]
+pub async fn app_check_update(app: AppHandle) -> Result<AppUpdateCheckResponse> {
+    update_service::check_for_update(app).await
+}
+
+#[tauri::command]
+pub async fn app_install_update(app: AppHandle) -> Result<AppUpdateInstallResponse> {
+    update_service::install_update(app).await
+}
+
+#[tauri::command]
+pub fn app_restart_to_apply_update(app: AppHandle) -> Result<()> {
+    update_service::restart_to_apply_update(app)
+}
+
 // 统一注册 Commands
 pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
     builder.invoke_handler(tauri::generate_handler![
@@ -160,5 +178,8 @@ pub fn register_commands(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<
         db_get_messages,
         db_append_message,
         db_delete_messages_after,
+        app_check_update,
+        app_install_update,
+        app_restart_to_apply_update,
     ])
 }

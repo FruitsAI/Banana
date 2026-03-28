@@ -8,6 +8,7 @@ const {
   loadActiveSelectionMock,
   loadModelsByProviderMock,
   removeModelMock,
+  removeProviderMock,
   saveActiveSelectionMock,
   saveModelMock,
   saveProviderMock,
@@ -15,10 +16,12 @@ const {
   ensureProviderModelsReadyMock,
   inferModelCapabilitiesMock,
   filterProvidersMock,
+  confirmMock,
 } = vi.hoisted(() => ({
   loadActiveSelectionMock: vi.fn<() => Promise<ActiveModelSelection>>(),
   loadModelsByProviderMock: vi.fn<(providerId: string) => Promise<Model[]>>(),
   removeModelMock: vi.fn(),
+  removeProviderMock: vi.fn<(providerId: string) => Promise<void>>(),
   saveActiveSelectionMock: vi.fn<(providerId: string, modelId: string) => Promise<void>>(),
   saveModelMock: vi.fn<(model: Model) => Promise<void>>(),
   saveProviderMock: vi.fn<(provider: Provider) => Promise<void>>(),
@@ -26,6 +29,7 @@ const {
   ensureProviderModelsReadyMock: vi.fn<(providerId: string) => Promise<Model[]>>(),
   inferModelCapabilitiesMock: vi.fn<(providerId: string, modelId: string) => string[]>(),
   filterProvidersMock: vi.fn((providers: Provider[]) => providers),
+  confirmMock: vi.fn(async () => true),
 }));
 
 vi.mock("@/stores/models/useModelsStore", () => ({
@@ -33,6 +37,7 @@ vi.mock("@/stores/models/useModelsStore", () => ({
     loadActiveSelection: loadActiveSelectionMock,
     loadModelsByProvider: loadModelsByProviderMock,
     removeModel: removeModelMock,
+    removeProvider: removeProviderMock,
     saveActiveSelection: saveActiveSelectionMock,
     saveModel: saveModelMock,
     saveProvider: saveProviderMock,
@@ -54,7 +59,7 @@ vi.mock("@/hooks/use-toast", () => ({
 }));
 
 vi.mock("@/components/feedback/feedback-provider", () => ({
-  useConfirm: () => vi.fn(async () => true),
+  useConfirm: () => confirmMock,
 }));
 
 vi.mock("@/components/ui/sidebar-layout", () => ({
@@ -67,7 +72,14 @@ vi.mock("@/components/ui/sidebar-layout", () => ({
 }));
 
 vi.mock("@/components/ui/search-input", () => ({
-  SearchInput: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  SearchInput: ({
+    containerClassName,
+    ...props
+  }: React.InputHTMLAttributes<HTMLInputElement> & { containerClassName?: string }) => (
+    <div className={containerClassName}>
+      <input {...props} />
+    </div>
+  ),
 }));
 
 vi.mock("@/components/ui/collapsible-panel", () => ({
@@ -121,9 +133,13 @@ vi.mock("@/components/models/add-model-dialog", () => ({
 
 vi.mock("@/components/providers/add-provider-dialog", () => ({
   AddProviderDialog: ({
+    initialValues,
+    mode,
     open,
     onSubmitProvider,
   }: {
+    initialValues?: { providerName: string; providerType: "anthropic" | "openai" } | null;
+    mode?: "create" | "edit";
     open: boolean;
     onSubmitProvider: (values: { providerName: string; providerType: "anthropic" | "openai" }) => Promise<void>;
   }) =>
@@ -131,12 +147,12 @@ vi.mock("@/components/providers/add-provider-dialog", () => ({
       <button
         onClick={() =>
           void onSubmitProvider({
-            providerName: "NVIDIA",
-            providerType: "anthropic",
+            providerName: mode === "edit" ? `${initialValues?.providerName ?? "Provider"} Updated` : "NVIDIA",
+            providerType: mode === "edit" ? initialValues?.providerType ?? "openai" : "anthropic",
           })
         }
       >
-        提交提供商
+        {mode === "edit" ? "提交编辑平台" : "提交提供商"}
       </button>
     ) : null,
 }));
@@ -254,6 +270,8 @@ describe("ModelsSetting", () => {
     saveModelMock.mockResolvedValue(undefined);
     saveProviderMock.mockResolvedValue(undefined);
     removeModelMock.mockResolvedValue(undefined);
+    removeProviderMock.mockResolvedValue(undefined);
+    confirmMock.mockResolvedValue(true);
   });
 
   it("renders the models workflow inside the shared settings shell hierarchy", async () => {
@@ -262,6 +280,10 @@ describe("ModelsSetting", () => {
     expect(screen.getByTestId("settings-page-frame")).toHaveAttribute(
       "data-settings-page-width",
       "fluid",
+    );
+    expect(screen.getByTestId("settings-page-frame")).toHaveAttribute(
+      "data-settings-page-scroll",
+      "page",
     );
     await waitFor(() => {
       expect(screen.getByTestId("settings-section-shell")).toHaveAttribute(
@@ -280,6 +302,18 @@ describe("ModelsSetting", () => {
     expect(
       screen.queryByText("保存当前平台的 API Key、地址和连通性配置，让切换和校验保持在同一个偏好设置场景里完成。"),
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId("settings-section-header")).toHaveAttribute(
+      "data-sticky-header",
+      "true",
+    );
+    expect(screen.getByTestId("settings-section-shell").className).toContain("overflow-visible");
+    expect(screen.getByTestId("settings-section-body").className).not.toContain("lg:overflow-hidden");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("lg:sticky");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("lg:top-4");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain(
+      "lg:h-[calc(100dvh-5rem)]",
+    );
+    expect(screen.getByTestId("models-content-column").className).not.toContain("lg:overflow-y-auto");
   });
 
   it("shows guided empty states when no provider has been configured yet", async () => {
@@ -296,6 +330,55 @@ describe("ModelsSetting", () => {
     await waitFor(() => {
       expect(screen.getByTestId("models-connection-empty-state")).toBeInTheDocument();
       expect(screen.getByTestId("models-library-empty-state")).toBeInTheDocument();
+    });
+  });
+
+  it("shows a provider context menu with edit and delete actions on right click", async () => {
+    ensureProvidersReadyMock.mockResolvedValue([openaiProvider, nvidiaProvider]);
+    ensureProviderModelsReadyMock.mockImplementation(async (providerId: string) => {
+      if (providerId === "openai") {
+        return openaiModels;
+      }
+      if (providerId === "nvidia") {
+        return nvidiaModels;
+      }
+      return [];
+    });
+    loadModelsByProviderMock.mockImplementation(async (providerId: string) => {
+      if (providerId === "openai") {
+        return openaiModels;
+      }
+      if (providerId === "nvidia") {
+        return nvidiaModels;
+      }
+      return [];
+    });
+
+    render(<ModelsSetting />);
+
+    const providerListbox = await screen.findByRole("listbox", { name: "模型平台" });
+    const targetProvider = within(providerListbox).getByRole("option", { name: "NVIDIA" });
+
+    fireEvent.contextMenu(targetProvider, { clientX: 180, clientY: 220 });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "编辑平台" }));
+    fireEvent.click(await screen.findByRole("button", { name: "提交编辑平台" }));
+
+    await waitFor(() => {
+      expect(saveProviderMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "nvidia",
+          name: "NVIDIA Updated",
+        }),
+      );
+    });
+
+    const providerAfterEdit = await screen.findByRole("option", { name: "NVIDIA" });
+    fireEvent.contextMenu(providerAfterEdit, { clientX: 180, clientY: 220 });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "删除平台" }));
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalled();
+      expect(removeProviderMock).toHaveBeenCalledWith("nvidia");
     });
   });
 
@@ -341,6 +424,10 @@ describe("ModelsSetting", () => {
     const idleModelButton = screen.getAllByText("gpt-4.1-mini")[0]?.closest("button");
     const providerAddButton = screen.getAllByRole("button", { name: "添加" })[0];
 
+    if (!idleModelButton) {
+      throw new Error("Expected idle model button to be rendered");
+    }
+
     expect(screen.getByTestId("provider-sidebar")).toHaveAttribute(
       "data-provider-sidebar-layout",
       "equal-height",
@@ -354,6 +441,11 @@ describe("ModelsSetting", () => {
     );
     expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("sm:p-0");
     expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("self-start");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("lg:sticky");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("lg:top-4");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain(
+      "lg:h-[calc(100dvh-5rem)]",
+    );
     expect(screen.getByTestId("models-provider-list-header").className).toContain("flex-none");
     expect(screen.getByTestId("models-provider-list-header").className).toContain("sm:px-6");
     expect(screen.getByTestId("models-provider-list-header-row")).toHaveAttribute(
@@ -361,6 +453,8 @@ describe("ModelsSetting", () => {
       "shared",
     );
     expect(screen.getByTestId("models-provider-list-body").className).toContain("flex-1");
+    expect(screen.getByTestId("provider-sidebar").className).toContain("h-full");
+    expect(screen.getByTestId("models-content-column").className).not.toContain("lg:overflow-y-auto");
     expect(screen.getByTestId("models-connection-header")).toHaveAttribute(
       "data-settings-title-row",
       "shared",

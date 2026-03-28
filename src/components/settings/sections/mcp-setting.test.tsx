@@ -102,6 +102,10 @@ describe("McpSetting", () => {
       "data-settings-page-width",
       "fluid",
     );
+    expect(screen.getByTestId("settings-page-frame")).toHaveAttribute(
+      "data-settings-page-scroll",
+      "page",
+    );
     await waitFor(() => {
       expect(screen.getByTestId("settings-section-shell")).toHaveAttribute(
         "data-material-role",
@@ -111,6 +115,12 @@ describe("McpSetting", () => {
     await waitFor(() => expect(loadServersMock).toHaveBeenCalled());
     await screen.findByText("还没有 MCP 服务器");
 
+    expect(screen.getByTestId("settings-section-header")).toHaveAttribute(
+      "data-sticky-header",
+      "true",
+    );
+    expect(screen.getByTestId("settings-section-shell").className).toContain("overflow-visible");
+    expect(screen.getByTestId("settings-section-body").className).not.toContain("lg:overflow-hidden");
     expect(screen.getAllByTestId("settings-section-group").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByTestId("mcp-content-stage").closest("[data-mcp-layout='matched']")).not.toBeNull();
     expect(
@@ -122,9 +132,14 @@ describe("McpSetting", () => {
     );
     expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("sm:p-0");
     expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("self-start");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("lg:sticky");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain("lg:top-4");
+    expect(screen.getAllByTestId("settings-section-group")[0].className).toContain(
+      "lg:h-[calc(100dvh-5rem)]",
+    );
     expect(screen.getByTestId("mcp-browser-header").className).toContain("flex-none");
     expect(screen.getByTestId("mcp-browser-body").className).toContain("flex-1");
-    expect(screen.getByTestId("mcp-content-stage").className).toBe("min-w-0");
+    expect(screen.getByTestId("mcp-content-stage").className).not.toContain("lg:overflow-y-auto");
     expect(screen.getByTestId("mcp-connected-header-row")).toHaveAttribute(
       "data-settings-title-row",
       "shared",

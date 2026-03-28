@@ -12,11 +12,14 @@ interface SettingsSectionShellProps {
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  headerMode?: "sticky" | "scroll";
+  shellOverflow?: "hidden" | "visible";
 }
 
 interface SettingsSectionGroupProps {
   children: ReactNode;
   className?: string;
+  contentClassName?: string;
   interactive?: boolean;
 }
 
@@ -46,8 +49,6 @@ function findNearestScrollParent(element: HTMLElement | null): HTMLElement | nul
 }
 
 const HEADER_STICKY_SNAP_PX = 2;
-const HEADER_SCROLLABLE_BODY_BUFFER_PX = 28;
-
 export function SettingsSectionTitleRow({
   accessory,
   className,
@@ -84,12 +85,20 @@ export function SettingsSectionShell({
   children,
   className,
   contentClassName,
+  headerMode = "sticky",
+  shellOverflow = "hidden",
 }: SettingsSectionShellProps) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [headerCondensed, setHeaderCondensed] = useState(false);
+  const isStickyHeader = headerMode === "sticky";
+  const effectiveHeaderCondensed = isStickyHeader && headerCondensed;
 
   useEffect(() => {
+    if (!isStickyHeader) {
+      return;
+    }
+
     const sectionElement = sectionRef.current;
     const headerElement = headerRef.current;
 
@@ -101,12 +110,9 @@ export function SettingsSectionShell({
 
     const updateHeaderState = () => {
       const sectionRect = sectionElement.getBoundingClientRect();
-      const headerRect = headerElement.getBoundingClientRect();
       const rootTop = scrollParent?.getBoundingClientRect().top ?? 0;
       const hasReachedScrollEdge = sectionRect.top <= rootTop + HEADER_STICKY_SNAP_PX;
-      const hasScrollableBody =
-        sectionRect.bottom - headerRect.height > rootTop + HEADER_SCROLLABLE_BODY_BUFFER_PX;
-      const nextCondensed = hasReachedScrollEdge && hasScrollableBody;
+      const nextCondensed = hasReachedScrollEdge;
 
       setHeaderCondensed((current) => (current === nextCondensed ? current : nextCondensed));
     };
@@ -121,13 +127,17 @@ export function SettingsSectionShell({
       scrollTarget.removeEventListener("scroll", updateHeaderState);
       window.removeEventListener("resize", updateHeaderState);
     };
-  }, []);
+  }, [isStickyHeader]);
 
   return (
     <section
       ref={sectionRef}
-      className={cn("flex min-h-full flex-1 flex-col overflow-hidden rounded-[28px] border", className)}
-      data-header-condensed={headerCondensed ? "true" : "false"}
+      className={cn(
+        "flex min-h-full flex-1 flex-col rounded-[28px] border",
+        shellOverflow === "visible" ? "overflow-visible" : "overflow-hidden",
+        className,
+      )}
+      data-header-condensed={effectiveHeaderCondensed ? "true" : "false"}
       data-settings-stage-fill="true"
       data-testid="settings-section-shell"
       data-material-role="floating"
@@ -140,26 +150,27 @@ export function SettingsSectionShell({
       <div
         ref={headerRef}
         className={cn(
-          "sticky top-0 z-10 border-b px-6 transition-[padding,background-color,box-shadow,backdrop-filter] duration-300 ease-out sm:px-7",
-          headerCondensed ? "pb-4 pt-4 sm:pb-5 sm:pt-5" : "pb-5 pt-6 sm:pb-6 sm:pt-7",
+          "z-10 overflow-hidden rounded-t-[inherit] border-b px-6 transition-[padding,background-color,box-shadow,backdrop-filter] duration-300 ease-out sm:px-7",
+          isStickyHeader ? "sticky top-0" : "",
+          effectiveHeaderCondensed ? "pb-4 pt-4 sm:pb-5 sm:pt-5" : "pb-5 pt-6 sm:pb-6 sm:pt-7",
         )}
-        data-header-condensed={headerCondensed ? "true" : "false"}
+        data-header-condensed={effectiveHeaderCondensed ? "true" : "false"}
         data-testid="settings-section-header"
         data-material-role="floating"
-        data-sticky-header="true"
+        data-sticky-header={isStickyHeader ? "true" : "false"}
         style={{
           background:
-            headerCondensed
+            effectiveHeaderCondensed
               ? "color-mix(in srgb, var(--material-floating-background) 96%, transparent)"
               : "color-mix(in srgb, var(--material-floating-background) 92%, transparent)",
           borderColor: "var(--divider)",
-          boxShadow: headerCondensed
+          boxShadow: effectiveHeaderCondensed
             ? "0 14px 28px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255,255,255,0.52)"
             : "inset 0 1px 0 rgba(255,255,255,0.24)",
-          backdropFilter: headerCondensed
+          backdropFilter: effectiveHeaderCondensed
             ? "blur(28px) saturate(190%)"
             : "blur(24px) saturate(175%)",
-          WebkitBackdropFilter: headerCondensed
+          WebkitBackdropFilter: effectiveHeaderCondensed
             ? "blur(28px) saturate(190%)"
             : "blur(24px) saturate(175%)",
         }}
@@ -170,7 +181,7 @@ export function SettingsSectionShell({
             style={{
               background:
                 "linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--material-highlight) 58%, transparent) 22%, color-mix(in srgb, var(--brand-primary-light) 28%, transparent) 80%, transparent 100%)",
-              opacity: headerCondensed ? 0.96 : 0.48,
+              opacity: effectiveHeaderCondensed ? 0.96 : 0.48,
             }}
           />
         </div>
@@ -179,14 +190,14 @@ export function SettingsSectionShell({
           <div
             className={cn(
               "max-w-2xl transition-[transform,opacity] duration-300 ease-out",
-              headerCondensed ? "-translate-y-px" : "",
+              effectiveHeaderCondensed ? "-translate-y-px" : "",
             )}
           >
             {eyebrow ? (
               <div
                 className={cn(
                   "text-[11px] font-medium uppercase tracking-[0.18em] transition-[margin,opacity] duration-300 ease-out",
-                  headerCondensed ? "mb-1 opacity-80" : "mb-2 opacity-100",
+                  effectiveHeaderCondensed ? "mb-1 opacity-80" : "mb-2 opacity-100",
                 )}
                 style={{ color: "var(--text-tertiary)" }}
               >
@@ -196,7 +207,7 @@ export function SettingsSectionShell({
             <h2
               className={cn(
                 "font-semibold transition-[margin,font-size] duration-300 ease-out",
-                headerCondensed ? "mb-1 text-[17px]" : "mb-2 text-lg",
+                effectiveHeaderCondensed ? "mb-1 text-[17px]" : "mb-2 text-lg",
               )}
               style={{ color: "var(--text-primary)" }}
             >
@@ -222,6 +233,7 @@ export function SettingsSectionShell({
 export function SettingsSectionGroup({
   children,
   className,
+  contentClassName,
   interactive = true,
 }: SettingsSectionGroupProps) {
   return (
@@ -264,7 +276,7 @@ export function SettingsSectionGroup({
         </>
       ) : null}
 
-      <div className="relative z-10">{children}</div>
+      <div className={cn("relative z-10", contentClassName)}>{children}</div>
     </div>
   );
 }

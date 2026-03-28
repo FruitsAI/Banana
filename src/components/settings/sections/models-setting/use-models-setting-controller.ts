@@ -33,13 +33,16 @@ export interface ModelsSettingController {
   apiKey: string;
   baseUrl: string;
   editingModel: Model | null;
+  editingProvider: Provider | null;
   filteredProviders: Provider[];
   handleAddRemoteModels: (remoteModels: RemoteModelInput[]) => Promise<void>;
   handleCreateModel: (formValues: AddModelFormValues) => Promise<void>;
   handleCreateProvider: (formValues: AddProviderFormValues) => Promise<void>;
+  handleDeleteProvider: (provider: Provider) => Promise<void>;
   handleDeleteModel: (model: Model) => Promise<void>;
   handleDeleteModelGroup: (groupName: string, groupModels: Model[]) => Promise<void>;
   handleEditModelDialogOpenChange: (open: boolean) => void;
+  handleProviderDialogOpenChange: (open: boolean) => void;
   handleSelectDefaultModel: (modelId: string) => Promise<void>;
   handleTestConnection: () => Promise<void>;
   handleToggleModel: (model: Model, checked: boolean) => Promise<void>;
@@ -56,6 +59,7 @@ export interface ModelsSettingController {
   openAddModelDialog: () => void;
   openAddProviderDialog: () => void;
   openEditModelDialog: (model: Model) => void;
+  openEditProviderDialog: (provider: Provider) => void;
   providers: Provider[];
   saving: boolean;
   searchQuery: string;
@@ -75,6 +79,7 @@ export function useModelsSettingController(): ModelsSettingController {
     loadActiveSelection,
     loadModelsByProvider,
     removeModel,
+    removeProvider,
     saveActiveSelection,
     saveModel,
     saveProvider,
@@ -94,6 +99,7 @@ export function useModelsSettingController(): ModelsSettingController {
   const [isEditModelDialogOpen, setIsEditModelDialogOpen] = useState(false);
   const [isManageModelsDialogOpen, setIsManageModelsDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<Model | null>(null);
+  const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const confirm = useConfirm();
   const toastApi = useToast();
@@ -375,12 +381,25 @@ export function useModelsSettingController(): ModelsSettingController {
   }, []);
 
   const openAddProviderDialog = useCallback((): void => {
+    setEditingProvider(null);
+    setIsAddProviderDialogOpen(true);
+  }, []);
+
+  const openEditProviderDialog = useCallback((provider: Provider): void => {
+    setEditingProvider(provider);
     setIsAddProviderDialogOpen(true);
   }, []);
 
   const openEditModelDialog = useCallback((model: Model): void => {
     setEditingModel(model);
     setIsEditModelDialogOpen(true);
+  }, []);
+
+  const handleProviderDialogOpenChange = useCallback((open: boolean): void => {
+    setIsAddProviderDialogOpen(open);
+    if (!open) {
+      setEditingProvider(null);
+    }
   }, []);
 
   const handleCreateModel = useCallback(
@@ -623,41 +642,119 @@ export function useModelsSettingController(): ModelsSettingController {
       }
 
       const duplicateName = providers.some(
-        (provider) => provider.name.trim().toLowerCase() === normalizedProviderName.toLowerCase(),
+        (provider) =>
+          provider.id !== editingProvider?.id &&
+          provider.name.trim().toLowerCase() === normalizedProviderName.toLowerCase(),
       );
       if (duplicateName) {
         throw new Error("该提供商名称已存在");
       }
 
-      const existingProviderIds = new Set(providers.map((provider) => provider.id.toLowerCase()));
-      const providerId = buildUniqueProviderId(
-        normalizedProviderName,
-        formValues.providerType,
-        existingProviderIds,
-      );
       const providerIcon = normalizedProviderName.charAt(0).toUpperCase() || "P";
 
-      const newProvider: Provider = {
-        id: providerId,
-        name: normalizedProviderName,
-        icon: providerIcon,
-        is_enabled: true,
-        api_key: undefined,
-        base_url: PROVIDER_TYPE_DEFAULT_BASE_URLS[formValues.providerType],
-        provider_type: formValues.providerType,
-      };
-
       try {
+        if (editingProvider) {
+          const currentProviderType =
+            (editingProvider.provider_type ?? "openai") as AddProviderFormValues["providerType"];
+          const currentBaseUrl = editingProvider.base_url?.trim();
+          const currentDefaultBaseUrl = PROVIDER_TYPE_DEFAULT_BASE_URLS[currentProviderType];
+          const nextBaseUrl =
+            !currentBaseUrl || currentBaseUrl === currentDefaultBaseUrl
+              ? PROVIDER_TYPE_DEFAULT_BASE_URLS[formValues.providerType]
+              : editingProvider.base_url;
+
+          const updatedProvider: Provider = {
+            ...editingProvider,
+            name: normalizedProviderName,
+            icon: providerIcon,
+            base_url: nextBaseUrl,
+            provider_type: formValues.providerType,
+          };
+
+          await saveProvider(updatedProvider);
+          const refreshedProviders = await ensureProvidersReady();
+          setProviders(refreshedProviders);
+
+          if (activeProviderId === updatedProvider.id) {
+            await loadProviderDetail(updatedProvider.id, refreshedProviders, activeModelId || null);
+          }
+
+          return;
+        }
+
+        const existingProviderIds = new Set(providers.map((provider) => provider.id.toLowerCase()));
+        const providerId = buildUniqueProviderId(
+          normalizedProviderName,
+          formValues.providerType,
+          existingProviderIds,
+        );
+
+        const newProvider: Provider = {
+          id: providerId,
+          name: normalizedProviderName,
+          icon: providerIcon,
+          is_enabled: true,
+          api_key: undefined,
+          base_url: PROVIDER_TYPE_DEFAULT_BASE_URLS[formValues.providerType],
+          provider_type: formValues.providerType,
+        };
+
         await saveProvider(newProvider);
         const refreshedProviders = await ensureProvidersReady();
         setProviders(refreshedProviders);
         await loadProviderDetail(providerId, refreshedProviders, null);
       } catch (error) {
-        console.error("Failed to add provider:", error);
-        throw new Error("新增提供商失败，请稍后重试");
+        console.error("Failed to save provider:", error);
+        throw new Error(editingProvider ? "更新平台失败，请稍后重试" : "新增提供商失败，请稍后重试");
       }
     },
-    [loadProviderDetail, providers, saveProvider],
+    [activeModelId, activeProviderId, editingProvider, loadProviderDetail, providers, saveProvider],
+  );
+
+  const handleDeleteProvider = useCallback(
+    async (provider: Provider): Promise<void> => {
+      const accepted = await confirm({
+        title: "删除平台",
+        description: `删除后将移除「${provider.name}」及其模型配置，此操作不可撤销。`,
+        confirmText: "删除",
+        cancelText: "取消",
+        variant: "destructive",
+      });
+
+      if (!accepted) {
+        return;
+      }
+
+      try {
+        await removeProvider(provider.id);
+        const refreshedProviders = await ensureProvidersReady();
+        setProviders(refreshedProviders);
+
+        if (editingProvider?.id === provider.id) {
+          setEditingProvider(null);
+          setIsAddProviderDialogOpen(false);
+        }
+
+        if (activeProviderId === provider.id) {
+          const fallbackProvider = refreshedProviders[0] ?? null;
+
+          if (fallbackProvider) {
+            await loadProviderDetail(fallbackProvider.id, refreshedProviders, null);
+          } else {
+            setActiveProviderId("");
+            setActiveModelId("");
+            setModels([]);
+            setApiKey("");
+            setBaseUrl("");
+            await saveActiveSelection("", "");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to delete provider:", error);
+        throw new Error("删除平台失败，请稍后重试");
+      }
+    },
+    [activeProviderId, confirm, editingProvider, loadProviderDetail, removeProvider, saveActiveSelection],
   );
 
   const selectProvider = useCallback(
@@ -685,13 +782,16 @@ export function useModelsSettingController(): ModelsSettingController {
     apiKey,
     baseUrl,
     editingModel,
+    editingProvider,
     filteredProviders,
     handleAddRemoteModels,
     handleCreateModel,
     handleCreateProvider,
+    handleDeleteProvider,
     handleDeleteModel,
     handleDeleteModelGroup,
     handleEditModelDialogOpenChange,
+    handleProviderDialogOpenChange,
     handleSelectDefaultModel,
     handleTestConnection,
     handleToggleModel,
@@ -708,6 +808,7 @@ export function useModelsSettingController(): ModelsSettingController {
     openAddModelDialog,
     openAddProviderDialog,
     openEditModelDialog,
+    openEditProviderDialog,
     providers,
     saving,
     searchQuery,

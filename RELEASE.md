@@ -1,11 +1,12 @@
 # Banana Release Guide
 
 ## Scope
-This repository currently supports GitHub-hosted, unsigned desktop releases only.
+This repository ships GitHub-hosted desktop releases, with macOS stable releases wired into the Tauri updater flow.
 
-- macOS artifacts are not notarized.
-- Windows artifacts are not code signed.
-- No Tauri updater pipeline is configured.
+- macOS stable releases generate updater metadata and signatures for in-app update checks.
+- macOS artifacts are still not notarized.
+- Windows artifacts are still not code signed.
+- Windows / Linux do not use in-app installation in this phase.
 
 ## Release triggers
 You have two supported release paths:
@@ -13,7 +14,7 @@ You have two supported release paths:
 1. Run `pnpm release:tag:push`
 2. Manually run the `Release` workflow from GitHub Actions
 
-Both paths create or update a GitHub Release draft named `Banana v<version>`.
+Both paths publish a stable GitHub Release named `Banana v<version>`.
 
 ## Before cutting a release
 Run locally:
@@ -26,6 +27,16 @@ pnpm build
 pnpm check:rust
 pnpm desktop:build:debug
 ```
+
+GitHub Actions release secrets required for macOS updater builds:
+
+```text
+BANANA_UPDATER_PUBLIC_KEY
+TAURI_SIGNING_PRIVATE_KEY
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+```
+
+Without those values, local development builds still run, but in-app update checks should clearly report that the updater channel is not configured.
 
 ## Version source of truth
 - Edit version through `package.json` only.
@@ -56,21 +67,26 @@ pnpm desktop:build:debug
 ## Release note quality bar
 - Summarize user-visible and engineering-relevant changes, not a raw commit dump.
 - Call out breaking changes, packaging caveats, and migration notes explicitly.
-- Keep wording specific enough that someone scanning the GitHub Release draft can understand impact quickly.
-- Leave the GitHub Release as a draft until artifact names, changelog text, and version numbers are all reviewed together.
+- Keep wording specific enough that someone scanning the GitHub Release page can understand impact quickly.
+- Confirm the published stable release has the expected updater assets before announcing it as the latest downloadable version.
 
 ## Expected workflow outputs
-The GitHub `Release` workflow builds unsigned Tauri bundles for:
+The GitHub `Release` workflow builds Tauri bundles for:
 - macOS Apple Silicon
 - macOS Intel
 - Windows
 - Linux
 
-Artifacts are attached to the GitHub Release draft for manual review and download.
+Additionally, the macOS release assets include updater metadata/signatures so the app can read:
+
+```text
+https://github.com/FruitsAI/Banana/releases/latest/download/latest.json
+```
+
+The in-app updater only discovers published stable releases through that endpoint.
 
 ## Non-goals
 The following are intentionally out of scope for the current setup:
 - Apple signing and notarization
 - Windows Authenticode signing
-- auto-update manifests and signing keys
 - App Store / Microsoft Store / Linux store publishing

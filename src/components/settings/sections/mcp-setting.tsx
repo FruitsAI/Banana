@@ -988,16 +988,20 @@ export function McpSetting() {
   return (
     <SettingsPageFrame>
       <SettingsSectionShell
-          sectionId="mcp"
-          eyebrow="MCP"
-          title={shellTitle}
-          headerAccessory={headerAccessory}
+        sectionId="mcp"
+        eyebrow="MCP"
+        title={shellTitle}
+        shellOverflow="visible"
+        headerAccessory={headerAccessory}
+      >
+        <div
+          className="grid min-h-0 items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]"
+          data-mcp-layout="matched"
         >
-          <div
-            className="grid min-h-0 items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]"
-            data-mcp-layout="matched"
+          <SettingsSectionGroup
+            className="flex self-start flex-col overflow-hidden p-0 sm:p-0 lg:sticky lg:top-4 lg:h-[calc(100dvh-5rem)]"
+            contentClassName="flex h-full min-h-0 flex-col"
           >
-            <SettingsSectionGroup className="flex self-start flex-col overflow-hidden p-0 sm:p-0">
               <div
                 className="flex-none px-5 pb-5 pt-5 sm:px-6 sm:pb-5 sm:pt-6"
                 data-testid="mcp-browser-header"
@@ -1049,7 +1053,7 @@ export function McpSetting() {
               <AnimatePresence initial={false} mode="wait">
                 <motion.div
                   key={`${activeTabId}-${viewMode}`}
-                  className="space-y-5"
+                  className="space-y-5 lg:pb-1"
                   data-motion-preset="panel"
                   initial={motionPresets.panel.initial}
                   animate={motionPresets.panel.animate}

@@ -7,6 +7,7 @@ import { LiquidGlassRuntimeProvider } from "@/components/liquid-glass-runtime-pr
 import { ThemeProvider } from "@/components/theme-provider";
 import { FluidBackground } from "@/components/ui/fluid-background";
 import { buildPlatformMarkerScript } from "@/lib/platform";
+import { AppUpdateProvider } from "@/stores/update/useAppUpdateStore";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -36,17 +37,19 @@ export default function RootLayout({
           <AnimationIntensityProvider>
             <LiquidGlassRuntimeProvider>
               <FeedbackProvider>
-                <div className="window" id="window">
-                  <FluidBackground />
-                  <div
-                    aria-hidden="true"
-                    className="window-drag-region"
-                    data-tauri-drag-region="true"
-                    data-testid="window-drag-region"
-                    data-window-drag-region="top-strip"
-                  />
-                  <div className="content">{children}</div>
-                </div>
+                <AppUpdateProvider>
+                  <div className="window" id="window">
+                    <FluidBackground />
+                    <div
+                      aria-hidden="true"
+                      className="window-drag-region"
+                      data-tauri-drag-region="true"
+                      data-testid="window-drag-region"
+                      data-window-drag-region="top-strip"
+                    />
+                    <div className="content">{children}</div>
+                  </div>
+                </AppUpdateProvider>
               </FeedbackProvider>
             </LiquidGlassRuntimeProvider>
           </AnimationIntensityProvider>
