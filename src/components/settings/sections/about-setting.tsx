@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { RefreshCw } from "lucide-react";
 import {
   CodeIcon,
   CpuIcon,
@@ -11,36 +11,29 @@ import {
   LinkSquare02Icon,
   ZapIcon,
 } from "@hugeicons/core-free-icons";
+import { ArrowUpRight, RefreshCw } from "lucide-react";
 import type {
   AppUpdateCheckState,
   AppUpdateInstallState,
 } from "@/domain/update/types";
 import {
   APP_ABOUT_DESCRIPTION,
-  APP_ABOUT_FACTS,
   APP_ABOUT_TECH_BADGES,
   APP_COPYRIGHT_OWNER,
   APP_COPYRIGHT_YEAR,
   APP_DISPLAY_VERSION,
   APP_LINKS,
   APP_NAME,
-  APP_TAGLINE,
 } from "@/config/app-metadata";
 import { getMaterialSurfaceStyle } from "@/components/ui/material-surface";
 import { SettingsPageFrame } from "@/components/settings/settings-page-frame";
 import {
   SettingsSectionGroup,
   SettingsSectionShell,
-  SettingsSectionTitleRow,
 } from "@/components/settings/settings-section-shell";
+import { detectRuntimeEnvironment } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 import { useAppUpdateStore } from "@/stores/update/useAppUpdateStore";
-
-const ABOUT_FACT_ICONS = [
-  Layers01Icon,
-  ZapIcon,
-  CpuIcon,
-] as const;
 
 const ABOUT_TECH_ICON_MAP = {
   "Tauri 2": Layers01Icon,
@@ -73,7 +66,7 @@ function getUpdateStatusText({
   reason: string | null;
 }) {
   if (!canInstallInApp) {
-    return reason ?? "当前仅支持 macOS 正式版应用内更新";
+    return reason ?? "当前安装包暂不支持应用内更新";
   }
 
   if (installState === "error") {
@@ -242,6 +235,24 @@ export function AboutSetting() {
     void checkForUpdates({ manual: true });
   };
 
+  const handleOpenLink = async (url: string) => {
+    try {
+      const runtime =
+        typeof window === "undefined"
+          ? "browser"
+          : detectRuntimeEnvironment(window as Window & { __TAURI_INTERNALS__?: unknown });
+
+      if (runtime === "tauri") {
+        await openUrl(url);
+        return;
+      }
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <SettingsPageFrame>
       <SettingsSectionShell
@@ -249,66 +260,83 @@ export function AboutSetting() {
         eyebrow="About"
         title="关于我们"
       >
-        <SettingsSectionGroup
-          className="overflow-hidden p-0"
-          interactive={false}
-        >
+        <SettingsSectionGroup className="flex-1 overflow-hidden p-0" interactive={false}>
           <div
-            className="relative overflow-hidden rounded-[inherit] px-5 py-5 sm:px-6 sm:py-6"
+            className="relative flex h-full min-h-[460px] flex-col overflow-hidden rounded-[inherit] px-5 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7"
+            data-about-layout="brand-hero"
             data-testid="about-identity"
           >
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 top-0 h-24 opacity-90"
+              className="pointer-events-none absolute inset-x-0 top-0 h-28 opacity-90"
               style={{
                 background:
-                  "linear-gradient(135deg, color-mix(in srgb, var(--material-highlight) 72%, transparent) 0%, transparent 54%, color-mix(in srgb, var(--brand-primary-light) 18%, transparent) 100%)",
+                  "linear-gradient(135deg, color-mix(in srgb, var(--material-highlight) 66%, transparent) 0%, transparent 48%, color-mix(in srgb, var(--brand-primary-light) 22%, transparent) 100%)",
               }}
             />
-            <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center">
-              <motion.div
-                className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border"
-                style={{ ...getMaterialSurfaceStyle("content", "sm") }}
-                transition={{ type: "spring", stiffness: 360, damping: 26 }}
-                whileHover={{ y: -2, scale: 1.015 }}
-              >
-                <Image
-                  alt="Banana Logo"
-                  className="object-cover"
-                  fill
-                  sizes="96px"
-                  src="/logo.png"
-                />
-              </motion.div>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-20 top-8 h-56 w-56 rounded-full blur-3xl"
+              style={{
+                background:
+                  "radial-gradient(circle, color-mix(in srgb, var(--brand-primary-light) 24%, transparent) 0%, transparent 72%)",
+              }}
+            />
 
-              <div className="min-w-0 flex-1">
-                <div
-                  className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em]"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {APP_TAGLINE}
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                  <div className="min-w-0">
+            <div className="relative z-10 flex h-full flex-col gap-6">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex min-w-0 flex-1 items-start gap-5 sm:gap-6">
+                  <motion.div
+                    className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[30px] border sm:h-28 sm:w-28"
+                    style={{ ...getMaterialSurfaceStyle("content", "sm") }}
+                    transition={{ type: "spring", stiffness: 360, damping: 26 }}
+                    whileHover={{ y: -2, scale: 1.015 }}
+                  >
+                    <Image
+                      alt="Banana Logo"
+                      className="object-cover"
+                      fill
+                      sizes="112px"
+                      src="/logo.png"
+                    />
+                  </motion.div>
+
+                  <div className="min-w-0 flex-1 pt-1">
                     <h3
-                      className="text-[1.7rem] font-semibold tracking-tight sm:text-[1.9rem]"
+                      className="text-[2rem] font-semibold tracking-tight sm:text-[2.3rem]"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {APP_NAME}
                     </h3>
                     <p
-                      className="mt-2 max-w-2xl text-sm leading-6 sm:text-[15px]"
+                      className="mt-3 max-w-2xl text-sm leading-7 sm:text-[15px]"
                       style={{ color: "var(--text-secondary)" }}
                     >
                       {APP_ABOUT_DESCRIPTION}
                     </p>
+                    <p
+                      className="mt-4 text-xs leading-5"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      © {APP_COPYRIGHT_YEAR} {APP_COPYRIGHT_OWNER}. All rights reserved.
+                    </p>
                   </div>
-                  <div className="flex w-full shrink-0 flex-col items-start gap-2 sm:w-auto sm:min-w-[12rem] sm:items-end">
+                </div>
+
+                <div
+                  className="w-full shrink-0 rounded-[24px] border p-4 lg:max-w-[18rem]"
+                  data-testid="about-update-panel"
+                  style={{ ...getMaterialSurfaceStyle("content", "sm") }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div
+                      className="text-[11px] font-medium uppercase tracking-[0.16em]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Version
+                    </div>
                     <div className="about-version-actions">
-                      <div
-                        className="about-version-badge"
-                        data-testid="about-version-badge"
-                      >
+                      <div className="about-version-badge" data-testid="about-version-badge">
                         <span className="relative z-10">{currentVersionLabel}</span>
                       </div>
                       <button
@@ -321,184 +349,128 @@ export function AboutSetting() {
                       >
                         <RefreshCw
                           className={cn(
-                            "relative z-10 size-[0.95rem]",
+                            "relative z-10 size-[0.9rem]",
                             isActionBusy && "animate-spin",
                           )}
                         />
                         {showUpdateDot ? (
-                          <span
-                            className="about-update-trigger-dot"
-                            data-testid="about-update-dot"
-                          />
+                          <span className="about-update-trigger-dot" data-testid="about-update-dot" />
                         ) : null}
                       </button>
                     </div>
-                    <div
-                      className="min-h-[2.15rem] text-[11px] leading-5 sm:max-w-[15rem] sm:text-right"
-                      data-testid="about-update-status"
-                      style={{ color: statusColor }}
-                    >
-                      {statusText}
-                    </div>
+                  </div>
+                  <div
+                    className="mt-3 min-h-10 text-xs leading-5 sm:text-[12px]"
+                    data-testid="about-update-status"
+                    style={{ color: statusColor }}
+                  >
+                    {statusText}
                   </div>
                 </div>
-                <p
-                  className="mt-4 text-xs leading-5"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  © {APP_COPYRIGHT_YEAR} {APP_COPYRIGHT_OWNER}. All rights reserved.
-                </p>
               </div>
-            </div>
-          </div>
-        </SettingsSectionGroup>
 
-        <SettingsSectionGroup interactive={false}>
-          <div data-testid="about-facts">
-            <SettingsSectionTitleRow title="产品事实" />
-            <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
-              {APP_ABOUT_FACTS.map((fact, index) => (
-                <motion.div
-                  key={fact.title}
-                  className="relative overflow-hidden rounded-[22px] border p-4 sm:p-5"
-                  style={{ ...getMaterialSurfaceStyle("content", "sm") }}
-                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  whileHover={{ y: -2 }}
-                >
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 top-0 h-16 opacity-75"
-                    style={{
-                      background:
-                        "linear-gradient(180deg, color-mix(in srgb, var(--material-highlight) 62%, transparent) 0%, transparent 100%)",
+              <div
+                className="mt-auto grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                data-about-layout="quick-links"
+                data-testid="about-resources"
+              >
+                {APP_LINKS.map((link) => (
+                  <motion.a
+                    key={link.label}
+                    className="material-interactive group flex min-h-[104px] items-center gap-4 rounded-[24px] border px-4 py-4 text-left sm:px-5"
+                    data-hover-surface="content"
+                    data-testid="about-resource-card"
+                    href={link.url}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void handleOpenLink(link.url);
                     }}
-                  />
-                  <div className="relative z-10">
+                    rel="noreferrer noopener"
+                    style={{ ...getMaterialSurfaceStyle("content", "sm") }}
+                    target="_blank"
+                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    whileHover={{ y: -2 }}
+                  >
                     <div
-                      className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border"
                       style={{
                         background:
-                          "color-mix(in srgb, var(--material-content-background) 82%, transparent)",
+                          "color-mix(in srgb, var(--material-content-background) 90%, transparent)",
                         borderColor: "var(--divider)",
-                        color: "var(--text-secondary)",
+                        color: "var(--brand-primary)",
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)",
                       }}
                     >
-                      <HugeiconsIcon icon={ABOUT_FACT_ICONS[index] ?? CodeIcon} size={18} />
+                      <HugeiconsIcon icon={LinkSquare02Icon} size={18} />
                     </div>
-                    <h3
-                      className="text-sm font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {fact.title}
-                    </h3>
-                    <p
-                      className="mt-2 text-sm leading-6"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {fact.description}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </SettingsSectionGroup>
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {link.label}
+                      </div>
+                      <div
+                        className="mt-1 truncate text-xs sm:text-sm"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {link.value}
+                      </div>
+                    </div>
+                    <ArrowUpRight
+                      className="size-4 shrink-0 opacity-50 transition-opacity duration-200 group-hover:opacity-100"
+                      style={{ color: "var(--text-quaternary)" }}
+                    />
+                  </motion.a>
+                ))}
+              </div>
 
-        <SettingsSectionGroup className="overflow-hidden p-0" interactive={false}>
-          <div data-testid="about-resources">
-            <div className="px-5 pb-3 pt-5 sm:px-6">
-              <SettingsSectionTitleRow title="资源入口" />
-            </div>
-            {APP_LINKS.map((link, index, arr) => (
-              <a
-                key={link.label}
-                className="material-interactive group flex w-full items-start justify-between gap-4 px-5 py-4 text-left sm:px-6"
-                data-hover-surface="content"
-                href={link.url}
-                rel="noreferrer noopener"
-                style={{
-                  borderTop: index === 0 ? "1px solid var(--divider)" : "none",
-                  borderBottom:
-                    index < arr.length - 1 ? "1px solid var(--divider)" : "none",
-                }}
-                target="_blank"
+              <div
+                className="flex flex-col gap-3 pt-1"
+                data-testid="about-tech-stack"
               >
-                <div className="min-w-0">
-                  <div
-                    className="text-sm font-semibold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {link.label}
-                  </div>
-                  <p
-                    className="mt-1 text-sm leading-6"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {link.description}
-                  </p>
+                <div
+                  className="text-[11px] font-medium uppercase tracking-[0.16em]"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  技术栈
                 </div>
-                <div className="flex shrink-0 items-center gap-2 pl-3">
-                  <span
-                    className="text-xs sm:text-sm"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {link.value}
-                  </span>
-                  <HugeiconsIcon
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
-                    icon={LinkSquare02Icon}
-                    size={16}
-                    style={{ color: "var(--text-quaternary)" }}
-                  />
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {APP_ABOUT_TECH_BADGES.map((badge) => {
+                    const icon = ABOUT_TECH_ICON_MAP[badge] ?? CodeIcon;
+
+                    return (
+                      <motion.div
+                        key={badge}
+                        className="flex min-w-[148px] flex-1 items-center gap-3 rounded-[22px] border px-4 py-3 text-sm font-medium"
+                        data-testid="about-tech-card"
+                        style={{
+                          background:
+                            "color-mix(in srgb, var(--material-content-background) 90%, transparent)",
+                          borderColor: "var(--divider)",
+                          color: "var(--text-secondary)",
+                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)",
+                        }}
+                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ y: -1.5 }}
+                      >
+                        <div
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[16px] border"
+                          style={{
+                            background:
+                              "color-mix(in srgb, var(--material-content-background) 94%, transparent)",
+                            borderColor: "var(--divider)",
+                            color: "var(--brand-primary)",
+                          }}
+                        >
+                          <HugeiconsIcon icon={icon} size={15} />
+                        </div>
+                        <span className="truncate">{badge}</span>
+                      </motion.div>
+                    );
+                  })}
                 </div>
-              </a>
-            ))}
-          </div>
-        </SettingsSectionGroup>
-
-        <SettingsSectionGroup
-          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-          interactive={false}
-        >
-          <div
-            className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-            data-testid="about-tech-badges"
-          >
-            <div className="max-w-xl">
-              <h3
-                className="text-sm font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                技术透明度
-              </h3>
-              <p
-                className="mt-2 text-sm leading-6"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Banana 当前桌面客户端基于以下技术构建，技术栈只作为次级透明信息展示。
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {APP_ABOUT_TECH_BADGES.map((badge) => {
-                const icon = ABOUT_TECH_ICON_MAP[badge] ?? CodeIcon;
-
-                return (
-                  <div
-                    key={badge}
-                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium sm:text-[13px]"
-                    style={{
-                      background:
-                        "color-mix(in srgb, var(--material-content-background) 88%, transparent)",
-                      borderColor: "var(--divider)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    <HugeiconsIcon icon={icon} size={14} />
-                    <span>{badge}</span>
-                  </div>
-                );
-              })}
+              </div>
             </div>
           </div>
         </SettingsSectionGroup>

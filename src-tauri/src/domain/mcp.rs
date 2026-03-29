@@ -103,7 +103,10 @@ mod tests {
     fn config_normalizes_env_vars() {
         let config = McpServerConfig::new(
             " npx ",
-            &[String::from("-y"), String::from("@modelcontextprotocol/server-filesystem")],
+            &[
+                String::from("-y"),
+                String::from("@modelcontextprotocol/server-filesystem"),
+            ],
             Some("  KEY=value  "),
         )
         .expect("config should be valid");
@@ -122,7 +125,9 @@ mod tests {
     #[test]
     fn initialize_request_uses_package_version_for_client_info() {
         let request = build_initialize_request();
-        let params = request.params.expect("initialize request should include params");
+        let params = request
+            .params
+            .expect("initialize request should include params");
 
         assert_eq!(params["clientInfo"]["name"], serde_json::json!("Banana"));
         assert_eq!(

@@ -1,9 +1,9 @@
 pub mod commands;
 pub mod db;
 pub(crate) mod domain;
-pub(crate) mod services;
 pub mod error;
 mod mcp;
+pub(crate) mod services;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,6 +16,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_opener::init())
         .manage(mcp::McpState::default())
         .manage(commands::AppState { db: db_instance })
         .setup(|app| {

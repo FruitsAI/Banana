@@ -11,7 +11,7 @@ For Banana, this skill assumes:
 - `CHANGELOG.md` follows Keep a Changelog structure
 - each changelog bullet is bilingual (`EN + 中文`)
 - `package.json` is the single editable version source
-- macOS stable GitHub releases include updater metadata and signing assets
+- stable desktop GitHub releases include updater metadata and signing assets
 
 Load [references/banana-release-checklist.md](references/banana-release-checklist.md) when you need the Banana-specific checklist, release cautions, or example changelog patterns.
 

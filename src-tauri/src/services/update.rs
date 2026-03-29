@@ -8,6 +8,7 @@ const GITHUB_LATEST_RELEASE_ENDPOINT: &str =
     "https://github.com/FruitsAI/Banana/releases/latest/download/latest.json";
 const UPDATER_PUBLIC_KEY_ENV: &str = "BANANA_UPDATER_PUBLIC_KEY";
 const UPDATER_PUBLIC_KEY_PLACEHOLDER: &str = "BANANA_UPDATER_PUBLIC_KEY_PLACEHOLDER";
+const UNSUPPORTED_IN_APP_UPDATE_MESSAGE: &str = "当前平台暂不支持应用内更新";
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,8 +32,35 @@ pub struct AppUpdateInstallResponse {
     pub ready_to_restart: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AppUpdatePlatform {
+    Macos,
+    Windows,
+    Linux,
+    Unsupported,
+}
+
 fn current_version(app: &AppHandle) -> String {
     app.package_info().version.to_string()
+}
+
+fn current_update_platform() -> AppUpdatePlatform {
+    if cfg!(target_os = "macos") {
+        AppUpdatePlatform::Macos
+    } else if cfg!(target_os = "windows") {
+        AppUpdatePlatform::Windows
+    } else if cfg!(target_os = "linux") {
+        AppUpdatePlatform::Linux
+    } else {
+        AppUpdatePlatform::Unsupported
+    }
+}
+
+fn supports_in_app_update(platform: AppUpdatePlatform) -> bool {
+    matches!(
+        platform,
+        AppUpdatePlatform::Macos | AppUpdatePlatform::Windows | AppUpdatePlatform::Linux
+    )
 }
 
 fn resolve_updater_public_key() -> Option<String> {
@@ -41,14 +69,16 @@ fn resolve_updater_public_key() -> Option<String> {
         .filter(|value| !value.is_empty() && *value != UPDATER_PUBLIC_KEY_PLACEHOLDER)
         .map(str::to_string)
         .or_else(|| {
-            std::env::var(UPDATER_PUBLIC_KEY_ENV).ok().and_then(|value| {
-                let trimmed = value.trim();
-                if trimmed.is_empty() || trimmed == UPDATER_PUBLIC_KEY_PLACEHOLDER {
-                    None
-                } else {
-                    Some(trimmed.to_string())
-                }
-            })
+            std::env::var(UPDATER_PUBLIC_KEY_ENV)
+                .ok()
+                .and_then(|value| {
+                    let trimmed = value.trim();
+                    if trimmed.is_empty() || trimmed == UPDATER_PUBLIC_KEY_PLACEHOLDER {
+                        None
+                    } else {
+                        Some(trimmed.to_string())
+                    }
+                })
         })
 }
 
@@ -79,13 +109,13 @@ fn unsupported_platform_response(app: &AppHandle) -> AppUpdateCheckResponse {
         latest_version: None,
         notes: None,
         published_at: None,
-        reason: Some("当前平台暂不支持应用内更新".to_string()),
+        reason: Some(UNSUPPORTED_IN_APP_UPDATE_MESSAGE.to_string()),
         target: None,
     }
 }
 
 pub async fn check_for_update(app: AppHandle) -> Result<AppUpdateCheckResponse> {
-    if !cfg!(target_os = "macos") {
+    if !supports_in_app_update(current_update_platform()) {
         return Ok(unsupported_platform_response(&app));
     }
 
@@ -120,17 +150,19 @@ pub async fn check_for_update(app: AppHandle) -> Result<AppUpdateCheckResponse> 
 }
 
 pub async fn install_update(app: AppHandle) -> Result<AppUpdateInstallResponse> {
-    if !cfg!(target_os = "macos") {
+    if !supports_in_app_update(current_update_platform()) {
         return Err(AppError::InvalidConfig(
-            "当前平台暂不支持应用内更新".to_string(),
+            UNSUPPORTED_IN_APP_UPDATE_MESSAGE.to_string(),
         ));
     }
 
     let updater = build_updater(&app)?;
     let current_version = current_version(&app);
-    let update = updater.check().await.map_err(map_updater_error)?.ok_or_else(|| {
-        AppError::NotFound("当前已是最新版本，无需安装更新。".to_string())
-    })?;
+    let update = updater
+        .check()
+        .await
+        .map_err(map_updater_error)?
+        .ok_or_else(|| AppError::NotFound("当前已是最新版本，无需安装更新。".to_string()))?;
     let latest_version = update.version.clone();
 
     update
@@ -146,9 +178,9 @@ pub async fn install_update(app: AppHandle) -> Result<AppUpdateInstallResponse> 
 }
 
 pub fn restart_to_apply_update(app: AppHandle) -> Result<()> {
-    if !cfg!(target_os = "macos") {
+    if !supports_in_app_update(current_update_platform()) {
         return Err(AppError::InvalidConfig(
-            "当前平台暂不支持应用内更新".to_string(),
+            UNSUPPORTED_IN_APP_UPDATE_MESSAGE.to_string(),
         ));
     }
 
@@ -159,4 +191,21 @@ pub fn restart_to_apply_update(app: AppHandle) -> Result<()> {
 #[allow(dead_code)]
 pub fn updater_release_endpoint() -> &'static str {
     GITHUB_LATEST_RELEASE_ENDPOINT
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{supports_in_app_update, AppUpdatePlatform};
+
+    #[test]
+    fn supports_windows_linux_and_macos_in_app_updates() {
+        assert!(supports_in_app_update(AppUpdatePlatform::Macos));
+        assert!(supports_in_app_update(AppUpdatePlatform::Windows));
+        assert!(supports_in_app_update(AppUpdatePlatform::Linux));
+    }
+
+    #[test]
+    fn rejects_unknown_platforms_for_in_app_updates() {
+        assert!(!supports_in_app_update(AppUpdatePlatform::Unsupported));
+    }
 }

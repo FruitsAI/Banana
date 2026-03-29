@@ -1,12 +1,12 @@
 # Banana Release Guide
 
 ## Scope
-This repository ships GitHub-hosted desktop releases, with macOS stable releases wired into the Tauri updater flow.
+This repository ships GitHub-hosted desktop releases, with stable desktop releases wired into the Tauri updater flow on macOS, Windows, and Linux.
 
-- macOS stable releases generate updater metadata and signatures for in-app update checks.
+- Stable desktop releases generate updater metadata and signatures for in-app update checks.
 - macOS artifacts are still not notarized.
 - Windows artifacts are still not code signed.
-- Windows / Linux do not use in-app installation in this phase.
+- Linux in-app updates apply to the AppImage release path.
 
 ## Release triggers
 You have two supported release paths:
@@ -28,7 +28,7 @@ pnpm check:rust
 pnpm desktop:build:debug
 ```
 
-GitHub Actions release secrets required for macOS updater builds:
+GitHub Actions release secrets required for stable updater builds:
 
 ```text
 BANANA_UPDATER_PUBLIC_KEY
@@ -77,7 +77,7 @@ The GitHub `Release` workflow builds Tauri bundles for:
 - Windows
 - Linux
 
-Additionally, the macOS release assets include updater metadata/signatures so the app can read:
+Additionally, the macOS, Windows, and Linux release assets include updater metadata/signatures so the app can read:
 
 ```text
 https://github.com/FruitsAI/Banana/releases/latest/download/latest.json
@@ -89,4 +89,5 @@ The in-app updater only discovers published stable releases through that endpoin
 The following are intentionally out of scope for the current setup:
 - Apple signing and notarization
 - Windows Authenticode signing
+- Linux distribution-specific package stores
 - App Store / Microsoft Store / Linux store publishing

@@ -95,8 +95,14 @@ pub fn list_tools(
         }
 
         let mut child = cmd.spawn().map_err(|e| format!("启动 MCP 失败: {e}"))?;
-        let stdin = child.stdin.take().ok_or_else(|| "无法获取 stdin".to_string())?;
-        let stdout = child.stdout.take().ok_or_else(|| "无法获取 stdout".to_string())?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| "无法获取 stdin".to_string())?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| "无法获取 stdout".to_string())?;
         let reader = BufReader::new(stdout);
 
         processes.insert(
@@ -131,7 +137,9 @@ pub fn list_tools(
     send_rpc(&mut proc.stdin, &list_req)?;
     let list_res = read_rpc(&mut proc.child, &mut proc.stdout)?;
 
-    Ok(list_res.result.unwrap_or(serde_json::json!({ "tools": [] })))
+    Ok(list_res
+        .result
+        .unwrap_or(serde_json::json!({ "tools": [] })))
 }
 
 pub fn call_tool(

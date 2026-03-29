@@ -67,7 +67,7 @@ pnpm release:tag
 - 提交前跑一次 `pnpm version:check`，发布时让 Git tag 与 `package.json.version` 保持一致。
 - `pnpm release:tag` 会基于当前版本创建本地 annotated tag。
 - `pnpm release:tag:push` 会创建并推送 tag 到 `origin`，从而触发 GitHub Release workflow。
-- macOS 稳定版应用内更新依赖 `BANANA_UPDATER_PUBLIC_KEY`、`TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 这组 GitHub Actions secrets；本地开发环境没有这些值时，关于页会明确提示更新通道未配置。
+- 桌面稳定版应用内更新依赖 `BANANA_UPDATER_PUBLIC_KEY`、`TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 这组 GitHub Actions secrets；本地开发环境没有这些值时，关于页会明确提示更新通道未配置。
 
 ### CHANGELOG 规范
 - 使用 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 结构，保留 `Unreleased`。
@@ -78,7 +78,7 @@ pnpm release:tag
 
 ## GitHub 流程
 - `CI`：对 `push` / `pull_request` 自动执行 `lint`、`vitest`、`next build`、`cargo check`、`cargo clippy`。
-- `Release`：支持手动触发和 `v*` tag，发布 GitHub stable Release；macOS 产物会额外生成 updater 元数据与签名，供应用内检查更新使用。
+- `Release`：支持手动触发和 `v*` tag，发布 GitHub stable Release；桌面产物会生成 updater 元数据与签名，供应用内检查更新使用。
 - 发布与协作说明见：
   - [`CHANGELOG.md`](CHANGELOG.md)
   - [`CONTRIBUTING.md`](CONTRIBUTING.md)
@@ -86,10 +86,10 @@ pnpm release:tag
   - [`LICENSE`](LICENSE)
 
 ## 分发说明
-- 当前仓库默认产出 GitHub 分发构建物，macOS stable Release 支持应用内检查、下载与安装准备，完成后通过重启生效。
+- 当前仓库默认产出 GitHub 分发构建物，macOS、Windows、Linux stable Release 都支持应用内检查、下载与安装准备，完成后通过重启生效。
 - macOS 未做 notarization，Windows 未做 code signing。
 - 应用内更新只识别 GitHub 上“已发布”的稳定版 Release，不读取 draft，也不读取 prerelease。
-- Windows / Linux 当前仍适合 GitHub 内部分发、测试或手动下载，尚未启用应用内安装。
+- Linux 应用内更新当前走 AppImage 分发路径；其他 Linux 包管理渠道暂未接入。
 
 ## 关键目录结构
 ```text

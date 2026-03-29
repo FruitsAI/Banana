@@ -11,7 +11,13 @@ pub fn mcp_list_tools(
     args: Vec<String>,
     env_vars: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    mcp_service::list_tools(state.inner(), &server_id, &command, &args, env_vars.as_deref())
+    mcp_service::list_tools(
+        state.inner(),
+        &server_id,
+        &command,
+        &args,
+        env_vars.as_deref(),
+    )
 }
 
 #[tauri::command]

@@ -57,7 +57,10 @@
       "endpoints": [
         "https://github.com/FruitsAI/Banana/releases/latest/download/latest.json"
       ],
-      "pubkey": "BANANA_UPDATER_PUBLIC_KEY_PLACEHOLDER"
+      "pubkey": "BANANA_UPDATER_PUBLIC_KEY_PLACEHOLDER",
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

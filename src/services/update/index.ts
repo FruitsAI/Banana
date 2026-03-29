@@ -7,7 +7,7 @@ import { detectRuntimeEnvironment } from "@/lib/platform";
 import { AppError, normalizeError } from "@/shared/errors";
 
 const BROWSER_UNAVAILABLE_MESSAGE = "当前环境不支持应用内更新。";
-const MACOS_ONLY_MESSAGE = "当前仅支持 macOS 正式版应用内更新。";
+const IN_APP_UPDATE_UNAVAILABLE_MESSAGE = "当前安装包暂不支持应用内更新。";
 
 function wrapError(operation: string, error: unknown): AppError {
   const normalized = normalizeError(error, {
@@ -27,7 +27,7 @@ function mapUpdateErrorMessage(message: string): string {
   const normalized = message.toLowerCase();
 
   if (normalized.includes("当前平台暂不支持应用内更新")) {
-    return MACOS_ONLY_MESSAGE;
+    return IN_APP_UPDATE_UNAVAILABLE_MESSAGE;
   }
 
   if (normalized.includes("当前环境不支持应用内更新")) {
@@ -82,11 +82,16 @@ export async function checkForAppUpdate(): Promise<AppUpdateInfo> {
 
   try {
     const payload = await invoke<AppUpdateInfo>("app_check_update");
-    return payload.canInstallInApp ? payload : { ...payload, reason: payload.reason ?? MACOS_ONLY_MESSAGE };
+    return payload.canInstallInApp
+      ? payload
+      : { ...payload, reason: payload.reason ?? IN_APP_UPDATE_UNAVAILABLE_MESSAGE };
   } catch (error) {
     const wrapped = wrapError("checkForAppUpdate", error);
 
-    if (wrapped.message === MACOS_ONLY_MESSAGE || wrapped.message === BROWSER_UNAVAILABLE_MESSAGE) {
+    if (
+      wrapped.message === IN_APP_UPDATE_UNAVAILABLE_MESSAGE ||
+      wrapped.message === BROWSER_UNAVAILABLE_MESSAGE
+    ) {
       return createUnsupportedInfo(wrapped.message);
     }
 

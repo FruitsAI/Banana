@@ -11,6 +11,7 @@ Repository rule: every commit must update `CHANGELOG.md` with concise bilingual 
 ### Fixed
 
 - Inject the real updater public key into desktop release builds before packaging, using the same script path across macOS, Linux, and Windows so GitHub releases no longer fail on placeholder values or shell mismatches when generating signed updater assets. 在桌面发版打包前注入真实 updater 公钥，并统一 macOS、Linux、Windows 的执行方式，避免 GitHub Release 在生成签名更新产物时继续因为占位值或脚本环境不一致而失败。
+- Enable in-app update checks and install flow on Windows and Linux, replace the leftover macOS-only fallback copy with platform-neutral messaging, and align the release docs and Windows updater mode with the broader desktop rollout. 为 Windows 和 Linux 打通应用内检查与安装流程，把残留的仅限 macOS 提示改成平台中立文案，并同步对齐发版文档与 Windows 更新安装模式配置。
 
 ## [0.1.1] - 2026-03-28
 

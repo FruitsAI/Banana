@@ -383,7 +383,6 @@ impl Database {
         }
         Ok(())
     }
-
 }
 
 #[cfg(test)]
@@ -436,7 +435,8 @@ mod tests {
         let _ = std::fs::remove_file(&db_file_name);
 
         let db = Database::new(&db_url).await?;
-        db.create_thread("thread-roundtrip", "Roundtrip", None).await?;
+        db.create_thread("thread-roundtrip", "Roundtrip", None)
+            .await?;
 
         let inserted = Message {
             id: "msg-roundtrip".to_string(),
@@ -444,7 +444,10 @@ mod tests {
             role: "assistant".to_string(),
             content: "summary".to_string(),
             model_id: Some("gpt-4o-mini".to_string()),
-            ui_message_json: Some(r#"{"id":"msg-roundtrip","parts":[{"type":"text","text":"full payload"}]}"#.to_string()),
+            ui_message_json: Some(
+                r#"{"id":"msg-roundtrip","parts":[{"type":"text","text":"full payload"}]}"#
+                    .to_string(),
+            ),
             created_at: "".to_string(),
         };
 
@@ -466,11 +469,17 @@ mod tests {
         let _ = std::fs::remove_file(&db_file_name);
 
         let db = Database::new(&db_url).await?;
-        db.upsert_provider(&create_test_provider("openai", "OpenAI")).await?;
-        db.upsert_provider(&create_test_provider("openrouter", "OpenRouter")).await?;
-
-        db.upsert_model(&create_test_model("openai", "gpt-4o-mini", "OpenAI GPT-4o mini"))
+        db.upsert_provider(&create_test_provider("openai", "OpenAI"))
             .await?;
+        db.upsert_provider(&create_test_provider("openrouter", "OpenRouter"))
+            .await?;
+
+        db.upsert_model(&create_test_model(
+            "openai",
+            "gpt-4o-mini",
+            "OpenAI GPT-4o mini",
+        ))
+        .await?;
         db.upsert_model(&create_test_model(
             "openrouter",
             "gpt-4o-mini",

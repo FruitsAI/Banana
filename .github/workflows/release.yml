@@ -225,10 +225,10 @@ jobs:
             Stable GitHub release for Banana.
 
             Notes:
-            - macOS assets include updater metadata for in-app updates.
+            - macOS, Windows, and Linux assets include updater metadata for in-app updates.
             - Only published stable releases are detected by the app updater.
             - macOS artifacts are not notarized.
-            - Windows artifacts are not code signed and do not use in-app installation yet.
+            - Windows artifacts are not code signed.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
